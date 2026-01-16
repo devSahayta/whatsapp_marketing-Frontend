@@ -7,7 +7,7 @@ import {
   sendTemplate as apiSendTemplate,
   sendTemplateBulk as apiSendBulkTemplate,
 } from "../api/templates";
-import { fetchEvents, fetchEventParticipants } from "../api/events";
+import { fetchGroups, fetchGroupParticipants } from "../api/groups";
 import { listMedia, uploadMedia } from "../api/media";
 
 /*
@@ -98,7 +98,7 @@ export default function SendTemplate() {
 
   // events & participants
   const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [selectedParticipants, setSelectedParticipants] = useState({});
   const [selectAllParticipants, setSelectAllParticipants] = useState(false);
@@ -257,11 +257,15 @@ export default function SendTemplate() {
   useEffect(() => {
     async function loadEvents() {
       try {
-        const r = await fetchEvents(userId);
+        console.log({ userId });
+
+        const r = await fetchGroups(userId);
         const ev = r.data || r; // api wrapper shape
+        console.log({ ev });
+
         setEvents(ev || []);
       } catch (err) {
-        console.error("Failed to load events", err);
+        console.error("Failed to load groups", err);
       }
     }
     if (userId) loadEvents();
@@ -286,18 +290,20 @@ export default function SendTemplate() {
   useEffect(() => {
     async function loadParticipants() {
       try {
-        if (!selectedEvent) {
+        if (!selectedGroup) {
           setParticipants([]);
           setSelectedParticipants({});
           return;
         }
-        const r = await fetchEventParticipants(selectedEvent, userId);
+        const r = await fetchGroupParticipants(selectedGroup, userId);
         const data = r.data || r;
         const list = data?.participants || data || [];
+        console.log({ list });
+
         setParticipants(list);
         // reset selectedParticipants
         const map = {};
-        list.forEach((p) => (map[p.participant_id] = false));
+        list.forEach((p) => (map[p.contact_id] = false));
         setSelectedParticipants(map);
         setSelectAllParticipants(false);
       } catch (err) {
@@ -305,7 +311,7 @@ export default function SendTemplate() {
       }
     }
     loadParticipants();
-  }, [selectedEvent, userId]);
+  }, [selectedGroup, userId]);
 
   // handle Select All participants
   useEffect(() => {
@@ -644,7 +650,7 @@ export default function SendTemplate() {
 
     if (selectedIds.length > 0) {
       selectedIds.forEach((pid) => {
-        const p = participants.find((pp) => pp.participant_id === pid);
+        const p = participants.find((pp) => pp.contact_id === pid);
         if (p && p.phone_number) recipients.push(p.phone_number);
       });
     }
@@ -683,7 +689,7 @@ export default function SendTemplate() {
       const bulkResp = await apiSendBulkTemplate(templateId, {
         user_id: userId,
         recipients,
-        event_id: selectedEvent,
+        group_id: selectedGroup,
         components: comps,
       });
 
@@ -808,7 +814,7 @@ Failed: ${data.summary.failed}`
     ...(placeholders.buttons || []),
   ];
 
-  // console.log({ events, selectedEvent });
+  // console.log({ events, selectedGroup });
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -1072,13 +1078,13 @@ Failed: ${data.summary.failed}`
               <label className="text-xs text-gray-600">Select Event</label>
               <select
                 className="w-full border p-2 rounded"
-                value={selectedEvent || ""}
-                onChange={(e) => setSelectedEvent(e.target.value || null)}
+                value={selectedGroup || ""}
+                onChange={(e) => setSelectedGroup(e.target.value || null)}
               >
-                <option value="">-- choose event --</option>
+                <option value="">-- choose group --</option>
                 {events.map((ev) => (
-                  <option key={ev.event_id} value={ev.event_id}>
-                    {ev.title || ev.event_name || ev.event_id}
+                  <option key={ev.group_id} value={ev.group_id}>
+                    {ev.group_name}
                   </option>
                 ))}
               </select>
@@ -1104,7 +1110,7 @@ Failed: ${data.summary.failed}`
                 <div className="max-h-56 overflow-auto border rounded p-2 grid gap-2">
                   {participants.map((p) => (
                     <label
-                      key={p.participant_id}
+                      key={p.contact_id}
                       className="flex items-center justify-between gap-2 bg-gray-50 p-2 rounded"
                     >
                       <div>
@@ -1115,8 +1121,8 @@ Failed: ${data.summary.failed}`
                       </div>
                       <input
                         type="checkbox"
-                        checked={!!selectedParticipants[p.participant_id]}
-                        onChange={() => toggleParticipant(p.participant_id)}
+                        checked={!!selectedParticipants[p.contact_id]}
+                        onChange={() => toggleParticipant(p.contact_id)}
                       />
                     </label>
                   ))}
