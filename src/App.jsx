@@ -280,14 +280,14 @@ function AppContent() {
             }
           />
 
-          <Route
+          {/* <Route
             path="/call-batch/:eventId"
             element={
               <PrivateRoute>
                 <CallBatchPage />
               </PrivateRoute>
             }
-          />
+          /> */}
           <Route
             path="/chatbot"
             element={

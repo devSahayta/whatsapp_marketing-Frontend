@@ -21,12 +21,11 @@ const EventForm = ({ user }) => {
   // });
 
   const [formData, setFormData] = useState({
-    eventName: "",
-    eventDate: "",
-    eventType: "wedding",
-    knowledgeBaseId: "",
-    dataset: null,
-  });
+  groupName: "",
+  description: "",
+  dataset: null,
+});
+
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
@@ -42,7 +41,7 @@ const EventForm = ({ user }) => {
       .catch((err) => console.error("Failed to load KBs", err));
   }, [user]);
 
-  console.log({ formData });
+  // console.log({ formData });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -75,17 +74,15 @@ const EventForm = ({ user }) => {
 
       const payload = new FormData();
       payload.append("user_id", user.id);
-      payload.append("event_name", formData.eventName);
-      payload.append("event_date", formData.eventDate);
-      payload.append("event_type", formData.eventType);
-      payload.append("knowledge_base_id", formData.knowledgeBaseId);
+payload.append("group_name", formData.groupName);
+payload.append("description", formData.description || "");
 
       if (formData.dataset) {
         payload.append("dataset", formData.dataset);
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/events`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups`,
         {
           method: "POST",
           body: payload,
@@ -101,10 +98,11 @@ const EventForm = ({ user }) => {
 
       // Reset form
       setFormData({
-        eventName: "",
-        eventDate: "",
-        dataset: null,
-      });
+  groupName: "",
+  description: "",
+  dataset: null,
+});
+
       const fileInput = document.getElementById("dataset");
       if (fileInput) fileInput.value = "";
 
@@ -137,21 +135,39 @@ const EventForm = ({ user }) => {
         <div className="form-group">
           <label htmlFor="eventName" className="form-label">
             <Type size={20} />
-            Event Name
+            Group Name
+          </label>
+         <input
+          type="text"
+          id="groupName"
+          name="groupName"
+          value={formData.groupName}
+          onChange={handleInputChange}
+          required
+          className="form-input"
+          placeholder="Enter campaign group name"
+        />
+
+        </div>
+
+         <div className="form-group">
+          <label htmlFor="eventName" className="form-label">
+            <Type size={20} />
+           Description
           </label>
           <input
             type="text"
-            id="eventName"
-            name="eventName"
-            value={formData.eventName}
+            id="description"
+            name="description"
+            value={formData.description}
             onChange={handleInputChange}
             required
             className="form-input"
-            placeholder="Enter event name"
+            placeholder="Enter group description"
           />
         </div>
 
-        <div className="form-group">
+        {/* <div className="form-group">
           <label htmlFor="eventDate" className="form-label">
             <Calendar size={20} />
             Event Date
@@ -165,9 +181,9 @@ const EventForm = ({ user }) => {
             required
             className="form-input"
           />
-        </div>
+        </div> */}
 
-        <div className="form-group">
+        {/* <div className="form-group">
           <label className="form-label">Event Type</label>
           <select
             name="eventType"
@@ -177,9 +193,9 @@ const EventForm = ({ user }) => {
           >
             <option value="wedding">Wedding</option>
           </select>
-        </div>
+        </div> */}
 
-        <div className="form-group">
+        {/* <div className="form-group">
           <label className="form-label">Knowledge Base</label>
           <select
             name="knowledgeBaseId"
@@ -196,7 +212,7 @@ const EventForm = ({ user }) => {
               </option>
             ))}
           </select>
-        </div>
+        </div> */}
 
         <div className="form-group">
           <label htmlFor="dataset" className="form-label">

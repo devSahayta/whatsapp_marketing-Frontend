@@ -1,23 +1,25 @@
-import RSVPTable from "../components/RSVPTable";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 const EventDashboard = () => {
-  const { eventId } = useParams();
+  const { eventId } = useParams(); // this is groupId
   const navigate = useNavigate();
-  const [event, setEvent] = useState(null);
+
+  const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchEventData = async () => {
+    const fetchParticipants = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/events/${eventId}`
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/groups/${eventId}/participants`
         );
-        if (!response.ok) throw new Error("Failed to fetch event");
-        const data = await response.json();
-        setEvent(data.event);
+
+        if (!res.ok) throw new Error("Failed to fetch participants");
+
+        const data = await res.json();
+        setParticipants(data);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -25,27 +27,38 @@ const EventDashboard = () => {
       }
     };
 
-    if (eventId) fetchEventData();
+    fetchParticipants();
   }, [eventId]);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
-  if (!event) return <p>No event found</p>;
 
   return (
     <div className="page-container">
-      <button className="back-button" onClick={() => navigate("/events")}>
-        Back to Events
-      </button>
+      <button onClick={() => navigate("/events")}>← Back</button>
 
-      <h1>{event.name}</h1>
-      <p>
-        {event.date} at {event.time}
-      </p>
-      <p>{event.description}</p>
+      <h1>Participants</h1>
 
-      {/* 👇 insert table here */}
-      <RSVPTable eventId={eventId} />
+      <table className="rsvp-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Created At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {participants.map((p) => (
+            <tr key={p.contact_id}>
+              <td>{p.full_name || "-"}</td>
+              <td>{p.phone_number}</td>
+              <td>
+                {new Date(p.updated_at).toLocaleDateString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

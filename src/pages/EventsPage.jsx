@@ -23,7 +23,7 @@ const EventsPage = () => {
   const fetchEvents = async (userId) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/events?user_id=${userId}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups?user_id=${userId}`
       );
 
       if (!response.ok) throw new Error("Failed to fetch events");
@@ -49,7 +49,7 @@ const EventsPage = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/events/${eventId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups/${eventId}`,
         {
           method: "DELETE",
         }
@@ -63,7 +63,7 @@ const EventsPage = () => {
       }
 
       // Remove event from UI
-      setEvents(events.filter((event) => event.event_id !== eventId));
+     setEvents(events.filter((event) => event.group_id !== eventId));
 
       alert("Event deleted successfully");
     } catch (error) {
@@ -73,9 +73,9 @@ const EventsPage = () => {
   };
   // -------------------------------------------------------
 
-  const handleEventClick = (eventId) => {
-    navigate(`/call-batch/${eventId}`);
-  };
+ const handleEventClick = (groupId) => {
+  navigate(`/dashboard/${groupId}`);
+};
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -121,13 +121,13 @@ const EventsPage = () => {
       ) : (
         <div className="events-grid">
           {events.map((event) => {
-            const { date } = formatDate(event.event_date);
+            const { date } = formatDate(event.created_at);
 
             return (
               <div
-                key={event.event_id}
+                key={event.group_id}
                 className="event-card"
-                onClick={() => handleEventClick(event.event_id)}
+                onClick={() => handleEventClick(event.group_id)}
               >
                 {/* ⋮ THREE DOTS MENU */}
                 <div
@@ -139,19 +139,19 @@ const EventsPage = () => {
                     className="event-menu-icon"
                     onClick={() =>
                       setOpenMenu(
-                        openMenu === event.event_id ? null : event.event_id
+                        openMenu === event.group_id ? null : event.group_id
                       )
                     }
                   />
 
                   {/* DROPDOWN */}
-                  {openMenu === event.event_id && (
+                  {openMenu === event.group_id && (
                     <div className="event-menu-dropdown show-menu">
                       <div
                         className="event-menu-item delete"
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteEvent(event.event_id); // ⬅️ connected to backend
+                          deleteEvent(event.group_id); // ⬅️ connected to backend
                         }}
                       >
                         Delete
@@ -161,7 +161,7 @@ const EventsPage = () => {
                 </div>
 
                 <div className="event-card-header">
-                  <h3 className="event-name">{event.event_name}</h3>
+                  <h3 className="event-name">{event.group_name}</h3>
                   <ArrowRight size={20} className="event-arrow" />
                 </div>
 
