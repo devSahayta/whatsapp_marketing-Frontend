@@ -93,7 +93,7 @@ const EventsPage = () => {
       <div className="page-container">
         <div className="loading-state">
           <div className="loading-spinner"></div>
-          <p>Loading your events...</p>
+          <p>Loading your groups...</p>
         </div>
       </div>
     );
@@ -102,20 +102,20 @@ const EventsPage = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">My Events</h1>
-        <p className="page-subtitle">Manage and view all your RSVP events</p>
+        <h1 className="page-title">My groups</h1>
+        <p className="page-subtitle">Manage and view all your groups</p>
       </div>
 
       {events.length === 0 ? (
         <div className="no-events">
           <Calendar size={48} />
-          <h3>No Events Found</h3>
-          <p>You haven’t created any events yet.</p>
+          <h3>No Groups Found</h3>
+          <p>You haven’t created any groups yet.</p>
           <button
             className="btn btn-primary"
-            onClick={() => navigate("/createEvent")}
+            onClick={() => navigate("/createGroup")}
           >
-            Create Your First Event
+            Create Your First Group
           </button>
         </div>
       ) : (
@@ -179,7 +179,7 @@ const EventsPage = () => {
                 <div className="event-card-footer">
                   <div className="event-stats">
                     <Users size={16} />
-                    <span>View RSVPs</span>
+                    <span>View Groups</span>
                   </div>
                 </div>
               </div>

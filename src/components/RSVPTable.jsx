@@ -115,7 +115,7 @@ const RSVPTable = ({ eventId: propEventId }) => {
       <div className="table-container">
         <div className="loading-state">
           <div className="loading-spinner"></div>
-          <p>Loading RSVP data...</p>
+          <p>Loading Groups member data...</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ const RSVPTable = ({ eventId: propEventId }) => {
             {filteredData.length === 0 ? (
               <tr>
                 <td colSpan={3} className="no-data">
-                  No RSVP data found
+                  No Groups member data found
                 </td>
               </tr>
             ) : (

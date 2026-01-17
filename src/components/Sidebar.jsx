@@ -37,8 +37,8 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const links = [
-    { name: "Events", path: "/events", icon: <Calendar size={18} /> },
-    { name: "Create Event", path: "/createEvent", icon: <Plus size={18} /> },
+    { name: "Groups", path: "/groups", icon: <Calendar size={18} /> },
+    { name: "Create Group", path: "/createGroup", icon: <Plus size={18} /> },
     {
       name: "Chatbot Conversations",
       path: "/chatbot",
@@ -52,11 +52,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: <FileText size={18} />,
     },
 
-    {
-      name: "Knowledge Base",
-      path: "/knowledge-bases",
-      icon: <Library size={18} />,
-    },
+    // {
+    //   name: "Knowledge Base",
+    //   path: "/knowledge-bases",
+    //   icon: <Library size={18} />,
+    // },
   ];
 
   return (

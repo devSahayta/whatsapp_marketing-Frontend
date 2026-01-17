@@ -6,8 +6,8 @@
     return (
       <div className="page-container">
         <div className="page-header">
-          <h1 className="page-title">RSVP Dashboard</h1>
-          <p className="page-subtitle">Monitor your event responses and guest data</p>
+          <h1 className="page-title">Group Members Dashboard</h1>
+          <p className="page-subtitle">Monitor your group members and their data</p>
         </div>
         <RSVPTable />
       </div>

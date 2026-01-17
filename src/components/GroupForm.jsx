@@ -67,7 +67,7 @@ const EventForm = ({ user }) => {
     try {
       if (!user?.id) {
         setSubmitStatus("error");
-        setMessage("User not authenticated. Cannot create event.");
+        setMessage("User not authenticated. Cannot create group.");
         setIsSubmitting(false);
         return;
       }
@@ -89,7 +89,7 @@ payload.append("description", formData.description || "");
         }
       );
 
-      if (!response.ok) throw new Error("Failed to create event");
+      if (!response.ok) throw new Error("Failed to create group");
       const data = await response.json();
       console.log("✅ Event created:", data);
 
@@ -108,12 +108,12 @@ payload.append("description", formData.description || "");
 
       // 🌈 Smooth delay before redirect
       setTimeout(() => {
-        navigate("/events");
+        navigate("/groups");
       }, 3000);
     } catch (error) {
       setSubmitStatus("error");
-      setMessage("Failed to create event. Please try again.");
-      console.error("Error creating event:", error);
+      setMessage("Failed to create group. Please try again.");
+      console.error("Error creating group:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -221,7 +221,7 @@ payload.append("description", formData.description || "");
           </label>
           <div className="upload-instructions">
             <p className="upload-note">
-              Please upload your RSVP list in the given format. You can download
+              Please upload your group list in the given format. You can download
               the sample template here.
             </p>
             <button
@@ -266,7 +266,7 @@ payload.append("description", formData.description || "");
         </AnimatePresence>
 
         <button type="submit" disabled={isSubmitting} className="submit-button">
-          {isSubmitting ? "Creating Event..." : "Create Event"}
+          {isSubmitting ? "Creating Event..." : "Create Group"}
         </button>
       </form>
 
@@ -288,9 +288,9 @@ payload.append("description", formData.description || "");
               style={{ maxWidth: 420 }}
             >
               <Check size={48} color="#16a34a" className="mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Event Created </h2>
+              <h2 className="text-2xl font-bold mb-2">Group Created </h2>
               <p className="text-gray-600">
-                Redirecting to your event list in a few seconds...
+                Redirecting to your group list in a few seconds...
               </p>
               <motion.div
                 initial={{ width: "0%" }}
