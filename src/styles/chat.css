@@ -1,72 +1,49 @@
-/* MAIN LAYOUT */
+/* ================================
+   MAIN CONTAINER (WhatsApp Style)
+=================================== */
 .wa-container {
   display: flex;
-  height: calc(100vh - 60px);
-  background: #ece5dd;
+  height: calc(100vh - 60px); /* Adjust based on your navbar height */
+  background: #f0f2f5;
+  overflow: hidden;
 }
 
-/* ============================
-   EVENT DROPDOWN STYLING
-=============================== */
-
-/* .event-selector-box {
+/* ================================
+   LEFT PANEL - Chat List
+=================================== */
+.wa-chatlist {
+  width: 30%;
+  min-width: 320px;
+  max-width: 420px;
+  background: #fff;
+  border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 12px 18px;
-  background: #ffffff;
-  width: 260px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+/* Event Dropdown Wrapper */
+.event-dropdown-wrapper {
+  padding: 16px;
+  border-bottom: 1px solid #e6e6e6;
+  background: #f7f7f7;
+}
+
+.event-select-wrapper {
+  width: 100%;
 }
 
 .event-label {
   font-weight: 600;
-  margin-bottom: 6px;
-  font-size: 15px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: block;
+  color: #111;
 }
 
-.event-select {
+.event-select-box {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 15px;
-  background: #f8f8f8;
-  cursor: pointer;
-  outline: none;
-}
-
-.event-select:hover {
-  background: #f0f0f0;
-}
-
-.event-select:focus {
-  border-color: #25d366;
-  box-shadow: 0 0 4px rgba(37, 211, 102, 0.4);
-} */
-
-/* --------------------------------------------------------------------------------------------------================== */
-
-/* Event Dropdown Wrapper */
-.event-select-wrapper {
-  margin-bottom: 20px;
-  padding: 10px 0;
-}
-
-/* Label */
-.event-label {
-  font-weight: bold;
-  font-size: 16px;
-  margin-bottom: 6px;
-  display: block;
-}
-
-/* Dropdown Select */
-.event-select-box {
-  width: 240px;
-  padding: 10px;
   font-size: 15px;
   border-radius: 8px;
   border: 1px solid #c7c7c7;
@@ -77,7 +54,7 @@
 }
 
 .event-select-box:hover {
-  border-color: #25d366; /* WhatsApp green */
+  border-color: #25d366;
 }
 
 .event-select-box:focus {
@@ -85,34 +62,15 @@
   box-shadow: 0 0 4px rgba(18, 140, 126, 0.4);
 }
 
-/* Loading text */
-.event-loading {
-  padding: 10px;
-  color: gray;
-  font-size: 16px;
+/* Select Event Message */
+.select-event-message {
+  padding: 24px;
+  text-align: center;
+  color: #667781;
+  font-size: 14px;
 }
 
-/* ---------------- CHAT LIST ---------------- */
-/* ------------- GLOBAL LAYOUT ------------- */
-/* ------------- MAIN CONTAINER ------------- */
-.wa-container {
-  display: flex;
-  height: 100vh;
-  background: #f0f2f5;
-  overflow: hidden;
-}
-
-/* ------------- LEFT CHAT LIST PANEL ------------- */
-.wa-chatlist {
-  /* width: 30%; */
-  min-width: 10%;
-  max-width: 25%;
-  background: #fff;
-  border-right: 1px solid #ddd;
-  overflow-y: auto;
-}
-
-/* HEADER */
+/* Chat List Header (if needed) */
 .wa-chatlist-header {
   padding: 16px;
   font-size: 20px;
@@ -121,14 +79,20 @@
   background: #f7f7f7;
 }
 
-/* ------------- SINGLE CHAT ITEM ------------- */
+/* Chat List Items Container */
+.wa-chatlist-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Single Chat Item */
 .wa-chatlist-item {
   display: flex;
   gap: 12px;
   padding: 14px;
   cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
-  transition: background 0.25s ease;
+  transition: background 0.2s ease;
   align-items: center;
 }
 
@@ -138,8 +102,8 @@
 
 /* Avatar */
 .wa-avatar {
-  min-width: 45px;
-  min-height: 45px;
+  min-width: 48px;
+  min-height: 48px;
   background: #25d366;
   color: white;
   font-weight: bold;
@@ -148,25 +112,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-/* Chat Info Area */
+/* Chat Info */
 .wa-chat-info {
   flex: 1;
-  min-width: 0; /* IMPORTANT for ellipsis */
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Top row: name + time */
 .wa-chat-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  margin-bottom: 4px;
 }
 
-/* Chat Name */
 .wa-chat-name {
   font-weight: 600;
   font-size: 16px;
@@ -174,28 +138,66 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 
-/* Time */
 .wa-chat-time {
-  font-size: 13px;
-  color: #777;
-  flex-shrink: 0; /* prevents squeezing */
+  font-size: 12px;
+  color: #667781;
+  flex-shrink: 0;
   margin-left: 8px;
 }
 
-/* Last Message */
 .wa-chat-message {
-  margin-top: 4px;
-  color: #555;
+  color: #667781;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%; /* ensures perfect trimming */
 }
 
-/* ------------- CHAT WINDOW (RIGHT SIDE) ------------- */
+/* ================================
+   RIGHT PANEL - Chat Window Container
+=================================== */
+.wa-chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ece5dd;
+  overflow: hidden;
+}
+
+/* Empty State */
+.wa-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+  color: #667781;
+  padding: 40px;
+  text-align: center;
+}
+
+.wa-empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.wa-empty-state h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #41525d;
+}
+
+.wa-empty-state p {
+  margin: 0;
+  font-size: 14px;
+  color: #8696a0;
+}
+
 /* ================================
    CHAT WINDOW (WhatsApp Style)
 =================================== */
@@ -203,29 +205,29 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #ece5dd; /* WhatsApp background */
+  background: #ece5dd;
 }
 
-/* ================================
-   HEADER (WhatsApp look)
-=================================== */
+/* Chat Header */
 .wa-chat-header {
-  background: #f0f2f5; /* WhatsApp header color */
+  background: #f0f2f5;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   border-bottom: 1px solid #d8d8d8;
+  min-height: 60px;
 }
 
 .wa-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
 }
 
 .wa-header-avatar {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   background: #25d366;
   border-radius: 50%;
   color: white;
@@ -233,174 +235,143 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
-.resume-ai-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #eaf5ff; /* soft blue */
-  color: #0077cc; /* accent color */
-  padding: 8px 16px;
-  margin: 10px;
-  border-radius: 25px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+.wa-header-meta {
+  flex: 1;
+  min-width: 0;
 }
 
-.resume-ai-banner:hover {
-  background-color: #d0e8ff;
-  transform: translateY(-2px);
-}
-
-.resume-ai-icon {
-  margin-right: 8px;
-  font-weight: bold;
-}
-
-
-.wa-header-name {
+.wa-header-meta h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wa-last-seen {
   font-size: 13px;
-  color: #6b6b6b;
+  color: #667781;
+  margin-top: 2px;
 }
 
-/* Message row wrapper */
-.wa-message-row {
-  display: flex;
-  flex-direction: column;
-}
-
-/* DATE SEPARATOR — WhatsApp exact behavior */
-.wa-date-separator {
-  align-self: center;          /* 👈 THIS is now effective */
-  margin: 12px 0;
-  padding: 4px 12px;
-  font-size: 12px;
-  color: #54656f;
-  background: #e1f3fb;
-  border-radius: 8px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.08);
-}
-
-
-
-.wa-messages {
-  display: flex;
-  flex-direction: column;
-}
-
-
-
-/* ================================
-   MESSAGES AREA
-=================================== */
+/* Messages Area */
 .wa-messages {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* WhatsApp spacing */
+  gap: 8px;
+  background: #ece5dd;
 }
 
-/* ================================
-   MESSAGE BUBBLE
-=================================== */
+/* Message Row */
+.wa-message-row {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Date Separator */
+.wa-date-separator {
+  align-self: center;
+  margin: 12px 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #54656f;
+  background: #e1f3fb;
+  border-radius: 8px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Message Bubble */
 .wa-message-bubble {
-  max-width: 70%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  max-width: 65%;
+  padding: 8px 12px;
+  border-radius: 8px;
   position: relative;
-  background: #ffffff; /* Default bubble */
-  line-height: 1.4;
-  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.15);
+  word-wrap: break-word;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+  margin-bottom: 4px;
 }
 
-/* RECEIVED */
+/* Received Messages */
 .wa-message-bubble.received {
   background: #ffffff;
-  margin-right: auto;
+  align-self: flex-start;
   border-top-left-radius: 0;
 }
 
-/* SENT */
-/* SENT MESSAGE BUBBLE (Fixed width + responsive) */
+/* Sent Messages */
 .wa-message-bubble.sent {
   background: #dcf8c6;
-  margin-left: auto;
+  align-self: flex-end;
   border-top-right-radius: 0;
-
-  /* FIXES LARGE WIDTH PROBLEM */
-  max-width: 55%; /* reduce from 70% → 55% */
-  width: fit-content;
-
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: pre-wrap;
 }
 
-/* MOBILE RESPONSIVE FIX */
-@media (max-width: 768px) {
-  .wa-message-bubble.sent {
-    max-width: 75%; /* for mobile wider space */
-  }
+/* Message Text */
+.wa-message-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #111;
+  margin-bottom: 4px;
 }
 
-@media (max-width: 480px) {
-  .wa-message-bubble.sent {
-    max-width: 85%; /* for small phones */
-  }
-}
-
-/* TIME in Bubble */
+/* Message Time */
 .wa-message-time {
   font-size: 11px;
-  opacity: 0.6;
-  margin-top: 4px;
+  color: #667781;
   text-align: right;
+  margin-top: 4px;
 }
 
-/* Images inside chat */
-.wa-message-text img.wa-chat-image {
-  max-width: 200px;
-  border-radius: 10px;
-  margin-top: 6px;
-  display: block;
+.wa-sender-type {
+  font-weight: 500;
 }
 
-/* Documents */
-.wa-chat-doc {
+/* Template Buttons */
+.wa-template-buttons {
   display: flex;
-  background: #f4f4f4;
-  padding: 10px;
-  border-radius: 10px;
-  margin-top: 6px;
-  align-items: center;
-  gap: 10px;
-  color: black;
-  text-decoration: none;
-  border-left: 4px solid #25d366;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
 }
 
-/* ================================
-   INPUT AREA
-=================================== */
+.wa-template-button {
+  background: #f7f8fa;
+  border: 1px solid #cfe6dc;
+  color: #2f3a3f;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.wa-template-button:hover {
+  background: #eef5f2;
+  border-color: #9fd3bd;
+}
+
+.wa-template-button:active {
+  background: #e4f1eb;
+}
+
+/* Input Area */
 .wa-input-area {
-  padding: 10px;
-  background: #f0f0f0;
+  padding: 12px 16px;
+  background: #f0f2f5;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   border-top: 1px solid #dadada;
+  align-items: center;
 }
 
 .wa-input-area input {
@@ -409,112 +380,87 @@
   border-radius: 20px;
   border: 1px solid #ccc;
   background: white;
+  font-size: 15px;
+  outline: none;
+}
+
+.wa-input-area input:focus {
+  border-color: #25d366;
 }
 
 .wa-input-area button {
   background: #25d366;
   color: white;
-  padding: 10px 18px;
+  padding: 10px 20px;
   border-radius: 20px;
   border: none;
   cursor: pointer;
   font-weight: 600;
-}
-
-/* ================================
-   RESPONSIVE – WhatsApp Style Mobile Layout (Improved)
-================================= */
-@media (max-width: 820px) {
-  /* Main container switches to vertical stacking */
-  .wa-container {
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  /* Chatlist section */
-  .wa-chatlist {
-    width: 100%;
-    max-height: 38vh; /* Perfect height for mobile */
-    overflow-y: auto;
-    border-right: none;
-    border-bottom: 1px solid #e5e5e5;
-    background: #ffffff;
-  }
-
-  /* Chat window (messages) */
-  .wa-chat-window {
-    width: 100%;
-    height: 62vh; /* Remaining space of screen */
-    overflow-y: auto;
-    background: #f0f2f5;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Message bubbles improved */
-  .wa-message-bubble {
-    max-width: 82%; /* Slightly slimmer like WhatsApp */
-    padding: 10px 14px;
-    border-radius: 14px;
-    font-size: 15px;
-    line-height: 1.35;
-    word-break: break-word;
-  }
-}
-
-@media (max-width: 480px) {
-  .wa-header-avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-  }
-
-  .wa-message-time {
-    font-size: 10px;
-  }
-
-  .wa-input-area input {
-    font-size: 14px;
-  }
-}
-
-/* ------------- INPUT BAR ------------- */
-/* .wa-input-area {
-  display: flex;
-  padding: 12px;
-  background: #f0f2f5;
-  border-top: 1px solid #ccc;
-  gap: 10px;
-}
-
-.wa-input-area input {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  outline: none;
   font-size: 15px;
-  background: white;
-}
-
-.wa-input-area button {
-  background: #25d366;
-  color: white;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 20px;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.2s;
+  transition: background 0.2s;
 }
 
 .wa-input-area button:hover {
   background: #1ebe5d;
 }
 
-/* Hide scrollbars */
-/* .wa-chatlist::-webkit-scrollbar,
+.wa-input-area button:active {
+  background: #1da851;
+}
+
+/* ================================
+   RESPONSIVE DESIGN
+=================================== */
+@media (max-width: 768px) {
+  .wa-container {
+    flex-direction: column;
+  }
+
+  .wa-chatlist {
+    width: 100%;
+    max-width: 100%;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .wa-chat-container {
+    height: 60vh;
+  }
+
+  .wa-message-bubble {
+    max-width: 80%;
+  }
+}
+
+@media (max-width: 480px) {
+  .event-dropdown-wrapper {
+    padding: 12px;
+  }
+
+  .wa-chatlist-item {
+    padding: 12px;
+  }
+
+  .wa-avatar {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 18px;
+  }
+
+  .wa-header-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .wa-message-bubble {
+    max-width: 85%;
+  }
+}
+
+/* Scrollbar Styling */
+.wa-chatlist::-webkit-scrollbar,
 .wa-messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -522,16 +468,25 @@
 .wa-chatlist::-webkit-scrollbar-thumb,
 .wa-messages::-webkit-scrollbar-thumb {
   background: #ccc;
-  border-radius: 20px;
-}
-
-.wa-chat-image {
-  max-width: 180px;
   border-radius: 10px;
 }
 
-.wa-chat-doc {
+.wa-chatlist::-webkit-scrollbar-track,
+.wa-messages::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+/* Loading State */
+.loading {
+  padding: 20px;
+  text-align: center;
+  color: #667781;
   font-size: 14px;
-  color: #333;
-  text-decoration: none;
-} */
+}
+
+.event-loading {
+  padding: 16px;
+  text-align: center;
+  color: #667781;
+  font-size: 14px;
+}

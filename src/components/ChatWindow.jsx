@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import useAuthUser from "../hooks/useAuthUser";
-import MediaPreview from "./MediaPreview";
 
-export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) {
+export default function ChatWindow({ chatId, userInfo }) {
   const { userId } = useAuthUser();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef(null);
   const { getToken } = useKindeAuth();
   const lastMessageTsRef = useRef(null);
+
+  /* ================= HELPERS ================= */
 
   const isNearBottom = () => {
     const el = messagesEndRef.current?.parentElement;
@@ -26,41 +27,23 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
   };
 
   const getParticipantName = (userInfo) => {
-  if (!userInfo) return "User";
+    if (!userInfo) return "User";
 
-  // ✅ Priority 1: participant full name (MOST IMPORTANT)
-  if (userInfo.full_name && userInfo.full_name.trim()) {
-    return userInfo.full_name;
-  }
+    if (userInfo.full_name?.trim()) return userInfo.full_name;
+    if (userInfo.person_name?.trim()) return userInfo.person_name;
+    if (userInfo.name?.trim()) return userInfo.name;
+    if (userInfo.phone_number?.trim()) return userInfo.phone_number;
+    if (userInfo.phone?.trim()) return userInfo.phone;
 
-  // ✅ Priority 2: person_name (future-proof)
-  if (userInfo.person_name && userInfo.person_name.trim()) {
-    return userInfo.person_name;
-  }
-
-  // ✅ Priority 3: generic name field
-  if (userInfo.name && userInfo.name.trim()) {
-    return userInfo.name;
-  }
-
-  // ✅ Priority 4: phone fallback
-  if (userInfo.phone_number && userInfo.phone_number.trim()) {
-    return userInfo.phone_number;
-  }
-
-  if (userInfo.phone && userInfo.phone.trim()) {
-    return userInfo.phone;
-  }
-
-  return "User";
-};
-
-
+    return "User";
+  };
 
   const formatBubbleTime = (timestamp) => {
     if (!timestamp) return "";
-    const d = parseTs(timestamp);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return parseTs(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const normalizeAndSort = (arr) => {
@@ -78,10 +61,7 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
     }, 60);
   };
 
-  useEffect(() => {
-  console.log("🧠 ChatWindow userInfo:", userInfo);
-}, [userInfo]);
-
+  /* ================= LOAD MESSAGES ================= */
 
   useEffect(() => {
     if (!chatId) {
@@ -129,44 +109,15 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
     scrollToBottom();
   }, [messages.length]);
 
-  const isSentByAdminOrAI = (sender_type) => {
-    if (!sender_type) return false;
-    const s = sender_type.toLowerCase();
-    return ["admin", "ai", "bot", "system"].includes(s);
-  };
+  /* ================= MESSAGE UTILS ================= */
 
-  /* 🔹 NEW: Sender label formatter (ADDED) */
-  const getSenderLabel = (sender_type) => {
-    if (!sender_type) return "User";
-    const s = sender_type.toLowerCase();
-    if (s === "ai" || s === "bot" || s === "system") return "AI";
-    if (s === "admin") return "Admin";
-    return "User";
-  };
+  const isSentByAdmin = (sender_type) =>
+    sender_type?.toLowerCase() === "admin";
 
-  const resumeAI = async () => {
-    if (!chatId) return;
-    try {
-      const token = await getToken();
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/admin/chat/resume-ai`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ chat_id: chatId }),
-        }
-      );
-      const data = await res.json();
-      if (res.ok && data.success) setChatMode("AI");
-    } catch (err) {
-      console.error("Failed to resume AI", err);
-    }
-  };
+  const getSenderLabel = (sender_type) =>
+    sender_type?.toLowerCase() === "admin" ? "Admin" : "User";
 
-  /* ================= DATE SEPARATOR HELPERS ================= */
+  /* ================= DATE SEPARATORS ================= */
 
   const startOfDay = (d) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -190,7 +141,7 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
     });
   };
 
-  /* ========================================================== */
+  /* ================= SEND MESSAGE ================= */
 
   const sendMessage = async () => {
     const trimmed = inputText.trim();
@@ -206,7 +157,6 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
     setMessages((prev) => [...prev, temp]);
     setInputText("");
     scrollToBottom();
-    setChatMode("MANUAL");
 
     try {
       const token = await getToken();
@@ -225,34 +175,37 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
       console.error("Send message failed:", err);
     }
   };
+const parseButtons = (buttons) => {
+  if (!buttons) return [];
+  try {
+    return typeof buttons === "string" ? JSON.parse(buttons) : buttons;
+  } catch (err) {
+    console.error("Failed to parse buttons:", err);
+    return [];
+  }
+};
+
+  /* ================= UI ================= */
 
   return (
     <div className="wa-chat-window">
       {/* HEADER */}
       <div className="wa-chat-header">
-  <div className="wa-header-left">
-    <div className="wa-header-avatar">
-      {getParticipantName(userInfo).charAt(0).toUpperCase()}
-    </div>
-    <div className="wa-header-meta">
-      <h3>{getParticipantName(userInfo)}</h3>
-      <div className="wa-last-seen">
-        {chatMode === "AI" ? "🤖 AI active" : "👤 Admin mode"}
+        <div className="wa-header-left">
+          <div className="wa-header-avatar">
+            {getParticipantName(userInfo).charAt(0).toUpperCase()}
+          </div>
+          <div className="wa-header-meta">
+            <h3>{getParticipantName(userInfo)}</h3>
+            <div className="wa-last-seen">👤 Participant</div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  {chatMode === "MANUAL" && (
-    <div className="resume-ai-banner" onClick={resumeAI}>
-      ▶ Resume AI
-    </div>
-  )}
-</div>
 
       {/* MESSAGES */}
       <div className="wa-messages">
         {messages.map((msg, index) => {
-          const sent = isSentByAdminOrAI(msg.sender_type);
+          const sent = isSentByAdmin(msg.sender_type);
           const currentDate = parseTs(msg.created_at);
           const prevMsg = messages[index - 1];
           const prevDate = prevMsg ? parseTs(prevMsg.created_at) : null;
@@ -271,16 +224,37 @@ export default function ChatWindow({ chatId, userInfo, chatMode, setChatMode }) 
               )}
 
               <div className={`wa-message-bubble ${sent ? "sent" : "received"}`}>
-                <div className="wa-message-text">{msg.message}</div>
+  {/* Message Text */}
+  <div className="wa-message-text">{msg.message}</div>
 
-                {/* 🔹 UPDATED: Time + Sender Type */}
-                <div className="wa-message-time">
-                  {formatBubbleTime(msg.created_at)} ·{" "}
-                  <span className="wa-sender-type">
-                    {getSenderLabel(msg.sender_type)}
-                  </span>
-                </div>
-              </div>
+  {/* WhatsApp Template Buttons */}
+  {msg.message_type === "template" &&
+    parseButtons(msg.buttons).length > 0 && (
+      <div className="wa-template-buttons">
+        {parseButtons(msg.buttons).map((btn, i) => (
+          <button
+            key={i}
+            className="wa-template-button"
+            onClick={() => {
+              console.log("Template button clicked:", btn.text);
+              // later → send this back to backend if needed
+            }}
+          >
+            {btn.text}
+          </button>
+        ))}
+      </div>
+    )}
+
+  {/* Meta */}
+  <div className="wa-message-time">
+    {formatBubbleTime(msg.created_at)} ·{" "}
+    <span className="wa-sender-type">
+      {getSenderLabel(msg.sender_type)}
+    </span>
+  </div>
+</div>
+
             </div>
           );
         })}

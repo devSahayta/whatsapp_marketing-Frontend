@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 
 // WhatsApp style time formatter
@@ -23,50 +21,56 @@ const formatTime = (timestamp) => {
   return date.toLocaleDateString([], { day: "2-digit", month: "short" });
 };
 
-export default function ChatList({ eventId, onSelectChat }) {
+export default function ChatList({ eventId: groupId, onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  if (!eventId) return;
+  useEffect(() => {
+    if (!groupId) return;
 
-  let intervalId;
+    let intervalId;
 
-  const fetchChats = async () => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/events/${eventId}/chats`
-      );
-      const data = await res.json();
-
-      if (data.ok) {
-        const sorted = data.chats.sort(
-          (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)
+    const fetchChats = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/groups/${groupId}/chats`
         );
-        setChats(sorted);
+        const data = await res.json();
+
+        if (data.ok) {
+          const sorted = data.chats.sort(
+            (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)
+          );
+          setChats(sorted);
+        }
+      } catch (err) {
+        console.error("Error fetching chats:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error fetching chats:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  // Initial load
-  fetchChats();
+    // Initial load
+    fetchChats();
 
-  // 🔁 Auto refresh every 7 sec
-  intervalId = setInterval(fetchChats, 7000);
+    // 🔁 Auto refresh every 7 sec
+    intervalId = setInterval(fetchChats, 7000);
 
-  return () => clearInterval(intervalId);
-}, [eventId]);
+    return () => clearInterval(intervalId);
+  }, [groupId]);
 
   if (loading) return <p className="loading">Loading chats...</p>;
 
-  return (
-    <div className="wa-chatlist">
-      <div className="wa-chatlist-header">Chats</div>
+  if (chats.length === 0) {
+    return (
+      <div className="wa-chatlist-items">
+        <p className="select-event-message">No chats available for this event.</p>
+      </div>
+    );
+  }
 
+  return (
+    <div className="wa-chatlist-items">
       {chats.map((c) => (
         <div
           key={c.chat_id}
@@ -75,13 +79,15 @@ export default function ChatList({ eventId, onSelectChat }) {
         >
           {/* Avatar */}
           <div className="wa-avatar">
-            {c.person_name?.charAt(0).toUpperCase()}
+            {(c.person_name || c.contact_name || "U").charAt(0).toUpperCase()}
           </div>
 
           {/* Chat Info */}
           <div className="wa-chat-info">
             <div className="wa-chat-top">
-              <span className="wa-chat-name">{c.person_name}</span>
+              <span className="wa-chat-name">
+                {c.person_name || c.contact_name || "Unknown User"}
+              </span>
               <span className="wa-chat-time">
                 {formatTime(c.last_message_at)}
               </span>
