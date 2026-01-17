@@ -75,7 +75,7 @@ export default function ChatWindow({ chatId, userInfo }) {
     const loadMessages = async (initial = false) => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/chats/${chatId}/messages`
+          `${import.meta.env.VITE_BACKEND_URL}/api/chats/${chatId}/messages`,
         );
         const data = await res.json();
         if (!data?.ok || !Array.isArray(data.messages)) return;
@@ -111,8 +111,7 @@ export default function ChatWindow({ chatId, userInfo }) {
 
   /* ================= MESSAGE UTILS ================= */
 
-  const isSentByAdmin = (sender_type) =>
-    sender_type?.toLowerCase() === "admin";
+  const isSentByAdmin = (sender_type) => sender_type?.toLowerCase() === "admin";
 
   const getSenderLabel = (sender_type) =>
     sender_type?.toLowerCase() === "admin" ? "Admin" : "User";
@@ -125,14 +124,11 @@ export default function ChatWindow({ chatId, userInfo }) {
   const formatDateLabel = (date) => {
     const today = startOfDay(new Date());
     const msgDay = startOfDay(date);
-    const diffDays = Math.round(
-      (today - msgDay) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.round((today - msgDay) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7)
-      return msgDay.toLocaleDateString([], { weekday: "long" });
+    if (diffDays < 7) return msgDay.toLocaleDateString([], { weekday: "long" });
 
     return msgDay.toLocaleDateString([], {
       day: "2-digit",
@@ -160,30 +156,27 @@ export default function ChatWindow({ chatId, userInfo }) {
 
     try {
       const token = await getToken();
-      await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/admin/chat/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ chat_id: chatId, message: trimmed }),
-        }
-      );
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/admin/chat/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ chat_id: chatId, message: trimmed }),
+      });
     } catch (err) {
       console.error("Send message failed:", err);
     }
   };
-const parseButtons = (buttons) => {
-  if (!buttons) return [];
-  try {
-    return typeof buttons === "string" ? JSON.parse(buttons) : buttons;
-  } catch (err) {
-    console.error("Failed to parse buttons:", err);
-    return [];
-  }
-};
+  const parseButtons = (buttons) => {
+    if (!buttons) return [];
+    try {
+      return typeof buttons === "string" ? JSON.parse(buttons) : buttons;
+    } catch (err) {
+      console.error("Failed to parse buttons:", err);
+      return [];
+    }
+  };
 
   /* ================= UI ================= */
 
@@ -223,38 +216,39 @@ const parseButtons = (buttons) => {
                 </div>
               )}
 
-              <div className={`wa-message-bubble ${sent ? "sent" : "received"}`}>
-  {/* Message Text */}
-  <div className="wa-message-text">{msg.message}</div>
+              <div
+                className={`wa-message-bubble ${sent ? "sent" : "received"}`}
+              >
+                {/* Message Text */}
+                <div className="wa-message-text">{msg.message}</div>
 
-  {/* WhatsApp Template Buttons */}
-  {msg.message_type === "template" &&
-    parseButtons(msg.buttons).length > 0 && (
-      <div className="wa-template-buttons">
-        {parseButtons(msg.buttons).map((btn, i) => (
-          <button
-            key={i}
-            className="wa-template-button"
-            onClick={() => {
-              console.log("Template button clicked:", btn.text);
-              // later → send this back to backend if needed
-            }}
-          >
-            {btn.text}
-          </button>
-        ))}
-      </div>
-    )}
+                {/* WhatsApp Template Buttons */}
+                {msg.message_type === "template" &&
+                  parseButtons(msg.buttons).length > 0 && (
+                    <div className="wa-template-buttons">
+                      {parseButtons(msg.buttons).map((btn, i) => (
+                        <button
+                          key={i}
+                          className="wa-template-button"
+                          onClick={() => {
+                            console.log("Template button clicked:", btn.text);
+                            // later → send this back to backend if needed
+                          }}
+                        >
+                          {btn.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-  {/* Meta */}
-  <div className="wa-message-time">
-    {formatBubbleTime(msg.created_at)} ·{" "}
-    <span className="wa-sender-type">
-      {getSenderLabel(msg.sender_type)}
-    </span>
-  </div>
-</div>
-
+                {/* Meta */}
+                <div className="wa-message-time">
+                  {formatBubbleTime(msg.created_at)} ·{" "}
+                  <span className="wa-sender-type">
+                    {getSenderLabel(msg.sender_type)}
+                  </span>
+                </div>
+              </div>
             </div>
           );
         })}

@@ -20,7 +20,7 @@ export default function EventChatSelector({ onEventSelect }) {
   const fetchEvents = async (userId) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/groups?user_id=${userId}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups?user_id=${userId}`,
       );
 
       if (!response.ok) throw new Error("Failed to fetch events");
@@ -35,16 +35,24 @@ export default function EventChatSelector({ onEventSelect }) {
   };
 
   if (loading) {
-    return <p className="event-loading">Loading events...</p>;
+    return <p className="event-loading">Loading groups...</p>;
   }
 
- return (
+  return (
     <div className="event-select-wrapper">
-      <label className="event-label">Select Event:</label>
-      <select className="event-select-box" onChange={(e) => onEventSelect(e.target.value)} defaultValue="">
-        <option value="" disabled>Choose Event</option>
+      <label className="event-label">Select Group:</label>
+      <select
+        className="event-select-box"
+        onChange={(e) => onEventSelect(e.target.value)}
+        defaultValue=""
+      >
+        <option value="" disabled>
+          Choose Group
+        </option>
         {events.map((ev) => (
-          <option key={ev.group_id} value={ev.group_id}>{ev.group_name}</option>
+          <option key={ev.group_id} value={ev.group_id}>
+            {ev.group_name}
+          </option>
         ))}
       </select>
     </div>

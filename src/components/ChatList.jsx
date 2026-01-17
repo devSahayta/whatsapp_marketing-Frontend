@@ -33,13 +33,13 @@ export default function ChatList({ eventId: groupId, onSelectChat }) {
     const fetchChats = async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/groups/${groupId}/chats`
+          `${import.meta.env.VITE_BACKEND_URL}/api/groups/${groupId}/chats`,
         );
         const data = await res.json();
 
         if (data.ok) {
           const sorted = data.chats.sort(
-            (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)
+            (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at),
           );
           setChats(sorted);
         }
@@ -64,7 +64,9 @@ export default function ChatList({ eventId: groupId, onSelectChat }) {
   if (chats.length === 0) {
     return (
       <div className="wa-chatlist-items">
-        <p className="select-event-message">No chats available for this event.</p>
+        <p className="select-event-message">
+          No chats available for this event.
+        </p>
       </div>
     );
   }
