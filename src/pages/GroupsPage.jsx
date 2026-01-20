@@ -5,6 +5,12 @@ import { Calendar, Users, ArrowRight, MoreVertical } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import "../styles/pages.css";
 import "../styles/events.css";
+import {
+  dismissToast,
+  showError,
+  showLoading,
+  showSuccess,
+} from "../utils/toast";
 
 const EventsPage = () => {
   const [events, setEvents] = useState([]);
@@ -48,6 +54,8 @@ const EventsPage = () => {
     if (!confirmDelete) return;
 
     try {
+      const toastId = showLoading("Deleting group...");
+
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/groups/${eventId}`,
         {
@@ -58,17 +66,21 @@ const EventsPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to delete event");
+        showError(data.error || "Failed to delete event");
+        // alert(data.error || "Failed to delete event");
         return;
       }
 
       // Remove event from UI
       setEvents(events.filter((event) => event.group_id !== eventId));
 
-      alert("Event deleted successfully");
+      dismissToast(toastId);
+      showSuccess("Group deleted successfully");
+      // alert("Event deleted successfully");
     } catch (error) {
       console.error("Delete error:", error);
-      alert("Something went wrong while deleting the event.");
+      showError("Something went wrong while deleting the event.");
+      // alert("Something went wrong while deleting the event.");
     }
   };
   // -------------------------------------------------------
@@ -101,7 +113,7 @@ const EventsPage = () => {
 
   return (
     <div className="page-container">
-      <div className="page-header">
+      <div className="page-header mb-16">
         <h1 className="page-title font-inter uppercase">Groups</h1>
         <p className="page-subtitle font-inter">
           Manage and view all your groups
@@ -163,7 +175,7 @@ const EventsPage = () => {
                 </div>
 
                 <div className="event-card-header">
-                  <h3 className="event-name">{event.group_name}</h3>
+                  <h3 className="event-name uppercase ">{event.group_name}</h3>
                   <ArrowRight size={20} className="event-arrow" />
                 </div>
 

@@ -9,6 +9,7 @@ import {
 } from "../api/templates";
 import { fetchGroups, fetchGroupParticipants } from "../api/groups";
 import { listMedia, uploadMedia } from "../api/media";
+import { showError, showSuccess } from "../utils/toast";
 
 /*
   SendTemplate Page
@@ -187,7 +188,7 @@ export default function SendTemplate() {
       return `${
         import.meta.env.VITE_BACKEND_URL
       }/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-        header.example.header_handle[0]
+        header.example.header_handle[0],
       )}&user_id=${userId}`;
     }
 
@@ -415,7 +416,7 @@ export default function SendTemplate() {
       if (numericKeys.length > 0) {
         // get unique numeric, sorted ascending
         const nums = Array.from(
-          new Set(numericKeys.map((k) => Number(k)))
+          new Set(numericKeys.map((k) => Number(k))),
         ).sort((a, b) => a - b);
         const params = nums.map((n) => ({
           type: "text",
@@ -645,7 +646,7 @@ export default function SendTemplate() {
 
     const recipients = [];
     const selectedIds = Object.keys(selectedParticipants).filter(
-      (k) => selectedParticipants[k]
+      (k) => selectedParticipants[k],
     );
 
     if (selectedIds.length > 0) {
@@ -663,7 +664,7 @@ export default function SendTemplate() {
     if (!comps || comps.length === 0) {
       if (
         !window.confirm(
-          "No components detected. Continue sending without parameters?"
+          "No components detected. Continue sending without parameters?",
         )
       ) {
         return;
@@ -713,10 +714,15 @@ export default function SendTemplate() {
           error: f.error,
         })),
       ]);
+
+      if (bulkResp.status === 200) {
+        showSuccess("Template send successfully");
+      }
     } catch (err) {
       clearInterval(progressTimer);
       console.error("Bulk send failed", err);
-      alert("Bulk send failed: " + (err?.message || JSON.stringify(err)));
+      showError("Bulk send failed: " + (err?.message || JSON.stringify(err)));
+      // alert("Bulk send failed: " + (err?.message || JSON.stringify(err)));
     } finally {
       setSending(false);
     }
@@ -727,7 +733,7 @@ export default function SendTemplate() {
     if (!sendResults) return;
 
     const failed = sendResults.filter((r) => !r.ok).map((r) => r.to);
-    if (failed.length === 0) return alert("No failed numbers to retry.");
+    if (failed.length === 0) return showError("No failed numbers to retry.");
 
     const comps = buildComponentsForSend();
 
@@ -752,11 +758,15 @@ export default function SendTemplate() {
 
       const data = bulkResp.data;
 
-      alert(
-        `Retry complete:
+      //       alert(
+      //         `Retry complete:
+      // Success: ${data.summary.success}
+      // Failed: ${data.summary.failed}`,
+      //       );
+
+      showSuccess(`Retry complete:
 Success: ${data.summary.success}
-Failed: ${data.summary.failed}`
-      );
+Failed: ${data.summary.failed}`);
 
       // Update results
       const successes = data.results.success.map((s) => ({
@@ -776,13 +786,14 @@ Failed: ${data.summary.failed}`
           (x) =>
             successes.find((y) => y.to === x.to) ||
             failures.find((y) => y.to === x.to) ||
-            x
+            x,
         );
         return updated;
       });
     } catch (err) {
       clearInterval(timer);
-      alert("Retry failed: " + err.message);
+      showError("Retry failed: " + err.message);
+      // alert("Retry failed: " + err.message);
     } finally {
       setSending(false);
     }
@@ -819,7 +830,10 @@ Failed: ${data.summary.failed}`
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Send Template — {template.name}</h1>
+        <h1 className="text-2xl font-bold">
+          Send Template —{" "}
+          <span className=" text-blue-600 ">{template.name}</span>
+        </h1>
         <div className="text-sm text-gray-500">{template.language}</div>
       </div>
 
@@ -907,7 +921,7 @@ Failed: ${data.summary.failed}`
                         fillTemplateText(
                           template.components.find((c) => c.type === "HEADER")
                             .text || "",
-                          variableMap
+                          variableMap,
                         ) || ""
                       }
                       readOnly
@@ -920,7 +934,7 @@ Failed: ${data.summary.failed}`
 
                 {/* If header is image/video allow choose existing or upload */}
                 {["IMAGE", "VIDEO"].includes(
-                  template.components.find((c) => c.type === "HEADER").format
+                  template.components.find((c) => c.type === "HEADER").format,
                 ) && (
                   <>
                     <div className="flex items-center gap-3 mb-3">
@@ -1000,7 +1014,7 @@ Failed: ${data.summary.failed}`
                           <div className="mt-3 border rounded p-2 bg-gray-50">
                             {(() => {
                               const media = mediaList.find(
-                                (m) => m.wmu_id === selectedMediaId
+                                (m) => m.wmu_id === selectedMediaId,
                               );
                               if (!media) return null;
 
@@ -1075,7 +1089,7 @@ Failed: ${data.summary.failed}`
             <h3 className="font-semibold mb-3">Send to participants</h3>
 
             <div className="mb-3">
-              <label className="text-xs text-gray-600">Select Event</label>
+              <label className="text-xs text-gray-600">Select Group</label>
               <select
                 className="w-full border p-2 rounded"
                 value={selectedGroup || ""}

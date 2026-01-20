@@ -4,6 +4,12 @@ import { useNavigate } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import { createTemplate as apiCreateTemplate } from "../api/templates";
 import { createUploadSession, uploadBinary } from "../api/media";
+import {
+  dismissToast,
+  showError,
+  showLoading,
+  showSuccess,
+} from "../utils/toast";
 
 /**
  * CreateTemplate.jsx
@@ -110,13 +116,13 @@ export default function CreateTemplate() {
   // find body component
   const bodyComponent = useMemo(
     () => components.find((c) => c.type === "BODY"),
-    [components]
+    [components],
   );
 
   // Derived: variables in body text
   const bodyVariables = useMemo(
     () => detectVariables(bodyComponent?.text || ""),
-    [bodyComponent]
+    [bodyComponent],
   );
 
   // Example values management (we store as array of strings, matching variable order)
@@ -140,8 +146,8 @@ export default function CreateTemplate() {
               ...c,
               example: { body_text: [Array(len).fill("")] },
             }
-          : c
-      )
+          : c,
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodyVariables.join("|")]);
@@ -206,6 +212,15 @@ export default function CreateTemplate() {
   };
 
   const removeComponent = (compId) => {
+    // console.log({ compId });
+    const checkBody = components.find((c) => c.id === compId);
+    // console.log({ checkBody, newdata: checkBody.type });
+
+    if (checkBody.type === "BODY") {
+      showError("Body can not be removed");
+      return;
+    }
+
     setComponents((p) => p.filter((c) => c.id !== compId));
     // cleanup header if removed
     const removed = components.find((c) => c.id === compId);
@@ -234,8 +249,8 @@ export default function CreateTemplate() {
               ...c,
               text: newText,
             }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -248,8 +263,8 @@ export default function CreateTemplate() {
               ...c,
               example: { body_text: [exampleValues.map((v) => v || "")] },
             }
-          : c
-      )
+          : c,
+      ),
     );
   }, [exampleValues]);
 
@@ -261,8 +276,8 @@ export default function CreateTemplate() {
       prev.map((c) =>
         c.type === "BUTTONS"
           ? { ...c, buttons: [...(c.buttons || []), item] }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -280,8 +295,8 @@ export default function CreateTemplate() {
       prev.map((c) =>
         c.type === "BUTTONS"
           ? { ...c, buttons: [...(c.buttons || []), item] }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -298,8 +313,8 @@ export default function CreateTemplate() {
       prev.map((c) =>
         c.type === "BUTTONS"
           ? { ...c, buttons: [...(c.buttons || []), item] }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -311,11 +326,11 @@ export default function CreateTemplate() {
           ? {
               ...c,
               buttons: (c.buttons || []).map((b) =>
-                b.id === id ? { ...b, ...patch } : b
+                b.id === id ? { ...b, ...patch } : b,
               ),
             }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -325,8 +340,8 @@ export default function CreateTemplate() {
       prev.map((c) =>
         c.type === "BUTTONS"
           ? { ...c, buttons: (c.buttons || []).filter((b) => b.id !== id) }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -357,7 +372,7 @@ export default function CreateTemplate() {
     } catch (err) {
       console.error("Create session failed", err);
       setUploadError(
-        err?.response?.data || err.message || "Session creation failed"
+        err?.response?.data || err.message || "Session creation failed",
       );
       return null;
     } finally {
@@ -410,15 +425,15 @@ export default function CreateTemplate() {
                 format: headerType === "TEXT" ? "TEXT" : headerType,
                 example: { header_handle: [h] },
               }
-            : c
-        )
+            : c,
+        ),
       );
 
       return h;
     } catch (err) {
       console.error("Binary upload failed", err);
       setUploadError(
-        err?.response?.data || err.message || "Binary upload failed"
+        err?.response?.data || err.message || "Binary upload failed",
       );
       return null;
     } finally {
@@ -464,8 +479,8 @@ export default function CreateTemplate() {
                 ...c,
                 format: newType,
               }
-            : c
-        )
+            : c,
+        ),
       );
     }
   };
@@ -684,17 +699,21 @@ export default function CreateTemplate() {
     };
 
     try {
+      const toastId = showLoading("Creating template...");
       setSubmitting(true);
       setLoading(true);
       const resp = await apiCreateTemplate(payload);
       // success: show toast and redirect
-      alert("Template created successfully. Redirecting to list...");
+      // alert("Template created successfully. Redirecting to list...");
+      dismissToast(toastId);
+      showSuccess("Template created successfully. Redirecting to list...");
       navigate("/templates");
     } catch (err) {
       console.error("Create template error", err);
       const msg =
         err?.response?.data || err?.message || "Create template failed";
-      alert("Create failed: " + JSON.stringify(msg));
+      // alert("Create failed: " + JSON.stringify(msg));
+      showError("Create failed: " + JSON.stringify(msg));
     } finally {
       setSubmitting(false);
       setLoading(false);
@@ -780,7 +799,7 @@ export default function CreateTemplate() {
       rendered.push(
         <strong key={`v-${match.index}`} className="bg-yellow-50 px-1 rounded">
           {replacement}
-        </strong>
+        </strong>,
       );
       lastIndex = match.index + match[0].length;
       varIndex++;
@@ -952,8 +971,8 @@ export default function CreateTemplate() {
                                     onChange={(e) =>
                                       setExampleValues((prev) =>
                                         prev.map((x, idx) =>
-                                          idx === i ? e.target.value : x
-                                        )
+                                          idx === i ? e.target.value : x,
+                                        ),
                                       )
                                     }
                                   />
@@ -1004,8 +1023,8 @@ export default function CreateTemplate() {
                                   prev.map((c) =>
                                     c.id === comp.id
                                       ? { ...c, text: e.target.value }
-                                      : c
-                                  )
+                                      : c,
+                                  ),
                                 );
                               }}
                               placeholder="Short header text (no variables recommended)"
@@ -1014,7 +1033,7 @@ export default function CreateTemplate() {
                         )}
 
                         {["IMAGE", "VIDEO", "DOCUMENT"].includes(
-                          headerType
+                          headerType,
                         ) && (
                           <div className="mt-3">
                             <div className="text-sm font-medium">
@@ -1034,8 +1053,8 @@ export default function CreateTemplate() {
                                   headerType === "IMAGE"
                                     ? "image/*"
                                     : headerType === "VIDEO"
-                                    ? "video/*"
-                                    : undefined
+                                      ? "video/*"
+                                      : undefined
                                 }
                                 onChange={onHeaderFileSelected}
                                 className="text-sm"
@@ -1084,8 +1103,8 @@ export default function CreateTemplate() {
                               prev.map((c) =>
                                 c.id === comp.id
                                   ? { ...c, text: e.target.value }
-                                  : c
-                              )
+                                  : c,
+                              ),
                             );
                           }}
                           placeholder="Small footer text (optional)"

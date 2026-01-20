@@ -235,7 +235,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
 
   const { credits, loading, refetchCredits } = useUserCredits(
     user?.id,
-    isAuthenticated
+    isAuthenticated,
   );
 
   // Close dropdown when clicking outside
@@ -282,7 +282,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   };
 
   return (
-    <nav className="navbar">
+    <nav className="navbar ">
       <div className="nav-left">
         {/* Show hamburger only when authenticated */}
         {isAuthenticated && (
@@ -308,7 +308,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           <div className="credits-inline" title="Your credits">
             <Coins size={16} />
             <span className={getCreditBadgeClass()}>
-              {loading ? "..." : credits ?? 0}
+              {loading ? "..." : (credits ?? 0)}
             </span>
             <button
               className="refresh-small"
@@ -345,7 +345,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
                   </div>
                   <div className="right">
                     <span className={getCreditBadgeClass()}>
-                      {loading ? "..." : credits ?? 0}
+                      {loading ? "..." : (credits ?? 0)}
                     </span>
                     <button
                       onClick={(e) => {

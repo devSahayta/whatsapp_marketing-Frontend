@@ -40,8 +40,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: "Groups", path: "/groups", icon: <Calendar size={18} /> },
     { name: "Create Group", path: "/createGroup", icon: <Plus size={18} /> },
     {
-      name: "Chatbot Conversations",
-      path: "/chatbot",
+      name: "Chat",
+      path: "/chat",
       icon: <MessageSquare size={18} />,
     },
     { name: "Templates", path: "/templates", icon: <LayersIcon size={18} /> },

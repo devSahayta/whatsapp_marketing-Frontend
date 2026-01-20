@@ -2,10 +2,29 @@
    SIDEBAR OVERLAY (Background Dim)
 ================================ */
 
-.sidebar-overlay {
+/* .sidebar-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 50;
+}
+
+.sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+} */
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.25); /* lighter black */
+  backdrop-filter: blur(9px) saturate(120%);
+  -webkit-backdrop-filter: blur(9px) saturate(120%);
+
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
@@ -27,13 +46,22 @@
   left: 0;
   width: 260px;
   height: calc(100vh - var(--navbar-height));
-  background: #ffffff;
+  /* background: #ffffff; */
   border-right: 1px solid #e5e7eb;
   transform: translateX(-100%);
   transition: transform 0.28s ease;
   z-index: 70;
   display: flex;
   flex-direction: column;
+
+  background: linear-gradient(
+    to right,
+    rgba(255, 240, 250, 0.75),
+    rgba(245, 240, 255, 0.55)
+  );
+
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 .sidebar-drawer.open {
@@ -84,7 +112,9 @@
   text-decoration: none;
   color: #374151;
   font-size: 15px;
-  transition: background 0.25s, color 0.25s;
+  transition:
+    background 0.25s,
+    color 0.25s;
   border-left: 3px solid transparent;
 }
 

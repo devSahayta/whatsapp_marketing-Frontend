@@ -168,7 +168,7 @@ function AppContent() {
             }
           /> */}
           <Route
-            path="/chatbot"
+            path="/chat"
             element={
               <PrivateRoute>
                 <ChatPage />
