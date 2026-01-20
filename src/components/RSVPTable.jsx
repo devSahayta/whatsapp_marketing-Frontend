@@ -20,10 +20,11 @@ const RSVPTable = ({ eventId: propEventId }) => {
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContact, setNewContact] = useState({
-    full_name: "",
-    phone_number: "",
-    email: "",
-  });
+  full_name: "",
+  phone_number: "91",
+  email: "",
+});
+
 
   // Popover menu state
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -222,10 +223,11 @@ const RSVPTable = ({ eventId: propEventId }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newContact),
-        }
-      );
-
+          body: JSON.stringify({
+  ...newContact,
+  phone_number: newContact.phone_number.replace(/\D/g, ""),
+}),
+        })
       if (res.ok) {
         toast.success("Contact added successfully");
         setShowAddModal(false);
@@ -493,15 +495,26 @@ const RSVPTable = ({ eventId: propEventId }) => {
                   Phone Number <span className="required">*</span>
                 </label>
                 <input
-                  id="phone_number"
-                  type="tel"
-                  value={newContact.phone_number}
-                  onChange={(e) =>
-                    setNewContact({ ...newContact, phone_number: e.target.value })
-                  }
-                  placeholder="Enter phone number"
-                  required
-                />
+  id="phone_number"
+  type="tel"
+  value={newContact.phone_number}
+  onChange={(e) => {
+    let value = e.target.value.replace(/\D/g, "");
+
+    // Always force prefix 91
+    if (!value.startsWith("91")) {
+      value = "91" + value.replace(/^91/, "");
+    }
+
+    // Max length: 12 (91 + 10 digits)
+    if (value.length > 12) return;
+
+    setNewContact({ ...newContact, phone_number: value });
+  }}
+  placeholder="91XXXXXXXXXX"
+  required
+/>
+
               </div>
 
               <div className="form-group">

@@ -1,4 +1,4 @@
-// components/groupForm.jsx
+// components/GroupForm.jsx
 import React, { useEffect, useState } from "react";
 import {
   Upload,
@@ -14,18 +14,11 @@ import { fetchKnowledgeBases } from "../api/knowledgeBases";
 import "../styles/form.css";
 
 const EventForm = ({ user }) => {
-  // const [formData, setFormData] = useState({
-  //   eventName: "",
-  //   eventDate: "",
-  //   dataset: null,
-  // });
-
   const [formData, setFormData] = useState({
-  groupName: "",
-  description: "",
-  dataset: null,
-});
-
+    groupName: "",
+    description: "",
+    dataset: null,
+  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
@@ -40,8 +33,6 @@ const EventForm = ({ user }) => {
       .then((res) => setKnowledgeBases(res.data))
       .catch((err) => console.error("Failed to load KBs", err));
   }, [user]);
-
-  // console.log({ formData });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -74,8 +65,8 @@ const EventForm = ({ user }) => {
 
       const payload = new FormData();
       payload.append("user_id", user.id);
-payload.append("group_name", formData.groupName);
-payload.append("description", formData.description || "");
+      payload.append("group_name", formData.groupName);
+      payload.append("description", formData.description || "");
 
       if (formData.dataset) {
         payload.append("dataset", formData.dataset);
@@ -91,22 +82,22 @@ payload.append("description", formData.description || "");
 
       if (!response.ok) throw new Error("Failed to create group");
       const data = await response.json();
-      console.log("✅ Event created:", data);
+      console.log("✅ Group created:", data);
 
       setSubmitStatus("success");
-      setMessage("Event created successfully!");
+      setMessage("Group created successfully!");
 
       // Reset form
       setFormData({
-  groupName: "",
-  description: "",
-  dataset: null,
-});
+        groupName: "",
+        description: "",
+        dataset: null,
+      });
 
       const fileInput = document.getElementById("dataset");
       if (fileInput) fileInput.value = "";
 
-      // 🌈 Smooth delay before redirect
+      // Smooth delay before redirect
       setTimeout(() => {
         navigate("/groups");
       }, 3000);
@@ -133,27 +124,26 @@ payload.append("description", formData.description || "");
     <div className="form-container">
       <form onSubmit={handleSubmit} className="event-form">
         <div className="form-group">
-          <label htmlFor="eventName" className="form-label">
+          <label htmlFor="groupName" className="form-label">
             <Type size={20} />
             Group Name
           </label>
-         <input
-          type="text"
-          id="groupName"
-          name="groupName"
-          value={formData.groupName}
-          onChange={handleInputChange}
-          required
-          className="form-input"
-          placeholder="Enter campaign group name"
-        />
-
+          <input
+            type="text"
+            id="groupName"
+            name="groupName"
+            value={formData.groupName}
+            onChange={handleInputChange}
+            required
+            className="form-input"
+            placeholder="Enter campaign group name"
+          />
         </div>
 
-         <div className="form-group">
-          <label htmlFor="eventName" className="form-label">
+        <div className="form-group">
+          <label htmlFor="description" className="form-label">
             <Type size={20} />
-           Description
+            Description
           </label>
           <input
             type="text"
@@ -219,11 +209,11 @@ payload.append("description", formData.description || "");
         </AnimatePresence>
 
         <button type="submit" disabled={isSubmitting} className="submit-button">
-          {isSubmitting ? "Creating Event..." : "Create Group"}
+          {isSubmitting ? "Creating Group..." : "Create Group"}
         </button>
       </form>
 
-      {/* ✅ Smooth success popup */}
+      {/* Success popup - with proper z-index */}
       <AnimatePresence>
         {submitStatus === "success" && (
           <motion.div
@@ -231,25 +221,50 @@ payload.append("description", formData.description || "");
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 99999, // Very high z-index to be above everything
+            }}
           >
             <motion.div
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl shadow-xl p-10 text-center"
-              style={{ maxWidth: 420 }}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '1rem',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                padding: '2.5rem',
+                textAlign: 'center',
+                maxWidth: '420px',
+                width: '90%',
+              }}
             >
-              <Check size={48} color="#16a34a" className="mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Group Created </h2>
-              <p className="text-gray-600">
+              <Check size={48} color="#16a34a" style={{ margin: '0 auto 1rem' }} />
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem', color: '#111827' }}>
+                Group Created!
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '1.25rem' }}>
                 Redirecting to your group list in a few seconds...
               </p>
               <motion.div
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{ duration: 3, ease: "easeInOut" }}
-                className="h-1 bg-gradient-to-r from-black to-gray-600 rounded-full mt-5"
+                style={{
+                  height: '0.25rem',
+                  background: 'linear-gradient(to right, #000000, #4b5563)',
+                  borderRadius: '9999px',
+                }}
               />
             </motion.div>
           </motion.div>
