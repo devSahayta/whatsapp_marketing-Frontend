@@ -1,4 +1,4 @@
-// components/EventForm.jsx
+// components/groupForm.jsx
 import React, { useEffect, useState } from "react";
 import {
   Upload,
@@ -166,53 +166,6 @@ payload.append("description", formData.description || "");
             placeholder="Enter group description"
           />
         </div>
-
-        {/* <div className="form-group">
-          <label htmlFor="eventDate" className="form-label">
-            <Calendar size={20} />
-            Event Date
-          </label>
-          <input
-            type="date"
-            id="eventDate"
-            name="eventDate"
-            value={formData.eventDate}
-            onChange={handleInputChange}
-            required
-            className="form-input"
-          />
-        </div> */}
-
-        {/* <div className="form-group">
-          <label className="form-label">Event Type</label>
-          <select
-            name="eventType"
-            value={formData.eventType}
-            onChange={handleInputChange}
-            className="form-input"
-          >
-            <option value="wedding">Wedding</option>
-          </select>
-        </div> */}
-
-        {/* <div className="form-group">
-          <label className="form-label">Knowledge Base</label>
-          <select
-            name="knowledgeBaseId"
-            value={formData.knowledgeBaseId}
-            onChange={handleInputChange}
-            required
-            className="form-input"
-          >
-            <option value="">Select Knowledge Base</option>
-
-            {knowledgeBases.map((kb) => (
-              <option key={kb.id} value={kb.id}>
-                {kb.name}
-              </option>
-            ))}
-          </select>
-        </div> */}
 
         <div className="form-group">
           <label htmlFor="dataset" className="form-label">

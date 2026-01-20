@@ -1,3 +1,5 @@
+/* styles/form.css */
+
 .form-container {
   max-width: 600px;
   margin: 0 auto;
@@ -17,34 +19,43 @@
 
 .form-group select {
   width: 100%;
-  padding: 8px 12px;
+  padding: 0.75rem 1rem;
   font-size: 0.95rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background-color: #fff;
   color: #333;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .form-group select:focus {
   outline: none;
-  border-color: #4f46e5; /* matches your theme (blue/purple accent) */
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
+.form-group select:hover {
+  border-color: #9ca3af;
+}
 
 .form-label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   font-weight: 600;
   color: #000000;
   font-size: 0.875rem;
 }
 
+.form-label svg {
+  color: #6b7280;
+}
+
 .form-input {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 1rem;
@@ -58,19 +69,27 @@
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
+.form-input:hover {
+  border-color: #9ca3af;
+}
+
 .form-input::placeholder {
   color: #9ca3af;
 }
 
 .upload-instructions {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .upload-note {
   font-size: 0.875rem;
   color: #6b7280;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
 }
 
 .template-download-btn {
@@ -78,9 +97,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: white;
   color: #000000;
-  border: 1px solid #dee2e6;
+  border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -90,24 +109,56 @@
 }
 
 .template-download-btn:hover {
-  background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+  background: #f3f4f6;
   border-color: #000000;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.template-download-btn:active {
+  transform: translateY(0);
+}
+
 .file-input {
-  padding: 0.5rem;
+  padding: 0.625rem;
   cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.file-input::file-selector-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  margin-right: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.file-input::file-selector-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 .file-info {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #6b7280;
-  padding: 0.5rem;
-  background-color: #f9fafb;
+  color: #059669;
+  padding: 0.625rem 1rem;
+  background-color: #d1fae5;
   border-radius: 6px;
+  border: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-info::before {
+  content: "✓";
+  font-weight: 700;
+  color: #059669;
 }
 
 .submit-button {
@@ -121,29 +172,46 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .submit-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #333333 0%, #000000 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #1f2937 0%, #000000 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submit-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  background: #9ca3af;
 }
 
 .status-message {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
   border-radius: 8px;
   font-weight: 500;
   margin-bottom: 1rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .status-message.success {
@@ -158,17 +226,122 @@
   border: 1px solid #fecaca;
 }
 
-@media (max-width: 768px) {
+/* ===============================
+   RESPONSIVE - TABLET
+================================== */
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .event-form {
+    padding: 1.75rem;
+  }
+
+  .form-input,
+  .form-group select {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .submit-button {
+    padding: 0.8rem 1.25rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* ===============================
+   RESPONSIVE - MOBILE
+================================== */
+
+@media (max-width: 767px) {
   .form-container {
     padding: 0;
   }
 
   .event-form {
     padding: 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
   }
 
-  .form-input {
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-input,
+  .form-group select {
     font-size: 16px; /* Prevents zoom on iOS */
+    padding: 0.7rem 0.85rem;
+  }
+
+  .upload-instructions {
+    padding: 0.875rem;
+  }
+
+  .upload-note {
+    font-size: 0.8rem;
+    margin-bottom: 0.625rem;
+  }
+
+  .template-download-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .file-input {
+    font-size: 0.8rem;
+  }
+
+  .submit-button {
+    padding: 0.8rem 1.25rem;
+    font-size: 0.95rem;
+    margin-top: 1.25rem;
+  }
+
+  .status-message {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* ===============================
+   RESPONSIVE - EXTRA SMALL
+================================== */
+
+@media (max-width: 479px) {
+  .event-form {
+    padding: 1.25rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-label {
+    font-size: 0.75rem;
+    gap: 0.375rem;
+  }
+
+  .form-label svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .form-input,
+  .form-group select {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .upload-instructions {
+    padding: 0.75rem;
+  }
+
+  .submit-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
   }
 }

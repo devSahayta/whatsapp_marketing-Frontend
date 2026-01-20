@@ -1,0 +1,181 @@
+/* styles/createGroup.css */
+
+/* ===============================
+   SPLIT SCREEN LAYOUT
+================================== */
+
+.create-group-layout {
+  display: flex;
+  gap: 0; /* No gap for seamless split */
+  align-items: stretch;
+  min-height: calc(100vh - 200px); /* Full height minus header */
+  margin-top: 2rem;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ===============================
+   LEFT IMAGE SECTION
+================================== */
+
+.create-group-image {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.create-group-image::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.02) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+.create-group-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the entire space */
+  object-position: center;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  position: relative;
+  z-index: 1;
+}
+
+/* ===============================
+   RIGHT FORM SECTION
+================================== */
+
+.create-group-form {
+  flex: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 3rem 2.5rem;
+  overflow-y: auto;
+}
+
+/* Adjust form container for split screen */
+.create-group-form .form-container {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+.create-group-form .event-form {
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+/* ===============================
+   RESPONSIVE - TABLET (768px - 1023px)
+================================== */
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .create-group-layout {
+    min-height: calc(100vh - 180px);
+    margin-top: 1.5rem;
+  }
+
+  .create-group-image {
+    flex: 0.8;
+    padding: 1.5rem;
+  }
+
+  .create-group-form {
+    flex: 1.2;
+    padding: 2rem 1.5rem;
+  }
+
+  .create-group-image img {
+    border-radius: 10px;
+  }
+}
+
+/* ===============================
+   RESPONSIVE - MOBILE (< 768px)
+================================== */
+
+@media (max-width: 767px) {
+  .create-group-layout {
+    flex-direction: column;
+    min-height: auto;
+    gap: 0;
+    margin-top: 1rem;
+    box-shadow: none;
+  }
+
+  /* Hide image on mobile for cleaner UX */
+  .create-group-image {
+    display: none;
+  }
+
+  .create-group-form {
+    padding: 1.5rem 1rem;
+    background: transparent;
+  }
+
+  .create-group-form .event-form {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* ===============================
+   RESPONSIVE - EXTRA SMALL (< 480px)
+================================== */
+
+@media (max-width: 479px) {
+  .create-group-form {
+    padding: 1rem 0.5rem;
+  }
+
+  .create-group-form .event-form {
+    padding: 1.25rem;
+  }
+}
+
+/* ===============================
+   ALTERNATIVE: Show image on mobile as background
+   (Optional - uncomment if you want subtle bg on mobile)
+================================== */
+
+/*
+@media (max-width: 767px) {
+  .create-group-image {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.05;
+    z-index: 0;
+  }
+
+  .create-group-form {
+    position: relative;
+    z-index: 1;
+  }
+}
+*/

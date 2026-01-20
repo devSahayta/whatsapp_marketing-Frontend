@@ -31,7 +31,7 @@ const RSVPTable = ({ eventId: propEventId }) => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // ===============================
   // Fetch Contacts
@@ -376,10 +376,13 @@ const RSVPTable = ({ eventId: propEventId }) => {
                       {contact.phoneNumber}
                     </div>
                   </td>
-                  <td className="date-cell">
-                    <Calendar size={14} />
-                    {formatDate(contact.timestamp)}
-                  </td>
+                 <td>
+  <div className="date-cell">
+    <Calendar size={14} />
+    <span>{formatDate(contact.timestamp)}</span>
+  </div>
+</td>
+
                   <td className="menu-column">
                     <div className="popover-wrapper" ref={openMenuId === contact.id ? menuRef : null}>
                       <button

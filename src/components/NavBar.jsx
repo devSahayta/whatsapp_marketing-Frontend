@@ -216,7 +216,8 @@
 
 // -------------------------------------- updated ----------------------------------------------------
 // src/components/NavBar.jsx
-import React, { useState } from "react";
+// src/components/NavBar.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { User, LogOut, Coins, Calendar, Menu as MenuIcon } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { useUserCredits } from "../hooks/useUserCredits";
@@ -225,6 +226,7 @@ import "../styles/navbar.css";
 
 const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -236,11 +238,47 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
     isAuthenticated
   );
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    // Only add listener if dropdown is open
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setIsDropdownOpen(false);
+  }, [navigate]);
+
   const getCreditBadgeClass = () => {
     if (loading) return "credit-badge gray";
     if (credits <= 5) return "credit-badge red";
     if (credits <= 20) return "credit-badge yellow";
     return "credit-badge green";
+  };
+
+  const handleLogout = () => {
+    setIsDropdownOpen(false);
+    logout();
+  };
+
+  const handleWhatsappAccount = () => {
+    setIsDropdownOpen(false);
+    navigate("/whatsapp-account");
   };
 
   return (
@@ -259,8 +297,8 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
         )}
 
         <div className="nav-logo" aria-hidden>
-          <Calendar className="nav-logo-icon" />
-          <span>RSVP AI</span>
+          {/* <Calendar className="nav-logo-icon" /> */}
+          <span>Whatsapp Markerting tool</span>
         </div>
       </div>
 
@@ -283,10 +321,12 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
         )}
 
         {isAuthenticated ? (
-          <div className="profile-wrapper">
+          <div className="profile-wrapper" ref={dropdownRef}>
             <button
               className="nav-username"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="true"
             >
               <User size={18} className="user-icon" /> {username}
             </button>
@@ -308,7 +348,10 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
                       {loading ? "..." : credits ?? 0}
                     </span>
                     <button
-                      onClick={refetchCredits}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        refetchCredits();
+                      }}
                       className="refresh-btn"
                       title="Refresh credits"
                     >
@@ -318,13 +361,13 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
                 </div>
 
                 <button
-                  onClick={() => navigate("/whatsapp-account")}
-                  className=" w-full block text-left border-b-gray-100 border-b py-2 px-3 "
+                  onClick={handleWhatsappAccount}
+                  className="dropdown-link"
                 >
-                  Whatsapp Account
+                  WhatsApp Account
                 </button>
 
-                <button onClick={logout} className="dropdown-logout">
+                <button onClick={handleLogout} className="dropdown-logout">
                   <LogOut size={14} className="inline mr-2" />
                   Logout
                 </button>

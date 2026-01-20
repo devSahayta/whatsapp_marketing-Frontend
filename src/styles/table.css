@@ -61,6 +61,7 @@
   transform: translateY(0);
 }
 
+
 /* ===============================
    CONTROLS (Search & Bulk Actions)
 ================================== */
@@ -226,11 +227,17 @@
 /* Date Cell */
 .date-cell {
   display: flex;
-  align-items: center;
+  align-items: center;   /* ✅ vertical alignment fix */
   gap: 0.5rem;
   color: #6b7280;
   font-size: 0.8rem;
+  line-height: 1;        /* ✅ prevents text baseline drift */
 }
+.date-cell svg {
+  position: relative;
+  top: 1px;
+}
+
 
 .date-column {
   width: 150px;
@@ -600,7 +607,7 @@
   }
 
   .date-column {
-    width: 130px;
+    width: 120px;
   }
 
   .menu-column {
@@ -658,32 +665,37 @@
     justify-content: center;
   }
 
-  /* Table */
+  /* Table - Keep all columns but make more compact */
   .table-wrapper {
     margin-bottom: 1rem;
   }
 
   .rsvp-table {
-    min-width: 600px;
+    min-width: 550px; /* Reduced from 600px to fit better */
   }
 
   .rsvp-table th,
   .rsvp-table td {
     padding: 0.75rem 0.5rem;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
 
-  /* Hide date column on mobile */
+  /* Make date column more compact on mobile */
   .date-column {
-    display: none;
+    width: 100px;
   }
 
   .date-cell {
+    font-size: 0.7rem;
+  }
+
+  /* Hide calendar icon on mobile to save space */
+  .date-cell svg {
     display: none;
   }
 
   .menu-column {
-    width: 50px;
+    width: 45px;
   }
 
   .popover-trigger {
@@ -753,13 +765,13 @@
   }
 
   .rsvp-table {
-    min-width: 500px;
+    min-width: 480px; /* Reduced from 500px */
   }
 
   .rsvp-table th,
   .rsvp-table td {
-    padding: 0.65rem 0.4rem;
-    font-size: 0.75rem;
+    padding: 0.6rem 0.35rem;
+    font-size: 0.7rem;
   }
 
   .dashboard-title {
@@ -772,7 +784,7 @@
   }
 
   .checkbox-column {
-    width: 40px;
+    width: 38px;
   }
 
   .checkbox-input {
@@ -786,8 +798,17 @@
     height: 14px;
   }
 
+  /* Make date column even more compact */
+  .date-column {
+    width: 85px;
+  }
+
+  .date-cell {
+    font-size: 0.65rem;
+  }
+
   .menu-column {
-    width: 44px;
+    width: 40px;
   }
 
   .popover-trigger {
@@ -805,5 +826,29 @@
     height: 28px;
     font-size: 0.75rem;
     padding: 0.35rem;
+  }
+}
+
+/* ===============================
+   VERY SMALL SCREENS (< 360px)
+   Only hide date column on extremely small screens
+================================== */
+@media (max-width: 359px) {
+  .rsvp-table {
+    min-width: 400px;
+  }
+
+  /* NOW we hide the date column on very small screens */
+  .date-column,
+  .date-cell {
+    display: none;
+  }
+
+  .checkbox-column {
+    width: 35px;
+  }
+
+  .menu-column {
+    width: 38px;
   }
 }
