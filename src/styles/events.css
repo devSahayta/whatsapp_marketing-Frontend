@@ -7,14 +7,30 @@
 }
 
 .event-card {
-  background: white;
+  background-color: #ffebf9;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: all 0.2s ease;
   position: relative;
+  transition: transform 0.2s ease;
+  z-index: 1;
+}
+
+.event-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: #fee7f9; /* Indigo / change color */
+  z-index: -1;
+
+  transform: translate(10px, -10px);
+  transition: all 0.2s linear;
+}
+
+.event-card:hover::after {
+  transform: translate(0px, 0px);
 }
 
 .event-card:hover {
