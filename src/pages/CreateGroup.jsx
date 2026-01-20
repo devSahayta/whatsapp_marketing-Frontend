@@ -6,7 +6,7 @@ import "../styles/createGroup.css"; // 👈 new CSS
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 
 // 👇 import image
-import createGroupImg from "../../public/images/create-group2.jpg";
+import createGroupImg from "../assets/images/create-group1.jpg";
 
 const CreateEvent = () => {
   const { user, isAuthenticated, isLoading } = useKindeAuth();
