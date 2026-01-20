@@ -1,4 +1,3 @@
-
 // src/App.jsx
 import React, { useEffect, useState } from "react";
 import {
@@ -109,7 +108,7 @@ function AppContent() {
   if (isLoading) return <p>Loading authentication...</p>;
 
   return (
-    <div className="app-root">
+    <div className="app-root root-background ">
       {/* Navbar: pass toggle and state. NavBar itself decides whether hamburger is shown based on auth */}
       {!hideNavBar && (
         <NavBar

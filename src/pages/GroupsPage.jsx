@@ -23,7 +23,7 @@ const EventsPage = () => {
   const fetchEvents = async (userId) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/groups?user_id=${userId}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups?user_id=${userId}`,
       );
 
       if (!response.ok) throw new Error("Failed to fetch events");
@@ -42,7 +42,7 @@ const EventsPage = () => {
   // -------------------------------------------------------
   const deleteEvent = async (eventId) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this event and all related data?"
+      "Are you sure you want to delete this event and all related data?",
     );
 
     if (!confirmDelete) return;
@@ -52,7 +52,7 @@ const EventsPage = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/groups/${eventId}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       const data = await response.json();
@@ -63,7 +63,7 @@ const EventsPage = () => {
       }
 
       // Remove event from UI
-     setEvents(events.filter((event) => event.group_id !== eventId));
+      setEvents(events.filter((event) => event.group_id !== eventId));
 
       alert("Event deleted successfully");
     } catch (error) {
@@ -73,9 +73,9 @@ const EventsPage = () => {
   };
   // -------------------------------------------------------
 
- const handleEventClick = (groupId) => {
-  navigate(`/dashboard/${groupId}`);
-};
+  const handleEventClick = (groupId) => {
+    navigate(`/dashboard/${groupId}`);
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -102,8 +102,10 @@ const EventsPage = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">My groups</h1>
-        <p className="page-subtitle">Manage and view all your groups</p>
+        <h1 className="page-title font-inter uppercase">Groups</h1>
+        <p className="page-subtitle font-inter">
+          Manage and view all your groups
+        </p>
       </div>
 
       {events.length === 0 ? (
@@ -139,7 +141,7 @@ const EventsPage = () => {
                     className="event-menu-icon"
                     onClick={() =>
                       setOpenMenu(
-                        openMenu === event.group_id ? null : event.group_id
+                        openMenu === event.group_id ? null : event.group_id,
                       )
                     }
                   />
