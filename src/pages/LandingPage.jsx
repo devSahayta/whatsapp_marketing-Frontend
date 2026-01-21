@@ -11,7 +11,7 @@ const LandingPage = () => {
     const fetchToken = async () => {
       try {
         const token = await getToken();
-        console.log("🔥 Kinde Access Token:", token);
+        // console.log("🔥 Kinde Access Token:", token);
       } catch (err) {
         console.error("Failed to get token:", err);
       }
@@ -24,8 +24,8 @@ const LandingPage = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-[80vh] text-center">
-      <h1 className="text-4xl font-bold mb-4">Welcome to RSVP AI 🎉</h1>
-      <p className="mb-6 text-gray-600">Manage events and track RSVPs with AI.</p>
+      <h1 className="text-4xl font-bold mb-4">Welcome to Whatsapp Marketing Tool 🎉</h1>
+      <p className="mb-6 text-gray-600">Manage groups and track messages.</p>
 
       {!isAuthenticated ? (
         <div className="space-x-4">
@@ -39,10 +39,10 @@ const LandingPage = () => {
       ) : (
         <div className="space-x-4">
           <button
-            onClick={() => navigate("/createEvent")}
+            onClick={() => navigate("/createGroup")}
             className="auth-button"
           >
-            Create Event
+            Create Groups
           </button>
           <button onClick={() => logout()} className="auth-button bg-red-500">
             Logout
