@@ -37,13 +37,14 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const links = [
-    { name: "Groups", path: "/groups", icon: <Calendar size={18} /> },
-    { name: "Create Group", path: "/createGroup", icon: <Plus size={18} /> },
     {
       name: "Chat",
       path: "/chat",
       icon: <MessageSquare size={18} />,
     },
+    { name: "Groups", path: "/groups", icon: <Calendar size={18} /> },
+    { name: "Create Group", path: "/createGroup", icon: <Plus size={18} /> },
+    ,
     { name: "Templates", path: "/templates", icon: <LayersIcon size={18} /> },
 
     {

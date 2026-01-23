@@ -178,6 +178,26 @@ export default function ChatWindow({ chatId, userInfo }) {
     }
   };
 
+  const downloadFile = async (url, filename = "image.jpg") => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Failed to download file");
+    }
+  };
+
   /* ================= UI ================= */
 
   return (
@@ -220,7 +240,67 @@ export default function ChatWindow({ chatId, userInfo }) {
                 className={`wa-message-bubble ${sent ? "sent" : "received"}`}
               >
                 {/* Message Text */}
-                <div className="wa-message-text">{msg.message}</div>
+                {/* Message Content */}
+{/* Message Content */}
+{msg.message_type === "image" && msg.media_path ? (
+  /* IMAGE */
+  <div className="wa-image-message">
+    <img
+      src={msg.media_path}
+      alt="WhatsApp Image"
+      className="wa-chat-image"
+      onClick={() => window.open(msg.media_path, "_blank")}
+    />
+
+    <div
+      className="wa-image-download"
+      onClick={() =>
+        downloadFile(
+          msg.media_path,
+          `whatsapp-image-${msg.message_id}.jpg`
+        )
+      }
+      title="Download"
+    >
+      ⬇️
+    </div>
+  </div>
+
+) : msg.message_type === "document" && msg.media_path ? (
+  /* DOCUMENT */
+  <div
+    className="wa-document-message"
+    onClick={() => window.open(msg.media_path, "_blank")}
+  >
+    <div className="wa-doc-icon">📄</div>
+
+    <div className="wa-doc-info">
+      <div className="wa-doc-name">Document</div>
+      <div className="wa-doc-meta">Click to view</div>
+    </div>
+
+    <div
+      className="wa-doc-download"
+      onClick={() =>
+        downloadFile(
+          msg.media_path,
+          `document-${msg.message_id}.pdf`
+        )
+      }
+      title="Download document"
+    >
+      ⬇️
+    </div>
+  </div>
+
+) : (
+  /* TEXT */
+  <div className="wa-message-text">{msg.message}</div>
+)}
+
+
+
+
 
                 {/* WhatsApp Template Buttons */}
                 {msg.message_type === "template" &&
