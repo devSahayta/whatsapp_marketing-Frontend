@@ -38,8 +38,10 @@
 import React, { useEffect, useState } from "react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import WhatsaapForm from "../components/WhatsaapForm";
+import WebhookHelp from "../components/WebhookHelp";
 
 const WAccountPage = () => {
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
   const { user, isAuthenticated, isLoading } = useKindeAuth();
 
   const [mode, setMode] = useState("create"); // create | update
@@ -51,7 +53,7 @@ const WAccountPage = () => {
   const fetchAccount = async (uid) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/waccount/get-waccount?user_id=${uid}`
+        `${backendURL}/api/waccount/get-waccount?user_id=${uid}`,
       );
       const data = await res.json();
 
@@ -80,8 +82,8 @@ const WAccountPage = () => {
   const handleFormSubmit = async (formData) => {
     const url =
       mode === "create"
-        ? "http://localhost:5000/api/waccount/create-waccount"
-        : "http://localhost:5000/api/waccount/update-waccount";
+        ? `${backendURL}/api/waccount/create-waccount`
+        : `${backendURL}/api/waccount/update-waccount`;
 
     try {
       const response = await fetch(url, {
@@ -97,7 +99,7 @@ const WAccountPage = () => {
         alert(
           `WhatsApp account ${
             mode === "create" ? "created" : "updated"
-          } successfully!`
+          } successfully!`,
         );
         fetchAccount(formData.user_id); // refresh after update
       } else {
@@ -116,6 +118,8 @@ const WAccountPage = () => {
         existingData={existingData}
         onSubmit={handleFormSubmit}
       />
+
+      <WebhookHelp />
     </div>
   );
 };

@@ -12,16 +12,13 @@ const CreateEvent = () => {
   const { user, isAuthenticated, isLoading } = useKindeAuth();
 
   if (isLoading) return <p>Loading authentication...</p>;
-  if (!isAuthenticated || !user)
-    return <p>Please log in to create a group</p>;
+  if (!isAuthenticated || !user) return <p>Please log in to create a group</p>;
 
   return (
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Create New Group</h1>
-        <p className="page-subtitle">
-          Set up your group and upload guest data
-        </p>
+        <p className="page-subtitle">Set up your group and upload guest data</p>
       </div>
 
       {/* 👇 NEW LAYOUT */}
@@ -41,7 +38,6 @@ const CreateEvent = () => {
 };
 
 export default CreateEvent;
-
 
 // // pages/CreateGroup.jsx
 // import React from "react";

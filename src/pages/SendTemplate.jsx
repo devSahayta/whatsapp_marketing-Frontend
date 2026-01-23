@@ -319,11 +319,11 @@ export default function SendTemplate() {
     if (!participants || participants.length === 0) return;
     if (selectAllParticipants) {
       const map = {};
-      participants.forEach((p) => (map[p.participant_id] = true));
+      participants.forEach((p) => (map[p.contact_id] = true));
       setSelectedParticipants(map);
     } else {
       const map = {};
-      participants.forEach((p) => (map[p.participant_id] = false));
+      participants.forEach((p) => (map[p.contact_id] = false));
       setSelectedParticipants(map);
     }
   }, [selectAllParticipants, participants]);
