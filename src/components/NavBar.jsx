@@ -298,7 +298,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
 
         <div className="nav-logo" aria-hidden>
           {/* <Calendar className="nav-logo-icon" /> */}
-          <span>Whatsapp Markerting tool</span>
+          <a href="/">Whatsapp Markerting tool</a>
         </div>
       </div>
 
