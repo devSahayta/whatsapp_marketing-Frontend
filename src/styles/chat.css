@@ -408,6 +408,81 @@
   background: #1da851;
 }
 
+.wa-image-message {
+  position: relative;
+  max-width: 260px;
+}
+
+.wa-chat-image {
+  width: 100%;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+}
+
+.wa-image-download {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease;
+}
+
+.wa-image-download:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+
+/* Document message */
+.wa-document-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0f2f5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  max-width: 280px;
+}
+
+.wa-doc-icon {
+  font-size: 28px;
+}
+
+.wa-doc-info {
+  flex: 1;
+}
+
+.wa-doc-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.wa-doc-meta {
+  font-size: 12px;
+  color: #667781;
+}
+
+.wa-doc-download {
+  cursor: pointer;
+  font-size: 18px;
+  padding: 6px;
+  border-radius: 50%;
+}
+
+.wa-doc-download:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+
 /* ================================
    RESPONSIVE DESIGN
 =================================== */
