@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Users, UserPlus, MessageSquare, MessageCircle } from "lucide-react";
+import "../../styles/animations.css";
 
 const OverviewCards = ({ data }) => {
   if (!data) return null;
@@ -63,10 +64,12 @@ const OverviewCards = ({ data }) => {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {cards.map((card, index) => {
         const Icon = card.icon;
+        const animationDelay = `animation-delay-${index * 100}`;
         return (
           <div
             key={index}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+            className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fadeIn ${animationDelay}`}
+            style={{ animationDelay: `${index * 0.1}s` }}
           >
             {/* Icon Circle */}
             <div className="flex items-center justify-between mb-4">

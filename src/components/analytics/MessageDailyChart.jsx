@@ -30,9 +30,9 @@ const MessageDailyChart = ({ data }) => {
             />
             <Legend />
 
-            <Bar dataKey="Sent" fill="#6366f1" />
-            <Bar dataKey="Delivered" fill="#22c55e" />
-            <Bar dataKey="Read" fill="#facc15" />
+            <Bar dataKey="sent" fill="#6366f1" />
+            <Bar dataKey="delivered" fill="#22c55e" />
+            <Bar dataKey="read" fill="#facc15" />
           </BarChart>
         </ResponsiveContainer>
       </div>
