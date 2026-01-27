@@ -221,7 +221,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { User, LogOut, Coins, Calendar, Menu as MenuIcon } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { useUserCredits } from "../hooks/useUserCredits";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 
 const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
@@ -298,7 +298,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
 
         <div className="nav-logo" aria-hidden>
           {/* <Calendar className="nav-logo-icon" /> */}
-          <a href="/">Whatsapp Markerting tool</a>
+          <Link to="/">Whatsapp Markerting tool</Link>
         </div>
       </div>
 
