@@ -8,6 +8,7 @@ import {
   FileText,
   LayersIcon,
   Library,
+  BarChart3,
 } from "lucide-react";
 import "../styles/sidebar.css";
 
@@ -37,6 +38,11 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const links = [
+    {
+      name: "Analytics",
+      path: "/", // home page
+      icon: <BarChart3 size={18} />,
+    },
     {
       name: "Chat",
       path: "/chat",
