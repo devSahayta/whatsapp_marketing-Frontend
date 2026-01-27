@@ -8,6 +8,7 @@ import MessageDailyChart from "../components/analytics/MessageDailyChart";
 import OverviewCards from "../components/analytics/OverviewCards";
 import GroupsPerformanceTable from "../components/analytics/GroupsPerformanceTable";
 import { Calendar, Filter, RefreshCw, BarChart3 } from "lucide-react";
+import "../styles/animations.css";
 
 const LandingPage = () => {
   const { login, register, isAuthenticated, user, getToken } = useKindeAuth();
@@ -21,13 +22,9 @@ const LandingPage = () => {
   const [messageAnalytics, setMessageAnalytics] = useState(null);
   const [dashboardAnalytics, setDashboardAnalytics] = useState(null);
 
-  const [analytics, setAnalytics] = useState(null);
-
   // Load message analytics (your colleague's feature)
   const loadMessageAnalytics = async (applyFilter = false) => {
     try {
-      setLoading(true);
-
       let res;
       if (applyFilter && from && to) {
         res = await fetchMessageAnalytics(user.id, from, to);
@@ -38,16 +35,12 @@ const LandingPage = () => {
       setMessageAnalytics(res.data);
     } catch (err) {
       console.error("Message analytics load failed", err);
-    } finally {
-      setLoading(false);
     }
   };
 
   // Load dashboard analytics (your feature - Overview + Groups)
   const loadDashboardAnalytics = async (applyFilter = false) => {
     try {
-      setLoading(true);
-
       let res;
       if (applyFilter && from && to) {
         res = await fetchDashboardAnalytics(user.id, from, to);
@@ -60,44 +53,26 @@ const LandingPage = () => {
       console.log("Overview data:", res.data.overview);
     } catch (err) {
       console.error("Dashboard analytics load failed", err);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Load all analytics
-  const loadAllAnalytics = (applyFilter = false) => {
-    loadMessageAnalytics(applyFilter);
-    loadDashboardAnalytics(applyFilter);
-  };
-
-  const loadAnalytics = async (applyFilter = false) => {
+  // Load all analytics in parallel (both at the same time)
+  const loadAllAnalytics = async (applyFilter = false) => {
     try {
       setLoading(true);
 
-      let res;
-      if (applyFilter && from && to) {
-        res = await fetchMessageAnalytics(user.id, from, to);
-      } else {
-        res = await fetchMessageAnalytics(user.id);
-      }
-
-      setAnalytics(res.data);
+      // Call both APIs in parallel using Promise.all
+      // This ensures both finish before setting loading to false
+      await Promise.all([
+        loadMessageAnalytics(applyFilter),
+        loadDashboardAnalytics(applyFilter)
+      ]);
     } catch (err) {
       console.error("Analytics load failed", err);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const init = async () => {
-      await getToken();
-      loadAnalytics(false); // load ALL data
-    };
-
-    if (isAuthenticated) init();
-  }, [isAuthenticated]);
 
   // Initial load
   useEffect(() => {
@@ -116,14 +91,14 @@ const LandingPage = () => {
     loadAllAnalytics(false);
   };
 
+  // Helper function to get user's display name
   const getDisplayName = (user) => {
-  if (!user) return "User";
-  if (user.given_name) return user.given_name;
-  if (user.full_name) return user.full_name.split(" ")[0];
-  if (user.email) return user.email.split("@")[0];
-  return "User";
-};
-
+    if (!user) return "User";
+    if (user.given_name) return user.given_name;
+    if (user.full_name) return user.full_name.split(" ")[0];
+    if (user.email) return user.email.split("@")[0];
+    return "User";
+  };
 
   /* ---------------- NOT LOGGED IN ---------------- */
   if (!isAuthenticated) {
@@ -197,22 +172,21 @@ const LandingPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center">
+        <div className="text-center animate-fadeIn">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
             <BarChart3 className="w-4 h-4" />
             Analytics Dashboard
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-  Welcome back, {getDisplayName(user)}!
-</h1>
-
+            Welcome back, {getDisplayName(user)}!
+          </h1>
           <p className="text-gray-600 text-lg">
             Track your WhatsApp marketing performance
           </p>
         </div>
 
         {/* Date Filter Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-fadeIn animation-delay-100">
           <div className="flex flex-col lg:flex-row items-center gap-4">
             {/* Label */}
             <div className="flex items-center gap-2 text-gray-700 font-medium">
@@ -286,12 +260,26 @@ const LandingPage = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center gap-3 bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100">
-              <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
-              <span className="text-gray-700 font-medium">
-                Loading analytics...
-              </span>
+          <div className="text-center py-12 animate-fadeIn">
+            <div className="inline-flex flex-col items-center gap-4 bg-white px-8 py-6 rounded-2xl shadow-md border border-gray-100">
+              <div className="relative">
+                <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                <div className="absolute inset-0 bg-blue-400 blur-xl opacity-20 animate-pulse"></div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-gray-700 font-semibold text-lg block">
+                  Loading analytics...
+                </span>
+                <span className="text-gray-500 text-sm block">
+                  Fetching your dashboard data
+                </span>
+              </div>
+              {/* Progress dots */}
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
             </div>
           </div>
         )}
@@ -301,7 +289,7 @@ const LandingPage = () => {
           <>
             {/* Section 1: Overview Cards (Your Feature) */}
             {dashboardAnalytics?.overview && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fadeIn">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded-full"></div>
                   Overview
@@ -312,7 +300,7 @@ const LandingPage = () => {
 
             {/* Section 2: Groups Performance Table (Your Feature) */}
             {dashboardAnalytics?.groups_performance && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fadeIn animation-delay-100">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded-full"></div>
                   Groups Performance
@@ -325,7 +313,7 @@ const LandingPage = () => {
 
             {/* Section 3: Message Status Cards (Your Colleague's Feature) */}
             {messageAnalytics?.success && messageAnalytics?.overview && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fadeIn animation-delay-200">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <div className="w-1 h-6 bg-gradient-to-b from-green-600 to-teal-600 rounded-full"></div>
                   Message Status
@@ -336,7 +324,7 @@ const LandingPage = () => {
 
             {/* Section 4: Message Daily Chart (Your Colleague's Feature) */}
             {messageAnalytics?.success && messageAnalytics?.daily_chart && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fadeIn animation-delay-300">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <div className="w-1 h-6 bg-gradient-to-b from-green-600 to-teal-600 rounded-full"></div>
                   Daily Activity
@@ -357,7 +345,6 @@ const LandingPage = () => {
                     Try adjusting your date range or check back later
                   </p>
                 </div>
-
               </div>
             )}
           </>
