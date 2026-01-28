@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import useAuthUser from "../hooks/useAuthUser";
+import { showError } from "../utils/toast";
 
 export default function ChatWindow({ chatId, userInfo }) {
   const { userId } = useAuthUser();
@@ -109,6 +110,35 @@ export default function ChatWindow({ chatId, userInfo }) {
     scrollToBottom();
   }, [messages.length]);
 
+  /* ================= META 24 Hours Rule ================= */
+
+  const isTemplateWindowExpired = () => {
+    if (!messages || messages.length === 0) return true;
+
+    // Find last template message (sent by admin)
+    const lastTemplateMsg = [...messages]
+      .reverse()
+      .find(
+        (m) =>
+          m.message_type === "template" &&
+          m.sender_type?.toLowerCase() === "admin",
+      );
+
+    if (!lastTemplateMsg?.created_at) return true;
+
+    const lastTemplateTime = new Date(lastTemplateMsg.created_at).getTime();
+    const now = Date.now();
+
+    const diffMs = now - lastTemplateTime;
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    return diffHours > 24;
+  };
+
+  /* ================= Check Send Message Blocked ================= */
+
+  const isBlocked = isTemplateWindowExpired();
+
   /* ================= MESSAGE UTILS ================= */
 
   const isSentByAdmin = (sender_type) => sender_type?.toLowerCase() === "admin";
@@ -142,6 +172,13 @@ export default function ChatWindow({ chatId, userInfo }) {
   const sendMessage = async () => {
     const trimmed = inputText.trim();
     if (!trimmed || !chatId) return;
+
+    // 🚫 Meta 24-hour rule check
+    if (isTemplateWindowExpired()) {
+      showError("Please send a WhatsApp template instead.");
+      showError("You can’t send messages outside the 24-hour window.");
+      return;
+    }
 
     const temp = {
       message_id: `temp-${Date.now()}`,
@@ -198,6 +235,8 @@ export default function ChatWindow({ chatId, userInfo }) {
     }
   };
 
+  console.log({ messages });
+
   /* ================= UI ================= */
 
   return (
@@ -241,66 +280,60 @@ export default function ChatWindow({ chatId, userInfo }) {
               >
                 {/* Message Text */}
                 {/* Message Content */}
-{/* Message Content */}
-{msg.message_type === "image" && msg.media_path ? (
-  /* IMAGE */
-  <div className="wa-image-message">
-    <img
-      src={msg.media_path}
-      alt="WhatsApp Image"
-      className="wa-chat-image"
-      onClick={() => window.open(msg.media_path, "_blank")}
-    />
+                {/* Message Content */}
+                {msg.message_type === "image" && msg.media_path ? (
+                  /* IMAGE */
+                  <div className="wa-image-message">
+                    <img
+                      src={msg.media_path}
+                      alt="WhatsApp Image"
+                      className="wa-chat-image"
+                      onClick={() => window.open(msg.media_path, "_blank")}
+                    />
 
-    <div
-      className="wa-image-download"
-      onClick={() =>
-        downloadFile(
-          msg.media_path,
-          `whatsapp-image-${msg.message_id}.jpg`
-        )
-      }
-      title="Download"
-    >
-      ⬇️
-    </div>
-  </div>
+                    <div
+                      className="wa-image-download"
+                      onClick={() =>
+                        downloadFile(
+                          msg.media_path,
+                          `whatsapp-image-${msg.message_id}.jpg`,
+                        )
+                      }
+                      title="Download"
+                    >
+                      ⬇️
+                    </div>
+                  </div>
+                ) : msg.message_type === "document" && msg.media_path ? (
+                  /* DOCUMENT */
+                  <div
+                    className="wa-document-message"
+                    onClick={() => window.open(msg.media_path, "_blank")}
+                  >
+                    <div className="wa-doc-icon">📄</div>
 
-) : msg.message_type === "document" && msg.media_path ? (
-  /* DOCUMENT */
-  <div
-    className="wa-document-message"
-    onClick={() => window.open(msg.media_path, "_blank")}
-  >
-    <div className="wa-doc-icon">📄</div>
+                    <div className="wa-doc-info">
+                      <div className="wa-doc-name">Document</div>
+                      <div className="wa-doc-meta">Click to view</div>
+                    </div>
 
-    <div className="wa-doc-info">
-      <div className="wa-doc-name">Document</div>
-      <div className="wa-doc-meta">Click to view</div>
-    </div>
-
-    <div
-      className="wa-doc-download"
-      onClick={() =>
-        downloadFile(
-          msg.media_path,
-          `document-${msg.message_id}.pdf`
-        )
-      }
-      title="Download document"
-    >
-      ⬇️
-    </div>
-  </div>
-
-) : (
-  /* TEXT */
-  <div className="wa-message-text">{msg.message}</div>
-)}
-
-
-
-
+                    <div
+                      className="wa-doc-download"
+                      onClick={() =>
+                        downloadFile(
+                          msg.media_path,
+                          `document-${msg.message_id}.pdf`,
+                        )
+                      }
+                      title="Download document"
+                    >
+                      ⬇️
+                    </div>
+                  </div>
+                ) : (
+                  /* TEXT */
+                  <div className="wa-message-text">{msg.message}</div>
+                )}
 
                 {/* WhatsApp Template Buttons */}
                 {msg.message_type === "template" &&
@@ -341,7 +374,12 @@ export default function ChatWindow({ chatId, userInfo }) {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type a message…"
+          disabled={isBlocked}
+          placeholder={
+            isBlocked
+              ? "24-hour window expired. Send a template to continue."
+              : "Type a message…"
+          }
         />
         <button onClick={sendMessage}>Send</button>
       </div>

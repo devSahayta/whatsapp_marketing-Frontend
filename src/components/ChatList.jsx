@@ -21,27 +21,24 @@ const formatTime = (timestamp) => {
   return date.toLocaleDateString([], { day: "2-digit", month: "short" });
 };
 
-export default function ChatList({ eventId: groupId, onSelectChat }) {
+export default function ChatList({ userId, onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!groupId) return;
+    if (!userId) return;
 
     let intervalId;
 
     const fetchChats = async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/groups/${groupId}/chats`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/chats?user_id=${userId}`,
         );
         const data = await res.json();
 
         if (data.ok) {
-          const sorted = data.chats.sort(
-            (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at),
-          );
-          setChats(sorted);
+          setChats(data.chats);
         }
       } catch (err) {
         console.error("Error fetching chats:", err);
@@ -50,25 +47,16 @@ export default function ChatList({ eventId: groupId, onSelectChat }) {
       }
     };
 
-    // Initial load
     fetchChats();
-
-    // 🔁 Auto refresh every 7 sec
     intervalId = setInterval(fetchChats, 7000);
 
     return () => clearInterval(intervalId);
-  }, [groupId]);
+  }, [userId]);
 
   if (loading) return <p className="loading">Loading chats...</p>;
 
   if (chats.length === 0) {
-    return (
-      <div className="wa-chatlist-items">
-        <p className="select-event-message">
-          No chats available for this event.
-        </p>
-      </div>
-    );
+    return <p className="select-event-message">No conversations yet</p>;
   }
 
   return (
@@ -79,16 +67,14 @@ export default function ChatList({ eventId: groupId, onSelectChat }) {
           className="wa-chatlist-item"
           onClick={() => onSelectChat(c.chat_id, c)}
         >
-          {/* Avatar */}
           <div className="wa-avatar">
-            {(c.person_name || c.contact_name || "U").charAt(0).toUpperCase()}
+            {(c.person_name || "U").charAt(0).toUpperCase()}
           </div>
 
-          {/* Chat Info */}
           <div className="wa-chat-info">
             <div className="wa-chat-top">
               <span className="wa-chat-name">
-                {c.person_name || c.contact_name || "Unknown User"}
+                {c.person_name || "Unknown User"}
               </span>
               <span className="wa-chat-time">
                 {formatTime(c.last_message_at)}
