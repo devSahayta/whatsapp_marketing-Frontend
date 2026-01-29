@@ -11,6 +11,9 @@ export default function ChatWindow({ chatId, userInfo }) {
   const { getToken } = useKindeAuth();
   const lastMessageTsRef = useRef(null);
 
+  const [sendBlocked, setSendBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState(null);
+
   /* ================= HELPERS ================= */
 
   const isNearBottom = () => {
@@ -110,35 +113,6 @@ export default function ChatWindow({ chatId, userInfo }) {
     scrollToBottom();
   }, [messages.length]);
 
-  /* ================= META 24 Hours Rule ================= */
-
-  const isTemplateWindowExpired = () => {
-    if (!messages || messages.length === 0) return true;
-
-    // Find last template message (sent by admin)
-    const lastTemplateMsg = [...messages]
-      .reverse()
-      .find(
-        (m) =>
-          m.message_type === "template" &&
-          m.sender_type?.toLowerCase() === "admin",
-      );
-
-    if (!lastTemplateMsg?.created_at) return true;
-
-    const lastTemplateTime = new Date(lastTemplateMsg.created_at).getTime();
-    const now = Date.now();
-
-    const diffMs = now - lastTemplateTime;
-    const diffHours = diffMs / (1000 * 60 * 60);
-
-    return diffHours > 24;
-  };
-
-  /* ================= Check Send Message Blocked ================= */
-
-  const isBlocked = isTemplateWindowExpired();
-
   /* ================= MESSAGE UTILS ================= */
 
   const isSentByAdmin = (sender_type) => sender_type?.toLowerCase() === "admin";
@@ -173,38 +147,56 @@ export default function ChatWindow({ chatId, userInfo }) {
     const trimmed = inputText.trim();
     if (!trimmed || !chatId) return;
 
-    // 🚫 Meta 24-hour rule check
-    if (isTemplateWindowExpired()) {
-      showError("Please send a WhatsApp template instead.");
-      showError("You can’t send messages outside the 24-hour window.");
-      return;
-    }
-
-    const temp = {
-      message_id: `temp-${Date.now()}`,
-      sender_type: "admin",
-      message: trimmed,
-      created_at: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, temp]);
-    setInputText("");
-    scrollToBottom();
-
     try {
       const token = await getToken();
-      await fetch(`${import.meta.env.VITE_BACKEND_URL}/admin/chat/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/admin/chat/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ chat_id: chatId, message: trimmed }),
         },
-        body: JSON.stringify({ chat_id: chatId, message: trimmed }),
-      });
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // 🚫 Backend-enforced WhatsApp rules
+        setSendBlocked(true);
+        setBlockReason(data.code);
+
+        showError(data.error || "Message not allowed");
+
+        setInputText("");
+        return;
+      }
+
+      // ✅ Success
+      setSendBlocked(false);
+      setBlockReason(null);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          message_id: `temp-${Date.now()}`,
+          sender_type: "admin",
+          message: trimmed,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      setInputText("");
+      scrollToBottom();
     } catch (err) {
       console.error("Send message failed:", err);
+      showError("Failed to send message");
     }
   };
+
   const parseButtons = (buttons) => {
     if (!buttons) return [];
     try {
@@ -235,7 +227,7 @@ export default function ChatWindow({ chatId, userInfo }) {
     }
   };
 
-  console.log({ messages });
+  console.log({ messages, inputText });
 
   /* ================= UI ================= */
 
@@ -374,13 +366,18 @@ export default function ChatWindow({ chatId, userInfo }) {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          disabled={isBlocked}
+          // disabled={sendBlocked}
           placeholder={
-            isBlocked
-              ? "24-hour window expired. Send a template to continue."
-              : "Type a message…"
+            blockReason === "NO_USER_REPLY"
+              ? "User hasn’t replied yet. Send a template."
+              : blockReason === "WINDOW_EXPIRED"
+                ? "24-hour window expired. Send a template."
+                : blockReason === "TEMPLATE_ONLY_WAITING_FOR_USER"
+                  ? "Waiting for user reply…"
+                  : "Type a message…"
           }
         />
+
         <button onClick={sendMessage}>Send</button>
       </div>
     </div>
