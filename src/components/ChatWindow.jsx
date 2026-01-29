@@ -13,6 +13,7 @@ export default function ChatWindow({ chatId, userInfo }) {
 
   const [sendBlocked, setSendBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   /* ================= HELPERS ================= */
 
@@ -148,6 +149,8 @@ export default function ChatWindow({ chatId, userInfo }) {
     if (!trimmed || !chatId) return;
 
     try {
+      setIsSending(true);
+
       const token = await getToken();
 
       const res = await fetch(
@@ -194,6 +197,8 @@ export default function ChatWindow({ chatId, userInfo }) {
     } catch (err) {
       console.error("Send message failed:", err);
       showError("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -378,7 +383,9 @@ export default function ChatWindow({ chatId, userInfo }) {
           }
         />
 
-        <button onClick={sendMessage}>Send</button>
+        <button disabled={isSending} onClick={sendMessage}>
+          {isSending ? "Sending..." : "Send"}
+        </button>
       </div>
     </div>
   );
