@@ -1,11 +1,12 @@
 // src/pages/SendTemplate.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import {
   fetchMetaTemplatesById,
   sendTemplate as apiSendTemplate,
   sendTemplateBulk as apiSendBulkTemplate,
+  fetchTemplateBulkProgress,
 } from "../api/templates";
 import { fetchGroups, fetchGroupParticipants } from "../api/groups";
 import { listMedia, uploadMedia } from "../api/media";
@@ -92,6 +93,8 @@ export default function SendTemplate() {
   const { templateId } = useParams();
   const navigate = useNavigate();
   const { userId } = useAuthUser();
+
+  const progressRef = useRef(null);
 
   const [template, setTemplate] = useState(null);
   const [loadingTemplate, setLoadingTemplate] = useState(true);
@@ -197,22 +200,22 @@ export default function SendTemplate() {
 
   // load template
   useEffect(() => {
-    console.log(" before loading");
-    console.log({ templateId, userId });
+    // console.log(" before loading");
+    // console.log({ templateId, userId });
 
     let mounted = true;
     async function load() {
       try {
         setLoadingTemplate(true);
 
-        console.log("in template loading, before template get loaded");
+        // console.log("in template loading, before template get loaded");
 
         setError(null);
         const resp = await fetchMetaTemplatesById(templateId, userId);
         // your api wrapper returns axios-like: resp.data.template maybe
         const tpl = resp.data?.template || resp.data || null;
 
-        console.log({ tpl_data: tpl });
+        // console.log({ tpl_data: tpl });
 
         if (!tpl) {
           throw new Error("Template not found from server");
@@ -258,11 +261,11 @@ export default function SendTemplate() {
   useEffect(() => {
     async function loadEvents() {
       try {
-        console.log({ userId });
+        // console.log({ userId });
 
         const r = await fetchGroups(userId);
         const ev = r.data || r; // api wrapper shape
-        console.log({ ev });
+        // console.log({ ev });
 
         setEvents(ev || []);
       } catch (err) {
@@ -299,7 +302,7 @@ export default function SendTemplate() {
         const r = await fetchGroupParticipants(selectedGroup, userId);
         const data = r.data || r;
         const list = data?.participants || data || [];
-        console.log({ list });
+        // console.log({ list });
 
         setParticipants(list);
         // reset selectedParticipants
@@ -327,6 +330,15 @@ export default function SendTemplate() {
       setSelectedParticipants(map);
     }
   }, [selectAllParticipants, participants]);
+
+  useEffect(() => {
+    if (sendResults && progressRef.current) {
+      progressRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [sendResults]);
 
   // helper to set variable
   const setVar = (key, value) =>
@@ -483,163 +495,7 @@ export default function SendTemplate() {
     return apiSendTemplate(templateId, body);
   };
 
-  // // handle send click
-  // const handleSend = async () => {
-  //   if (!template) return alert("Template not loaded");
-  //   // gather recipients
-  //   const recipients = [];
-  //   // from participants map
-  //   const selectedIds = Object.keys(selectedParticipants).filter(
-  //     (k) => selectedParticipants[k]
-  //   );
-  //   if (selectedIds.length > 0) {
-  //     selectedIds.forEach((pid) => {
-  //       const p = participants.find((pp) => pp.participant_id === pid);
-  //       if (p && p.phone_number) recipients.push(p.phone_number);
-  //     });
-  //   }
-  //   // also allow manual single number (if no participants selected) - for simplicity, require at least one recipient
-  //   if (recipients.length === 0)
-  //     return alert("Select at least one participant to send to");
-
-  //   // build components once (those are same for all recipients except you may want to customize per recipient — currently same)
-  //   const comps = buildComponentsForSend();
-
-  //   if (!comps || comps.length === 0) {
-  //     if (
-  //       !window.confirm(
-  //         "No components detected. Do you want to proceed sending without parameters?"
-  //       )
-  //     ) {
-  //       return;
-  //     }
-  //   }
-
-  //   setSending(true);
-  //   setSendResults(null);
-  //   try {
-  //     // send in parallel (Promise.allSettled) to collect successes/fails
-  //     const promises = recipients.map((to) => sendToRecipient(to, comps));
-  //     const settled = await Promise.allSettled(promises);
-
-  //     const results = settled.map((s, i) => {
-  //       if (s.status === "fulfilled") {
-  //         const respData = s.value.data || s.value;
-  //         const ok = !respData?.sendResp?.error && !respData?.error;
-  //         return {
-  //           to: recipients[i],
-  //           ok,
-  //           resp: respData,
-  //         };
-  //       } else {
-  //         return {
-  //           to: recipients[i],
-  //           ok: false,
-  //           error: s.reason?.response?.data || s.reason?.message || s.reason,
-  //         };
-  //       }
-  //     });
-
-  //     setSendResults(results);
-
-  //     // show simple summary
-  //     const successCount = results.filter((r) => r.ok).length;
-  //     const failCount = results.length - successCount;
-  //     alert(`Send complete: ${successCount} success, ${failCount} failed.`);
-
-  //     // after sending to all, redirect to templates list (as requested)
-  //     navigate("/templates"); // adjust path if different
-  //   } catch (err) {
-  //     console.error("Send failed", err);
-  //     alert("Send process failed: " + (err?.message || JSON.stringify(err)));
-  //   } finally {
-  //     setSending(false);
-  //   }
-  // };
-
-  //   const handleSend = async () => {
-  //     if (!template) return alert("Template not loaded");
-
-  //     // ------------------------
-  //     // Build recipient list
-  //     // ------------------------
-  //     const recipients = [];
-  //     const selectedIds = Object.keys(selectedParticipants).filter(
-  //       (k) => selectedParticipants[k]
-  //     );
-
-  //     if (selectedIds.length > 0) {
-  //       selectedIds.forEach((pid) => {
-  //         const p = participants.find((pp) => pp.participant_id === pid);
-  //         if (p && p.phone_number) recipients.push(p.phone_number);
-  //       });
-  //     }
-
-  //     if (recipients.length === 0)
-  //       return alert("Select at least one participant to send to");
-
-  //     // ------------------------
-  //     // Build components
-  //     // ------------------------
-  //     const comps = buildComponentsForSend();
-
-  //     if (!comps || comps.length === 0) {
-  //       if (
-  //         !window.confirm(
-  //           "No components detected. Do you want to proceed sending without parameters?"
-  //         )
-  //       ) {
-  //         return;
-  //       }
-  //     }
-
-  //     setSending(true);
-  //     setSendResults(null);
-
-  //     try {
-  //       // ------------------------
-  //       // CALL BULK SEND ENDPOINT
-  //       // ------------------------
-  //       const bulkResp = await apiSendBulkTemplate(templateId, {
-  //         user_id: userId,
-  //         recipients: recipients, // <-- list of phone numbers
-  //         components: comps,
-  //       });
-
-  //       const data = bulkResp.data;
-
-  //       // ------------------------
-  //       // Show summary + detailed result
-  //       // ------------------------
-  //       alert(
-  //         `Bulk send complete:
-  // Success: ${data.summary.success}
-  // Failed: ${data.summary.failed}`
-  //       );
-
-  //       // Show results in UI
-  //       setSendResults([
-  //         ...data.results.success.map((s) => ({
-  //           to: s.to,
-  //           ok: true,
-  //           resp: s,
-  //         })),
-  //         ...data.results.failed.map((f) => ({
-  //           to: f.to,
-  //           ok: false,
-  //           error: f.error,
-  //         })),
-  //       ]);
-
-  //       // Redirect after done
-  //       navigate("/templates");
-  //     } catch (err) {
-  //       console.error("Bulk send failed", err);
-  //       alert("Bulk send failed: " + (err?.message || JSON.stringify(err)));
-  //     } finally {
-  //       setSending(false);
-  //     }
-  //   };
+  // handle send click
 
   const handleSend = async () => {
     if (!template) return alert("Template not loaded");
@@ -672,18 +528,34 @@ export default function SendTemplate() {
     }
 
     setSending(true);
+
+    // to scroll to progress UI
+    setTimeout(() => {
+      progressRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
     setSendingProgress({ total: recipients.length, current: 0 });
     setSendResults(null);
 
     // -------------------------
     // Simulated progress
     // -------------------------
-    let progress = 0;
-    const progressTimer = setInterval(() => {
-      progress += Math.ceil(recipients.length / 25); // smooth animation
-      if (progress > recipients.length) progress = recipients.length;
-      setSendingProgress({ total: recipients.length, current: progress });
-    }, 120);
+    setSendingProgress({ total: recipients.length, current: 0 });
+
+    const progressInterval = setInterval(async () => {
+      const r = await fetchTemplateBulkProgress(userId, templateId);
+      const data = r.data;
+
+      if (data.total > 0) {
+        setSendingProgress({
+          total: data.total,
+          current: data.completed,
+        });
+      }
+    }, 500);
 
     try {
       // --------------- CALL BULK SEND ---------------
@@ -692,12 +564,6 @@ export default function SendTemplate() {
         recipients,
         group_id: selectedGroup,
         components: comps,
-      });
-
-      clearInterval(progressTimer);
-      setSendingProgress({
-        total: recipients.length,
-        current: recipients.length,
       });
 
       const data = bulkResp.data;
@@ -716,17 +582,25 @@ export default function SendTemplate() {
       ]);
 
       if (bulkResp.status === 200) {
-        showSuccess("Template send successfully");
+        showSuccess(`Sending Status:
+          Success: ${data.summary.success}
+          Failed: ${data.summary.failed}`);
       }
     } catch (err) {
-      clearInterval(progressTimer);
+      clearInterval(progressInterval);
       console.error("Bulk send failed", err);
       showError("Bulk send failed: " + (err?.message || JSON.stringify(err)));
       // alert("Bulk send failed: " + (err?.message || JSON.stringify(err)));
     } finally {
       setSending(false);
+      clearInterval(progressInterval);
+      setSendingProgress(null);
     }
   };
+
+  // console.log({ sendResults });
+
+  // console.log({ sending, sendingProgress });
 
   //Retry failed recipients
   const retryFailed = async () => {
@@ -738,14 +612,20 @@ export default function SendTemplate() {
     const comps = buildComponentsForSend();
 
     setSending(true);
-    setSendingProgress({ total: failed.length, current: 0 });
-    let progress = 0;
 
-    const timer = setInterval(() => {
-      progress += Math.ceil(failed.length / 20);
-      if (progress > failed.length) progress = failed.length;
-      setSendingProgress({ total: failed.length, current: progress });
-    }, 120);
+    setSendingProgress({ total: failed.length, current: 0 });
+
+    const progressInterval = setInterval(async () => {
+      const r = await fetchTemplateBulkProgress(userId, templateId);
+      const data = r.data;
+
+      if (data.total > 0) {
+        setSendingProgress({
+          total: data.total,
+          current: data.completed,
+        });
+      }
+    }, 500);
 
     try {
       const bulkResp = await apiSendBulkTemplate(templateId, {
@@ -753,8 +633,6 @@ export default function SendTemplate() {
         recipients: failed,
         components: comps,
       });
-
-      clearInterval(timer);
 
       const data = bulkResp.data;
 
@@ -791,11 +669,13 @@ Failed: ${data.summary.failed}`);
         return updated;
       });
     } catch (err) {
-      clearInterval(timer);
+      clearInterval(progressInterval);
       showError("Retry failed: " + err.message);
       // alert("Retry failed: " + err.message);
     } finally {
       setSending(false);
+      clearInterval(progressInterval);
+      setSendingProgress(null);
     }
   };
 
@@ -957,40 +837,7 @@ Failed: ${data.summary.failed}`);
                         />
                         <span className="text-sm">Upload new media</span>
                       </label>
-
-                      {/* <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="mediaChoice"
-                          checked={mediaChoice === "none"}
-                          onChange={() => setMediaChoice("none")}
-                        />
-                        <span className="text-sm">No media</span>
-                      </label> */}
                     </div>
-
-                    {/* {mediaChoice === "existing" && (
-                      <div className="mb-3">
-                        <label className="text-xs text-gray-600">
-                          Select media
-                        </label>
-                        <select
-                          className="w-full border p-2 rounded"
-                          value={selectedMediaId || ""}
-                          onChange={(e) => setSelectedMediaId(e.target.value)}
-                        >
-                          <option value="">-- choose --</option>
-                          {mediaList.map((m) => (
-                            <option key={m.wmu_id} value={m.wmu_id}>
-                              {m.file_name || m.media_id || m.wmu_id}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Selected media which will be used to send template.
-                        </div>
-                      </div>
-                    )} */}
 
                     {mediaChoice === "existing" && (
                       <div className="mb-3">
@@ -1158,70 +1005,156 @@ Failed: ${data.summary.failed}`);
             <button
               className="px-4 py-2 bg-gray-200 rounded"
               onClick={() => navigate("/templates")}
+              disabled={sending}
             >
               Cancel
             </button>
           </div>
 
-          {/* send results */}
-          {/* {sendResults && (
-            <div className="bg-white p-3 rounded shadow mt-4">
-              <h3 className="font-semibold mb-2">Send results</h3>
-              <ul className="space-y-2 text-sm">
-                {sendResults.map((r) => (
-                  <li
-                    key={r.to}
-                    className={r.ok ? "text-green-700" : "text-red-600"}
-                  >
-                    {r.to}: {r.ok ? "SENT" : "FAILED"}{" "}
-                    {!r.ok && (
-                      <pre className="text-xs">{JSON.stringify(r.error)}</pre>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )} */}
+          {/* Progress & Results Anchor */}
+          <div ref={progressRef}>
+            {/* Sending Progress */}
+            {sendingProgress && (
+              <div className="mt-4 bg-white p-4 rounded shadow space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">
+                    Sending messages…
+                  </span>
+                  <span className="text-gray-500">
+                    {sendingProgress.current} / {sendingProgress.total}
+                  </span>
+                </div>
 
-          {/* Progress UI */}
-          {/* {sendingProgress && (
-            <div className="mt-4 text-sm text-blue-700 bg-blue-50 p-3 rounded">
-              Sending… {sendingProgress.current}/{sendingProgress.total}
-            </div>
-          )} */}
+                {/* Progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 bg-blue-600 transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        (sendingProgress.current / sendingProgress.total) * 100,
+                        100,
+                      )}%`,
+                    }}
+                  />
+                </div>
 
-          {/* Send Results */}
-          {sendResults && (
-            <div className="bg-white p-3 rounded shadow mt-4">
-              <h3 className="font-semibold mb-2">Send results</h3>
+                <div className="text-xs text-gray-500">
+                  Please don’t close this page while sending is in progress.
+                </div>
+              </div>
+            )}
 
-              <ul className="space-y-2 text-sm">
-                {sendResults.map((r) => (
-                  <li
-                    key={r.to}
-                    className={r.ok ? "text-green-700" : "text-red-600"}
-                  >
-                    {r.to}: {r.ok ? "SENT" : "FAILED"}
-                    {!r.ok && (
-                      <pre className="text-xs bg-red-50 p-2 rounded mt-1 text-wrap">
-                        {JSON.stringify(r.error)}
-                      </pre>
-                    )}
-                  </li>
-                ))}
-              </ul>
+            {/* Send Results */}
+            {/* Send Results */}
+            {sendResults && (
+              <div className="bg-white p-4 rounded shadow mt-6 space-y-4">
+                <h3 className="font-semibold text-lg">Send Summary</h3>
 
-              {/* Retry Failed Button */}
-              {sendResults.some((r) => !r.ok) && (
-                <button
-                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded"
-                  onClick={retryFailed}
-                >
-                  Retry Failed Sends
-                </button>
-              )}
-            </div>
-          )}
+                {/* Summary cards */}
+                {(() => {
+                  const total = sendResults.length;
+                  const successCount = sendResults.filter((r) => r.ok).length;
+                  const failedCount = total - successCount;
+
+                  return (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-blue-50 p-3 rounded text-center">
+                        <div className="text-xs text-gray-500">Total</div>
+                        <div className="text-xl font-bold text-blue-700">
+                          {total}
+                        </div>
+                      </div>
+
+                      <div className="bg-green-50 p-3 rounded text-center">
+                        <div className="text-xs text-gray-500">Sent</div>
+                        <div className="text-xl font-bold text-green-700">
+                          {successCount}
+                        </div>
+                      </div>
+
+                      <div className="bg-red-50 p-3 rounded text-center">
+                        <div className="text-xs text-gray-500">Failed</div>
+                        <div className="text-xl font-bold text-red-700">
+                          {failedCount}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Successful sends */}
+                {sendResults.some((r) => r.ok) && (
+                  <div>
+                    <h4 className="font-medium text-green-700 mb-2">
+                      ✅ Successfully Sent
+                    </h4>
+                    <ul className="max-h-40 overflow-auto space-y-1 text-sm">
+                      {sendResults
+                        .filter((r) => r.ok)
+                        .map((r) => (
+                          <li
+                            key={r.to}
+                            className="flex items-center justify-between bg-green-50 px-3 py-2 rounded"
+                          >
+                            <span>{r.to}</span>
+                            <span className="text-xs font-medium text-green-700">
+                              SENT
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Failed sends */}
+                {sendResults.some((r) => !r.ok) && (
+                  <div>
+                    <h4 className="font-medium text-red-700 mb-2">
+                      ❌ Failed to Send
+                    </h4>
+
+                    <ul className="max-h-40 overflow-auto space-y-2 text-sm">
+                      {sendResults
+                        .filter((r) => !r.ok)
+                        .map((r) => (
+                          <li
+                            key={r.to}
+                            className="bg-red-50 border border-red-200 p-3 rounded"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{r.to}</span>
+                              <span className="text-xs font-semibold text-red-700">
+                                FAILED
+                              </span>
+                            </div>
+
+                            <div className="mt-1 text-xs text-red-600 break-words">
+                              {typeof r.error === "string"
+                                ? r.error
+                                : JSON.stringify(
+                                    r?.error?.error?.message ||
+                                      r?.error?.error ||
+                                      r?.error,
+                                  )}
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+
+                    {/* Retry button */}
+                    <div className="mt-4">
+                      <button
+                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded"
+                        onClick={retryFailed}
+                      >
+                        Retry Failed Sends
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right column: summary & help */}
@@ -1268,10 +1201,6 @@ Failed: ${data.summary.failed}`);
 
           <div className="bg-white p-4 rounded shadow text-sm text-gray-500">
             <div className="font-semibold mb-2">Notes</div>
-            {/* <div>
-              - For URL buttons that use {{ n }} or {{ name }}, fill the values
-              above.
-            </div> */}
             <div>- If header image is required, choose or upload media.</div>
           </div>
         </div>
