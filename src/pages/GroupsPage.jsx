@@ -1,8 +1,10 @@
-// pages/EventsPage.jsx
+// pages/EventsPage.jsx - UPDATED VERSION
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Users, ArrowRight, MoreVertical } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import "../styles/pages.css";
 import "../styles/events.css";
 import {
@@ -16,6 +18,11 @@ const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [openMenu, setOpenMenu] = useState(null);
+  
+  // Modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading } = useKindeAuth();
@@ -43,21 +50,31 @@ const EventsPage = () => {
     }
   };
 
-  // -------------------------------------------------------
-  // ✅ DELETE EVENT FUNCTION (BACKEND CONNECTED)
-  // -------------------------------------------------------
-  const deleteEvent = async (eventId) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this event and all related data?",
-    );
+  // Open delete modal
+  const handleDeleteClick = (event) => {
+    setGroupToDelete(event);
+    setShowDeleteModal(true);
+    setOpenMenu(null); // Close the dropdown menu
+  };
 
-    if (!confirmDelete) return;
+  // Close delete modal
+  const handleCloseModal = () => {
+    if (!isDeleting) {
+      setShowDeleteModal(false);
+      setGroupToDelete(null);
+    }
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!groupToDelete) return;
 
     try {
+      setIsDeleting(true);
       const toastId = showLoading("Deleting group...");
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/groups/${eventId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/groups/${groupToDelete.group_id}`,
         {
           method: "DELETE",
         },
@@ -66,24 +83,27 @@ const EventsPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        showError(data.error || "Failed to delete event");
-        // alert(data.error || "Failed to delete event");
+        dismissToast(toastId);
+        showError(data.error || "Failed to delete group");
         return;
       }
 
       // Remove event from UI
-      setEvents(events.filter((event) => event.group_id !== eventId));
+      setEvents(events.filter((event) => event.group_id !== groupToDelete.group_id));
 
       dismissToast(toastId);
       showSuccess("Group deleted successfully");
-      // alert("Event deleted successfully");
+      
+      // Close modal
+      setShowDeleteModal(false);
+      setGroupToDelete(null);
     } catch (error) {
       console.error("Delete error:", error);
-      showError("Something went wrong while deleting the event.");
-      // alert("Something went wrong while deleting the event.");
+      showError("Something went wrong while deleting the group.");
+    } finally {
+      setIsDeleting(false);
     }
   };
-  // -------------------------------------------------------
 
   const handleEventClick = (groupId) => {
     navigate(`/dashboard/${groupId}`);
@@ -124,7 +144,7 @@ const EventsPage = () => {
         <div className="no-events">
           <Calendar size={48} />
           <h3>No Groups Found</h3>
-          <p>You haven’t created any groups yet.</p>
+          <p>You haven't created any groups yet.</p>
           <button
             className="btn btn-primary"
             onClick={() => navigate("/createGroup")}
@@ -165,7 +185,7 @@ const EventsPage = () => {
                         className="event-menu-item delete"
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteEvent(event.group_id); // ⬅️ connected to backend
+                          handleDeleteClick(event);
                         }}
                       >
                         Delete
@@ -201,6 +221,19 @@ const EventsPage = () => {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Group"
+        itemName={groupToDelete?.group_name}
+        warningMessage="Are you sure you want to delete this group? All related data will be permanently removed."
+        confirmText="Yes, Delete Group"
+        cancelText="Cancel"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

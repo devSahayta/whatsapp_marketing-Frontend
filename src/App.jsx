@@ -37,6 +37,8 @@ import KnowledgeBaseDetail from "./pages/KnowledgeBaseDetail";
 import { Toaster } from "react-hot-toast";
 import FlightStatus from "./pages/FlightStatus";
 import CreateCampaign from "./pages/CreateCampaign";
+import Campaigns from "./pages/Campaigns";
+import EditCampaign from "./pages/EditCampaign";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useKindeAuth();
@@ -212,7 +214,11 @@ function AppContent() {
             }
           />
 
+          
+
           <Route path="/campaigns/create" element={<CreateCampaign />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/campaigns/edit/:campaignId" element={<EditCampaign />} />
 
           {/* <Route
             path="/templates/media"
