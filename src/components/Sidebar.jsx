@@ -59,6 +59,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: <FileText size={18} />,
     },
 
+    {
+      name: "Campaigns",
+      path: "/campaigns",
+      icon: <Calendar size={18} />,
+    },
+
+    
+
     // {
     //   name: "Knowledge Base",
     //   path: "/knowledge-bases",
