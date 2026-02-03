@@ -37,6 +37,8 @@ import KnowledgeBaseDetail from "./pages/KnowledgeBaseDetail";
 import { Toaster } from "react-hot-toast";
 import FlightStatus from "./pages/FlightStatus";
 import CreateCampaign from "./pages/CreateCampaign";
+import CampaignDetails from "./pages/CampaignDetails";
+import Iridescence from "./components/Iridescence";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useKindeAuth();
@@ -214,6 +216,8 @@ function AppContent() {
 
           <Route path="/campaigns/create" element={<CreateCampaign />} />
 
+          <Route path="/campaigns/:id" element={<CampaignDetails />} />
+
           {/* <Route
             path="/templates/media"
             element={
@@ -254,6 +258,12 @@ function AppContent() {
 export default function App() {
   return (
     <Router>
+      {/* <Iridescence
+        color={[0.5, 0.6, 0.8]}
+        mouseReact
+        amplitude={0.1}
+        speed={1}
+      /> */}
       {/* Global toaster */}
       <Toaster
         position="top-right"

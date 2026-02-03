@@ -36,6 +36,13 @@ export const deleteCampaign = (campaignId, userId) => {
   return api.delete(`/api/campaigns/${campaignId}?user_id=${userId}`);
 };
 
+// Retry campaign
+export const retryCampaign = (campaignId, userId) => {
+  return api.post(`/api/campaigns/${campaignId}/retry`, {
+    user_id: userId,
+  });
+};
+
 /* =====================================
    HELPER ENDPOINTS
 ====================================== */
