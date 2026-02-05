@@ -43,6 +43,12 @@ export const retryCampaign = (campaignId, userId) => {
   });
 };
 
+// Sync Campaign details
+export const syncCampaignStatus = (campaignId, userId) =>
+  api.post(`/api/campaigns/${campaignId}/sync-status`, {
+    user_id: userId,
+  });
+
 /* =====================================
    HELPER ENDPOINTS
 ====================================== */

@@ -12,7 +12,11 @@ import {
   FileText,
   Phone,
 } from "lucide-react";
-import { getCampaignById, retryCampaign } from "../api/campaigns";
+import {
+  getCampaignById,
+  retryCampaign,
+  syncCampaignStatus,
+} from "../api/campaigns";
 import useAuthUser from "../hooks/useAuthUser";
 import { exportCampaignPdf } from "../utils/exportCampaignPdf";
 import { showError, showSuccess } from "../utils/toast";
@@ -43,10 +47,27 @@ const CampaignDetails = () => {
       setCampaign(data.campaign);
       setMessages(data.messages || []);
       setStats(data.stats || {});
+
+      // 🔄 background sync
+      await syncStatusIfNeeded(data.campaign);
     } catch (err) {
       showError("Failed to load campaign details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncStatusIfNeeded = async (campaignData) => {
+    if (!campaignData) return;
+
+    // 🚫 Do not sync while scheduled
+    if (campaignData.status === "scheduled") return;
+
+    try {
+      await syncCampaignStatus(id, userId);
+    } catch (err) {
+      // silent fail (this is a background sync)
+      console.warn("Status sync skipped / failed");
     }
   };
 
@@ -165,6 +186,20 @@ const CampaignDetails = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={async () => {
+                  await syncCampaignStatus(id, userId);
+                  await loadCampaign();
+                  showSuccess("Campaign status refreshed");
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
+    border border-gray-200 text-gray-700 font-medium
+    hover:bg-gray-100 transition"
+              >
+                <Clock className="w-4 h-4" />
+                Refresh Status
+              </button>
+
               {/* Download PDF */}
               <button
                 onClick={() =>
