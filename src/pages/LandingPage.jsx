@@ -12,6 +12,7 @@ import OverviewCards from "../components/analytics/OverviewCards";
 import GroupsPerformanceTable from "../components/analytics/GroupsPerformanceTable";
 import { Calendar, Filter, RefreshCw, BarChart3 } from "lucide-react";
 import "../styles/animations.css";
+import NotLoggedInLandingPage from "../components/landing/NotLoggedInLandingPage";
 
 const LandingPage = () => {
   const { login, register, isAuthenticated, user, getToken } = useKindeAuth();
@@ -104,72 +105,76 @@ const LandingPage = () => {
   };
 
   /* ---------------- NOT LOGGED IN ---------------- */
+
   if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
-        <div className="text-center max-w-2xl">
-          {/* Icon */}
-          <div className="mb-6">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-lg">
-              <BarChart3 className="w-10 h-10 text-white" />
-            </div>
-          </div>
-
-          {/* Title */}
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-4">
-            WhatsApp Marketing Tool
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-xl text-gray-600 mb-8">
-            Manage groups, track messages, and analyze performance — all in one
-            place.
-          </p>
-
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-            <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-              <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">Analytics</h3>
-              <p className="text-sm text-gray-600">Real-time insights</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-              <div className="bg-green-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Calendar className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">Date Filters</h3>
-              <p className="text-sm text-gray-600">Custom date ranges</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-              <div className="bg-purple-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Filter className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">Performance</h3>
-              <p className="text-sm text-gray-600">Track engagement</p>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => login()}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => register()}
-              className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200"
-            >
-              Sign Up
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <NotLoggedInLandingPage />;
   }
+  // if (!isAuthenticated) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+  //       <div className="text-center max-w-2xl">
+  //         {/* Icon */}
+  //         <div className="mb-6">
+  //           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-lg">
+  //             <BarChart3 className="w-10 h-10 text-white" />
+  //           </div>
+  //         </div>
+
+  //         {/* Title */}
+  //         <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-4">
+  //           WhatsApp Marketing Tool
+  //         </h1>
+
+  //         {/* Subtitle */}
+  //         <p className="text-xl text-gray-600 mb-8">
+  //           Manage groups, track messages, and analyze performance — all in one
+  //           place.
+  //         </p>
+
+  //         {/* Features */}
+  //         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+  //           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+  //             <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
+  //               <BarChart3 className="w-6 h-6 text-blue-600" />
+  //             </div>
+  //             <h3 className="font-semibold text-gray-900 mb-1">Analytics</h3>
+  //             <p className="text-sm text-gray-600">Real-time insights</p>
+  //           </div>
+  //           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+  //             <div className="bg-green-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
+  //               <Calendar className="w-6 h-6 text-green-600" />
+  //             </div>
+  //             <h3 className="font-semibold text-gray-900 mb-1">Date Filters</h3>
+  //             <p className="text-sm text-gray-600">Custom date ranges</p>
+  //           </div>
+  //           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+  //             <div className="bg-purple-50 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3">
+  //               <Filter className="w-6 h-6 text-purple-600" />
+  //             </div>
+  //             <h3 className="font-semibold text-gray-900 mb-1">Performance</h3>
+  //             <p className="text-sm text-gray-600">Track engagement</p>
+  //           </div>
+  //         </div>
+
+  //         {/* Buttons */}
+  //         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+  //           <button
+  //             onClick={() => login()}
+  //             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+  //           >
+  //             Login
+  //           </button>
+  //           <button
+  //             onClick={() => register()}
+  //             className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200"
+  //           >
+  //             Sign Up
+  //           </button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   /* ---------------- LOGGED IN (ANALYTICS DASHBOARD) ---------------- */
   return (
