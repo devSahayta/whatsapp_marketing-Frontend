@@ -1,9 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ShieldCheck, Zap, BarChart3 } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 
 const LandingHero = () => {
   const { login, register } = useKindeAuth();
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isDemoOpen) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsDemoOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDemoOpen]);
 
   return (
     <section
@@ -49,7 +64,10 @@ const LandingHero = () => {
             Get Started Free
           </button> */}
 
-          <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200">
+          <button
+            onClick={() => setIsDemoOpen(true)}
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+          >
             Demo
           </button>
 
@@ -60,9 +78,12 @@ const LandingHero = () => {
             Login
           </button> */}
 
-          <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-xl border border-gray-300 hover:border-gray-400 hover:shadow-md transition-all duration-200">
-            View Plans
-          </button>
+          <Link
+            to="/contact"
+            className="px-8 py-4 bg-white text-gray-900 font-semibold rounded-xl border border-gray-300 hover:border-gray-400 hover:shadow-md transition-all duration-200"
+          >
+            Contact Us
+          </Link>
         </div>
 
         {/* Trust Points */}
@@ -88,6 +109,36 @@ const LandingHero = () => {
           </div>
         </div>
       </div>
+
+      {isDemoOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Product demo video"
+          onClick={() => setIsDemoOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl rounded-2xl bg-black shadow-2xl border border-white/10 overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="absolute right-3 top-3 z-10 rounded-full bg-white/10 text-white px-3 py-1 text-sm hover:bg-white/20 transition"
+              onClick={() => setIsDemoOpen(false)}
+              aria-label="Close demo"
+            >
+              Close
+            </button>
+            <video
+              className="w-full h-auto"
+              src="https://ygynmoezdffuencztefl.supabase.co/storage/v1/object/public/tool%20video/Recording%202026-02-09%20172822.mp4"
+              controls
+              autoPlay
+              playsInline
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };

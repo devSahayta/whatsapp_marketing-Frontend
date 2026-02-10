@@ -79,10 +79,6 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           </button>
         )}
 
-        {/* <div className="nav-logo" aria-hidden>
-          <Link to="/">Whatsapp Markerting tool</Link>
-        </div> */}
-
         <div className="nav-logo">
           <Link to="/" className="logo-link">
             <img
@@ -168,25 +164,25 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           </div>
         ) : (
           <>
-            {/* <div className="auth-actions">
-            <button className="auth-button" onClick={login}>
-              Login
-            </button>
-            <button className="auth-button" onClick={register}>
-              Sign Up
-            </button>
-          </div> */}
-
-            {/* <div className="premium-auth">
-              <button className="auth-btn login" onClick={login}>
-                Login
-              </button>
-              <button className="auth-btn signup" onClick={register}>
-                Sign Up
-              </button>
-            </div> */}
-
             <div className="flex items-center gap-3">
+              <Link
+                to="/contact"
+                className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-rose-600 transition-all duration-200 hover:-translate-y-0.5"
+              >
+                Pricing
+              </Link>
+
+              {/* <Link
+                to="/pricing"
+                className="text-sm font-medium text-gray-700 
+             hover:text-indigo-600 
+             relative after:absolute after:-bottom-1 after:left-0 
+             after:h-[2px] after:w-0 after:bg-rose-500 
+             hover:after:w-full after:transition-all after:duration-300"
+              >
+                Pricing
+              </Link> */}
+
               <button
                 onClick={login}
                 className="rounded-full px-5 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-md hover:bg-white/80 transition-all duration-200"

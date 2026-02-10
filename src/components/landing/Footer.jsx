@@ -1,5 +1,6 @@
 // components/landing/Footer.jsx
 
+import { Link } from "react-router-dom";
 import { Mail, Globe, ShieldCheck } from "lucide-react";
 
 const Footer = () => {
@@ -45,7 +46,11 @@ const Footer = () => {
               <li>About</li>
               <li>Privacy Policy</li>
               <li>Terms & Conditions</li>
-              <li>Contact</li>
+              <li>
+                <Link to="/contact" className="hover:text-gray-900">
+                  Contact
+                </Link>
+              </li>
             </ul>
           </div>
 

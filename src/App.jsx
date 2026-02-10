@@ -41,6 +41,17 @@ import Campaigns from "./pages/Campaigns";
 import EditCampaign from "./pages/EditCampaign";
 import CampaignDetails from "./pages/CampaignDetails";
 import Iridescence from "./components/Iridescence";
+import ContactUs from "./pages/ContactUs";
+
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  }, [location.pathname]);
+
+  return null;
+}
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useKindeAuth();
@@ -255,6 +266,8 @@ function AppContent() {
 
           <Route path="/flight-status/:eventId" element={<FlightStatus />} />
 
+          <Route path="/contact" element={<ContactUs />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -265,6 +278,7 @@ function AppContent() {
 export default function App() {
   return (
     <Router>
+      <ScrollToTop />
       {/* <Iridescence
         color={[0.5, 0.6, 0.8]}
         mouseReact
