@@ -15,7 +15,6 @@ import CreateEvent from "./pages/CreateGroup";
 import Dashboard from "./pages/GroupDashboard";
 import LandingPage from "./pages/LandingPage";
 import EventsPage from "./pages/GroupsPage";
-import CallBatchPage from "./pages/CallBatchPage";
 import DocumentUpload from "./pages/DocumentUpload";
 import DocumentViewer from "./components/DocumentViewer";
 import ChatPage from "./pages/ChatPage";
@@ -30,7 +29,6 @@ import { addUserToBackend } from "./api/userApi";
 
 import "./styles/global.css";
 import { fetchWhatsappAccount } from "./api/waccount";
-import useAuthUser from "./hooks/useAuthUser";
 import KnowledgeBases from "./pages/KnowledgeBases";
 import CreateKnowledgeBase from "./pages/CreateKnowledgeBase";
 import KnowledgeBaseDetail from "./pages/KnowledgeBaseDetail";
@@ -40,8 +38,10 @@ import CreateCampaign from "./pages/CreateCampaign";
 import Campaigns from "./pages/Campaigns";
 import EditCampaign from "./pages/EditCampaign";
 import CampaignDetails from "./pages/CampaignDetails";
-import Iridescence from "./components/Iridescence";
 import ContactUs from "./pages/ContactUs";
+import PricingPage from "./pages/PricingPage";
+import SubscriptionExpired from "./pages/SubscriptionExpired";
+import SubscriptionGuard from "./components/SubscriptionGuard";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -57,6 +57,14 @@ function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useKindeAuth();
   if (isLoading) return <p>Loading...</p>;
   return isAuthenticated ? children : <LandingPage />;
+}
+
+function PrivateSubscribedRoute({ children }) {
+  return (
+    <PrivateRoute>
+      <SubscriptionGuard>{children}</SubscriptionGuard>
+    </PrivateRoute>
+  );
 }
 
 function WhatsappAccountRoute({ children }) {
@@ -106,9 +114,6 @@ function AppContent() {
   // Hide NavBar on document upload
   const hideNavBar = location.pathname.startsWith("/document-upload");
 
-  // Don't render sidebar on landing page "/"
-  const hideSidebarPath = location.pathname === "/";
-
   // Sync user on first login
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -151,27 +156,27 @@ function AppContent() {
           <Route
             path="/groups"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <EventsPage />
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
           <Route
             path="/createGroup"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <CreateEvent />
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
           <Route
             path="/dashboard/:eventId"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <Dashboard />
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
@@ -186,55 +191,87 @@ function AppContent() {
           <Route
             path="/chat"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <ChatPage />
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
-          <Route path="/whatsapp-account" element={<WAccountPage />} />
+          <Route
+            path="/whatsapp-account"
+            element={
+              <PrivateSubscribedRoute>
+                <WAccountPage />
+              </PrivateSubscribedRoute>
+            }
+          />
 
           <Route
             path="/templates"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <WhatsappAccountRoute>
                   <TemplateList />
                 </WhatsappAccountRoute>
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
           <Route
             path="/template/create"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <WhatsappAccountRoute>
                   <CreateTemplate />
                 </WhatsappAccountRoute>
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
           <Route
             path="/templates/send/:templateId"
             element={
-              <PrivateRoute>
+              <PrivateSubscribedRoute>
                 <WhatsappAccountRoute>
                   <SendTemplate />
                 </WhatsappAccountRoute>
-              </PrivateRoute>
+              </PrivateSubscribedRoute>
             }
           />
 
-          <Route path="/campaigns/create" element={<CreateCampaign />} />
-          <Route path="/campaigns" element={<Campaigns />} />
+          <Route
+            path="/campaigns/create"
+            element={
+              <PrivateSubscribedRoute>
+                <CreateCampaign />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/campaigns"
+            element={
+              <PrivateSubscribedRoute>
+                <Campaigns />
+              </PrivateSubscribedRoute>
+            }
+          />
           <Route
             path="/campaigns/edit/:campaignId"
-            element={<EditCampaign />}
+            element={
+              <PrivateSubscribedRoute>
+                <EditCampaign />
+              </PrivateSubscribedRoute>
+            }
           />
 
-          <Route path="/campaigns/:id" element={<CampaignDetails />} />
+          <Route
+            path="/campaigns/:id"
+            element={
+              <PrivateSubscribedRoute>
+                <CampaignDetails />
+              </PrivateSubscribedRoute>
+            }
+          />
 
           {/* <Route
             path="/templates/media"
@@ -254,17 +291,42 @@ function AppContent() {
             element={<DocumentViewer />}
           />
 
-          <Route path="/knowledge-bases" element={<KnowledgeBases />} />
+          <Route
+            path="/knowledge-bases"
+            element={
+              <PrivateSubscribedRoute>
+                <KnowledgeBases />
+              </PrivateSubscribedRoute>
+            }
+          />
           <Route
             path="/knowledge-bases/create"
-            element={<CreateKnowledgeBase />}
+            element={
+              <PrivateSubscribedRoute>
+                <CreateKnowledgeBase />
+              </PrivateSubscribedRoute>
+            }
           />
           <Route
             path="/knowledge-bases/:id"
-            element={<KnowledgeBaseDetail />}
+            element={
+              <PrivateSubscribedRoute>
+                <KnowledgeBaseDetail />
+              </PrivateSubscribedRoute>
+            }
           />
 
-          <Route path="/flight-status/:eventId" element={<FlightStatus />} />
+          <Route
+            path="/flight-status/:eventId"
+            element={
+              <PrivateSubscribedRoute>
+                <FlightStatus />
+              </PrivateSubscribedRoute>
+            }
+          />
+
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/expired" element={<SubscriptionExpired />} />
 
           <Route path="/contact" element={<ContactUs />} />
 

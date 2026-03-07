@@ -1,25 +1,33 @@
-// src/components/NavBar.jsx
+﻿// src/components/NavBar.jsx
 
 import React, { useState, useEffect, useRef } from "react";
-import { User, LogOut, Coins, Calendar, Menu as MenuIcon } from "lucide-react";
+import {
+  User,
+  LogOut,
+  ShieldCheck,
+  Clock3,
+  Menu as MenuIcon,
+} from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
-import { useUserCredits } from "../hooks/useUserCredits";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import useAuthUser from "../hooks/useAuthUser";
+import useSubscription from "../hooks/useSubscription";
 import "../styles/navbar.css";
 
 const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dropdownRef = useRef(null);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const { login, register, logout, isAuthenticated, user } = useKindeAuth();
+  const { userId } = useAuthUser();
   const username = user?.email ? user.email.split("@")[0] : "";
 
-  const { credits, loading, refetchCredits } = useUserCredits(
-    user?.id,
-    isAuthenticated,
-  );
+  const { loading, active, plan, expiresAt } = useSubscription(userId, {
+    enabled: isAuthenticated,
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -29,13 +37,11 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
       }
     };
 
-    // Only add listener if dropdown is open
     if (isDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
     }
 
-    // Cleanup
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
@@ -45,14 +51,29 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   // Close dropdown on route change
   useEffect(() => {
     setIsDropdownOpen(false);
-  }, [navigate]);
+  }, [location.pathname]);
 
-  const getCreditBadgeClass = () => {
-    if (loading) return "credit-badge gray";
-    if (credits <= 5) return "credit-badge red";
-    if (credits <= 20) return "credit-badge yellow";
-    return "credit-badge green";
+  const getRemainingDays = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const diff = date.getTime() - Date.now();
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
+
+  const remainingDays = getRemainingDays(expiresAt);
+
+  const subscriptionLabel = loading
+    ? "Checking plan..."
+    : active
+      ? `${plan?.name ?? "Active Plan"}${
+          typeof remainingDays === "number"
+            ? ` - ${remainingDays} day${remainingDays !== 1 ? "s" : ""} left`
+            : ""
+        }`
+      : "No active subscription";
 
   const handleLogout = () => {
     setIsDropdownOpen(false);
@@ -91,20 +112,14 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
       </div>
 
       <div className="nav-right">
-        {/* Credits visible in navbar (left of profile) */}
         {isAuthenticated && (
-          <div className="credits-inline" title="Your credits">
-            <Coins size={16} />
-            <span className={getCreditBadgeClass()}>
-              {loading ? "..." : (credits ?? 0)}
-            </span>
-            <button
-              className="refresh-small"
-              onClick={refetchCredits}
-              title="Refresh credits"
+          <div className="subscription-inline" title="Your subscription">
+            {active ? <ShieldCheck size={16} /> : <Clock3 size={16} />}
+            <span
+              className={`subscription-badge ${active ? "active" : "inactive"}`}
             >
-              🔄
-            </button>
+              {subscriptionLabel}
+            </span>
           </div>
         )}
 
@@ -128,23 +143,19 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
 
                 <div className="dropdown-item">
                   <div className="left">
-                    <Coins size={16} className="coin" />
-                    <span>Credits</span>
+                    {active ? (
+                      <ShieldCheck size={16} className="plan-icon-active" />
+                    ) : (
+                      <Clock3 size={16} className="plan-icon-inactive" />
+                    )}
+                    <Link to="/pricing">Subscription</Link>
                   </div>
                   <div className="right">
-                    <span className={getCreditBadgeClass()}>
-                      {loading ? "..." : (credits ?? 0)}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        refetchCredits();
-                      }}
-                      className="refresh-btn"
-                      title="Refresh credits"
+                    <span
+                      className={`subscription-mini ${active ? "active" : "inactive"}`}
                     >
-                      🔄
-                    </button>
+                      {active ? "Active" : "Inactive"}
+                    </span>
                   </div>
                 </div>
 
@@ -166,22 +177,11 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           <>
             <div className="flex items-center gap-3">
               <Link
-                to="/contact"
+                to="/pricing"
                 className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-rose-600 transition-all duration-200 hover:-translate-y-0.5"
               >
                 Pricing
               </Link>
-
-              {/* <Link
-                to="/pricing"
-                className="text-sm font-medium text-gray-700 
-             hover:text-indigo-600 
-             relative after:absolute after:-bottom-1 after:left-0 
-             after:h-[2px] after:w-0 after:bg-rose-500 
-             hover:after:w-full after:transition-all after:duration-300"
-              >
-                Pricing
-              </Link> */}
 
               <button
                 onClick={login}
