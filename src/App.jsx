@@ -42,6 +42,10 @@ import ContactUs from "./pages/ContactUs";
 import PricingPage from "./pages/PricingPage";
 import SubscriptionExpired from "./pages/SubscriptionExpired";
 import SubscriptionGuard from "./components/SubscriptionGuard";
+import AboutUs from "./pages/AboutUs";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -151,7 +155,14 @@ function AppContent() {
         className={hideNavBar ? "content no-navbar" : "content with-navbar"}
       >
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/"
+            element={
+              <PrivateSubscribedRoute>
+                <LandingPage />
+              </PrivateSubscribedRoute>
+            }
+          />
 
           <Route
             path="/groups"
@@ -329,6 +340,16 @@ function AppContent() {
           <Route path="/expired" element={<SubscriptionExpired />} />
 
           <Route path="/contact" element={<ContactUs />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route
+            path="/terms-and-conditions"
+            element={<TermsAndConditions />}
+          />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route
+            path="/refund-cancellation-policy"
+            element={<RefundCancellationPolicy />}
+          />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
