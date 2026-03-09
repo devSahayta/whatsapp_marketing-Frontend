@@ -10,7 +10,7 @@
 
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 36px;
 
   background: linear-gradient(
     to bottom,
@@ -74,7 +74,7 @@
 }
 
 .nav-logo-img {
-  height: 36px; /* adjust as needed */
+  height: 49px; /* adjust as needed */
   width: auto;
   object-fit: contain;
 }
@@ -103,35 +103,33 @@
   gap: 12px;
 }
 
-/* Credits inline (visible in navbar) */
-.credits-inline {
+/* Subscription inline (visible in navbar) */
+.subscription-inline {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
   border-radius: 12px;
   background: #f3f4f6;
-  font-weight: 600;
-  color: #111827;
+  color: #374151;
   font-size: 14px;
 }
 
-.credits-inline .refresh-small {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px;
-  line-height: 1;
-  transition: transform 0.2s;
+.subscription-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.credits-inline .refresh-small:hover {
-  transform: scale(1.1);
+.subscription-badge.active {
+  background: #d1fae5;
+  color: #065f46;
 }
 
-.credits-inline .refresh-small:active {
-  transform: scale(0.95);
+.subscription-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 /* Profile */
@@ -211,8 +209,12 @@
   color: #374151;
 }
 
-.dropdown-item .coin {
-  color: #f59e0b;
+.dropdown-item .plan-icon-active {
+  color: #059669;
+}
+
+.dropdown-item .plan-icon-inactive {
+  color: #f43f5e;
 }
 
 .dropdown-item .right {
@@ -221,45 +223,21 @@
   gap: 8px;
 }
 
-.dropdown-item .refresh-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px;
-  line-height: 1;
-  transition: transform 0.2s;
-}
-
-.dropdown-item .refresh-btn:hover {
-  transform: scale(1.1);
-}
-
-.credit-badge {
-  padding: 5px 10px;
-  border-radius: 12px;
-  font-size: 13px;
+.subscription-mini {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.credit-badge.red {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.credit-badge.yellow {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.credit-badge.green {
+.subscription-mini.active {
   background: #d1fae5;
   color: #065f46;
 }
 
-.credit-badge.gray {
-  background: #f3f4f6;
-  color: #6b7280;
+.subscription-mini.inactive {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .dropdown-logout {
@@ -384,8 +362,8 @@
     height: 20px;
   }
 
-  /* Hide credits inline on small screens */
-  .credits-inline {
+  /* Hide subscription inline on small screens */
+  .subscription-inline {
     display: none;
   }
 

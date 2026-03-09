@@ -1,5 +1,6 @@
 // components/landing/Footer.jsx
 
+import { Link } from "react-router-dom";
 import { Mail, Globe, ShieldCheck } from "lucide-react";
 
 const Footer = () => {
@@ -42,10 +43,37 @@ const Footer = () => {
               Company
             </h4>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li>About</li>
-              <li>Privacy Policy</li>
-              <li>Terms & Conditions</li>
-              <li>Contact</li>
+              <li>
+                <Link to="/about" className="hover:text-gray-900">
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/privacy-policy" className="hover:text-gray-900">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/terms-and-conditions"
+                  className="hover:text-gray-900"
+                >
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/refund-cancellation-policy"
+                  className="hover:text-gray-900"
+                >
+                  Refund & Cancellation
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact" className="hover:text-gray-900">
+                  Contact
+                </Link>
+              </li>
             </ul>
           </div>
 
