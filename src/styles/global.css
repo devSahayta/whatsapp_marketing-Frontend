@@ -6,6 +6,7 @@
 * {
   box-sizing: border-box;
 }
+
 html,
 body,
 #root {
@@ -23,26 +24,60 @@ body,
 
 .app-root {
   min-height: 100vh;
-  background: #f7f8fb;
+  position: relative;
+  overflow-x: hidden;
 }
 
+/* ===============================
+   IRIDESCENCE BACKGROUND
+================================== */
+
+.iridescence-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none; /* Allow clicks to pass through */
+  opacity: 0.6; /* Subtle background effect */
+}
+
+.iridescence-background canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ===============================
+   CONTENT LAYERS
+================================== */
+
 .content.with-navbar {
+  position: relative;
+  z-index: 1; /* Above background */
   padding-top: var(--navbar-height);
   min-height: calc(100vh - var(--navbar-height));
 }
 
 .content.no-navbar {
+  position: relative;
+  z-index: 1;
   padding-top: 0;
   min-height: 100vh;
 }
 
-/* body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    sans-serif;
-  line-height: 1.6;
-  color: #1a1a1a;
-  background-color: #ffffff;
-} */
+/* Ensure navbar and sidebar are above background */
+nav.navbar {
+  position: relative;
+  z-index: 60;
+  background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
+  backdrop-filter: blur(10px);
+}
+
+.sidebar {
+  position: relative;
+  z-index: 50;
+}
 
 /* Typography */
 h1,
@@ -117,10 +152,11 @@ p {
   transform: none;
 }
 
-/* Cards */
+/* Cards - Add slight transparency for glassmorphism effect */
 .card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(229, 231, 235, 0.8);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -141,6 +177,10 @@ p {
   }
   h3 {
     font-size: 1.25rem;
+  }
+
+  .iridescence-background {
+    opacity: 0.4; /* More subtle on mobile */
   }
 }
 
@@ -194,14 +234,7 @@ p {
   padding-bottom: 1rem;
 }
 
-.root-background {
-  background-image: url("/images/background-image.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  min-height: 100vh;
-}
-
+/* Font families */
 .font-orbitron {
   font-family: "Orbitron", sans-serif;
   font-optical-sizing: auto;
