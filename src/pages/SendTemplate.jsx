@@ -555,7 +555,7 @@ export default function SendTemplate() {
           current: data.completed,
         });
       }
-    }, 500);
+    }, 4000);
 
     try {
       // --------------- CALL BULK SEND ---------------
@@ -625,7 +625,7 @@ export default function SendTemplate() {
           current: data.completed,
         });
       }
-    }, 500);
+    }, 4000);
 
     try {
       const bulkResp = await apiSendBulkTemplate(templateId, {
