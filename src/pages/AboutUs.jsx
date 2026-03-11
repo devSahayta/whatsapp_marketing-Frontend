@@ -1,8 +1,17 @@
 import React from "react";
 import Footer from "../components/landing/Footer";
+import SEO from "../components/SEO";
 
 const AboutUs = () => {
   return (
+  <>
+    <SEO
+      title="About Samvaadik"
+      description="Learn about Samvaadik — a WhatsApp Business platform helping companies manage campaigns, automation, and customer engagement at scale."
+      keywords="About Samvaadik, WhatsApp Business platform, WhatsApp communication tool"
+      url="https://samvaadik.com/about"
+    />
+
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
@@ -56,6 +65,7 @@ const AboutUs = () => {
 
       <Footer />
     </div>
+  </>
   );
 };
 

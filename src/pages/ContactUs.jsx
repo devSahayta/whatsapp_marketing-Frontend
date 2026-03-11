@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Footer from "../components/landing/Footer";
+import SEO from "../components/SEO";
 import {
   showError,
   showLoading,
@@ -51,7 +52,15 @@ const ContactUs = () => {
     }
   };
 
-  return (
+ return (
+  <>
+    <SEO
+      title="Contact Samvaadik"
+      description="Contact Samvaadik to learn how WhatsApp marketing and automation can help grow your business."
+      keywords="Contact Samvaadik, WhatsApp marketing support, business messaging platform"
+      url="https://samvaadik.com/contact"
+    />
+
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
@@ -126,6 +135,7 @@ const ContactUs = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

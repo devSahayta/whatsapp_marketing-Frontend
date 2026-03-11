@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { createOrder, getPlans, verifyPayment } from "../api/payment";
 import useAuthUser from "../hooks/useAuthUser";
 import useSubscription from "../hooks/useSubscription";
+import SEO from "../components/SEO";
 import {
   dismissToast,
   showError,
@@ -162,6 +163,13 @@ const PricingPage = () => {
   };
 
   return (
+    <>
+    <SEO
+  title="Pricing - Samvaadik WhatsApp Marketing Platform"
+  description="Explore Samvaadik pricing plans for WhatsApp marketing, campaign automation, analytics, and business messaging."
+  keywords="WhatsApp marketing pricing, WhatsApp API pricing, Samvaadik plans"
+  url="https://samvaadik.com/pricing"
+/>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40 py-12 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
@@ -317,6 +325,8 @@ const PricingPage = () => {
         )}
       </div>
     </div>
+
+    </>
   );
 };
 
