@@ -1,4 +1,4 @@
-// Pages/CreateCampaign.jsx
+// Pages/CreateCampaign.jsx - UPDATED with MediaGallery
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +29,9 @@ import {
 import { fetchWhatsappAccount } from "../api/waccount";
 
 import { convertISTtoUTC, isFutureDateTime } from "../utils/timezoneHelper";
+
+// ✅ NEW: Import MediaGallery component
+import MediaGallery from "../components/campaigns/MediaGallery";
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
@@ -277,7 +280,27 @@ const CreateCampaign = () => {
     }
   };
 
-  // Handle selecting existing media from dropdown
+  // ✅ NEW: Handle selecting media from MediaGallery
+  const handleSelectMediaFromGallery = (media) => {
+    console.log('🖼️ Media selected from gallery:', media);
+    
+    setSelectedMedia({ 
+      id: media.media_id, 
+      type: media.type, 
+      name: media.file_name,
+      wmu_id: media.wmu_id,
+      size_bytes: media.size_bytes,
+      uploaded_at: media.uploaded_at
+    });
+    setUploadedMediaId(media.media_id);
+    
+    // Can't preview WhatsApp media directly, but you can show info
+    setMediaPreview(null);
+    
+    console.log('✅ Media selected:', media.file_name);
+  };
+
+  // Handle selecting existing media from dropdown (keep for backwards compatibility)
   const handleSelectExistingMediaItem = (media) => {
     setSelectedMedia({ 
       id: media.media_id, 
@@ -987,7 +1010,7 @@ const CreateCampaign = () => {
                           </div>
                         )}
 
-                        {/* Choose Existing Media */}
+                        {/* ✅ NEW: Choose Existing Media with MediaGallery */}
                         {mediaSelectionMode === 'existing' && (
                           <div>
                             {loadingExistingMedia ? (
@@ -995,33 +1018,13 @@ const CreateCampaign = () => {
                                 <Loader className="w-6 h-6 animate-spin mx-auto text-yellow-600" />
                                 <p className="text-sm text-gray-600 mt-2">Loading media...</p>
                               </div>
-                            ) : existingMediaList.length === 0 ? (
-                              <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-xl">
-                                <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                <p className="text-gray-600 font-medium">No media found</p>
-                                <p className="text-sm text-gray-500 mt-1">Upload media first to see them here</p>
-                              </div>
                             ) : (
-                              <div className="space-y-2 max-h-64 overflow-y-auto">
-                                {existingMediaList.map((media) => (
-                                  <button
-                                    key={media.wmu_id}
-                                    type="button"
-                                    onClick={() => handleSelectExistingMediaItem(media)}
-                                    className="w-full p-4 bg-white border border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <ImageIcon className="w-5 h-5 text-gray-600" />
-                                      <div className="flex-1">
-                                        <p className="font-medium text-gray-900">{media.file_name}</p>
-                                        <p className="text-xs text-gray-500">
-                                          {media.type} • {new Date(media.uploaded_at).toLocaleDateString()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
+                              <MediaGallery
+                                userId={user.id}
+                                accountId={formData.account_id}  // ✅ Pass account_id instead of user_id
+                                onSelect={handleSelectMediaFromGallery}
+                                selectedMediaId={uploadedMediaId}
+                              />
                             )}
                           </div>
                         )}
