@@ -19,7 +19,12 @@ import {
 } from "../api/campaigns";
 import useAuthUser from "../hooks/useAuthUser";
 import { exportCampaignPdf } from "../utils/exportCampaignPdf";
-import { showError, showSuccess } from "../utils/toast";
+import {
+  dismissToast,
+  showError,
+  showLoading,
+  showSuccess,
+} from "../utils/toast";
 
 const CampaignDetails = () => {
   const { id } = useParams();
@@ -41,16 +46,20 @@ const CampaignDetails = () => {
 
   const loadCampaign = async () => {
     try {
+      const toastId = showLoading("Loading campaign...");
       const res = await getCampaignById(id, userId);
       const data = res.data.data;
+
+      dismissToast(toastId);
 
       setCampaign(data.campaign);
       setMessages(data.messages || []);
       setStats(data.stats || {});
 
       // 🔄 background sync
-      await syncStatusIfNeeded(data.campaign);
+      // await syncStatusIfNeeded(data.campaign);
     } catch (err) {
+      dismissToast(toastId);
       showError("Failed to load campaign details");
     } finally {
       setLoading(false);
@@ -188,7 +197,7 @@ const CampaignDetails = () => {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={async () => {
-                  await syncCampaignStatus(id, userId);
+                  // await syncCampaignStatus(id, userId);
                   await loadCampaign();
                   showSuccess("Campaign status refreshed");
                 }}
