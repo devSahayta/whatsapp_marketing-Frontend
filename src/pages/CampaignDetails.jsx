@@ -252,15 +252,15 @@ const CampaignDetails = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard title="Total" value={stats.total} icon={Users} />
-          <StatCard title="Sent" value={stats.sent} icon={Send} />
-          <StatCard
+          <StatCard title="Processed" value={stats.sent} icon={Send} />
+          {/* <StatCard
             title="Delivered"
             value={stats.delivered}
             icon={CheckCircle}
           />
-          <StatCard title="Read" value={stats.read} icon={MessageSquare} />
+          <StatCard title="Read" value={stats.read} icon={MessageSquare} /> */}
           <StatCard title="Pending" value={stats.pending} icon={Clock} />
           <StatCard title="Failed" value={stats.failed} icon={XCircle} />
         </div>
@@ -329,7 +329,7 @@ const CampaignDetails = () => {
                     <p className="text-sm text-gray-500">{msg.phone_number}</p>
                   </div>
 
-                  <span
+                  {/* <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
                       msg.status === "sent"
                         ? "bg-blue-100 text-blue-700"
@@ -337,7 +337,32 @@ const CampaignDetails = () => {
                     }`}
                   >
                     {msg.status}
-                  </span>
+                  </span> */}
+
+                  <div className="relative group">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        msg.status === "sent"
+                          ? "bg-blue-100 text-blue-700"
+                          : msg.status === "delivered"
+                            ? "bg-green-100 text-green-700"
+                            : msg.status === "read"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : msg.status === "failed"
+                                ? "bg-red-100 text-red-700 cursor-pointer"
+                                : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {msg.status}
+                    </span>
+
+                    {/* ❌ Error Tooltip (only for failed) */}
+                    {msg.status === "failed" && msg.error_message && (
+                      <div className="absolute right-0 mt-2 w-64 p-3 rounded-lg shadow-lg bg-red-50 border border-red-200 text-xs text-red-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                        {msg.error_message}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-xs text-gray-500 mt-2">
