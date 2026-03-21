@@ -732,7 +732,7 @@ export default function TemplateList() {
           )}
 
           {!loading && filteredTemplates.length > 0 && (
-            <section className="grid gap-5 xl:grid-cols-2">
+            <section className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               {filteredTemplates.map((template) => (
                 <TemplateCard
                   key={template.id}
