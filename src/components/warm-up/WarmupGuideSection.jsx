@@ -11,7 +11,7 @@ import {
   ChevronUp,
   Zap
 } from 'lucide-react';
-import "../../styles/Warmup-guide.css";
+import "../../styles/warmup-guide.css";
 
 const WarmupGuideSection = ({ currentStage, warmupCompleted, tier }) => {
   const [expandedSection, setExpandedSection] = useState(null);
