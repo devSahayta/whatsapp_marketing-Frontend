@@ -1384,6 +1384,14 @@ body {
   margin-bottom: 25px;
   color: #111827;
 } /* Input fields */
+.form-subtitle {
+  margin: -10px 0 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .form-input {
   width: 100%;
   padding: 12px;
@@ -1423,6 +1431,30 @@ body {
   transform: scale(0.97);
 }
 
+.form-actions-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 15px;
+}
+
+.form-secondary-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.form-secondary-btn:hover {
+  background: #f9fafb;
+}
+
 /* ===== Meta Logo Above Title ===== */
 .meta-logo {
   width: 100px; /* Standard small logo size */
@@ -1438,5 +1470,9 @@ body {
   .meta-logo {
     width: 36px;
     margin-bottom: 10px;
+  }
+
+  .form-actions-row {
+    flex-direction: column;
   }
 }

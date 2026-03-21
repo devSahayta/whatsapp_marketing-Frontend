@@ -55,7 +55,7 @@ body,
 .content.with-navbar {
   position: relative;
   z-index: 1; /* Above background */
-  padding-top: var(--navbar-height);
+  /* padding-top: var(--navbar-height); */
   min-height: calc(100vh - var(--navbar-height));
 }
 
@@ -245,4 +245,16 @@ p {
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
+}
+
+/* .root-background {
+  background-image: url("/images/background-image.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+} */
+
+.root-background {
+  background: linear-gradient(120deg, #f1f5f9, #eef2ff, #fce7f3);
 }

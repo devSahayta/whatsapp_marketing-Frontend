@@ -11,7 +11,17 @@ import {
   Calendar,
   FileText,
   Phone,
+  TimerReset,
+  Gauge,
 } from "lucide-react";
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import {
   getCampaignById,
   retryCampaign,
@@ -26,6 +36,101 @@ import {
   showSuccess,
 } from "../utils/toast";
 
+const PIE_COLORS = {
+  sent: "#3B82F6",
+  delivered: "#10B981",
+  // read: "#14B8A6",
+  read: "#facc15",
+  pending: "#F59E0B",
+  failed: "#EF4444",
+};
+
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0 sec";
+  if (seconds < 60) return `${Math.ceil(seconds)} sec`;
+  if (seconds < 3600) return `${Math.ceil(seconds / 60)} min`;
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.ceil((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+};
+
+const getSentTimeline = (messages = []) =>
+  messages
+    .filter((message) => message.sent_at)
+    .map((message) => new Date(message.sent_at).getTime())
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+
+const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
+  const total = Number(stats.total) || 0;
+  const sent = Number(stats.sent) || 0;
+  const failed = Number(stats.failed) || 0;
+  const delivered = Number(stats.delivered) || 0;
+  const read = Number(stats.read) || 0;
+  const pending = Math.max(
+    0,
+    Number.isFinite(Number(stats.pending))
+      ? Number(stats.pending)
+      : total - (sent + failed),
+  );
+  const processed = Math.min(total, sent + failed);
+  const completionPercent =
+    total > 0 ? Math.min(100, (processed / total) * 100) : 0;
+
+  const sentTimeline = getSentTimeline(messages);
+  let sendingSpeed = null;
+
+  if (sentTimeline.length >= 2) {
+    const elapsedSeconds =
+      (sentTimeline[sentTimeline.length - 1] - sentTimeline[0]) / 1000;
+
+    if (elapsedSeconds > 0) {
+      sendingSpeed = sentTimeline.length / elapsedSeconds;
+    }
+  } else if (processed > 0 && campaign?.started_at) {
+    const startedAt = new Date(campaign.started_at).getTime();
+    const nowOrCompletedAt = new Date(
+      campaign.completed_at || campaign.updated_at || Date.now(),
+    ).getTime();
+    const elapsedSeconds = (nowOrCompletedAt - startedAt) / 1000;
+
+    if (Number.isFinite(elapsedSeconds) && elapsedSeconds > 0) {
+      sendingSpeed = processed / elapsedSeconds;
+    }
+  }
+
+  const remaining = Math.max(0, total - processed);
+  const etaSeconds =
+    sendingSpeed && remaining > 0 ? remaining / sendingSpeed : null;
+  const durationSeconds =
+    campaign?.started_at && campaign?.completed_at
+      ? (new Date(campaign.completed_at) - new Date(campaign.started_at)) / 1000
+      : null;
+
+  return {
+    total,
+    sent,
+    delivered,
+    read,
+    failed,
+    pending,
+    processed,
+    remaining,
+    completionPercent,
+    sendingSpeed,
+    etaSeconds,
+    durationSeconds,
+    pieData: [
+      { name: "Sent", value: sent, key: "sent" },
+      { name: "Delivered", value: delivered, key: "delivered" },
+      { name: "Read", value: read, key: "read" },
+      { name: "Pending", value: pending, key: "pending" },
+      { name: "Failed", value: failed, key: "failed" },
+    ].filter((item) => item.value > 0),
+  };
+};
+
 const CampaignDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -38,19 +143,38 @@ const CampaignDetails = () => {
   const [stats, setStats] = useState(null);
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [retryLoading, setRetryLoading] = useState(false);
 
   useEffect(() => {
     loadCampaign();
   }, [id, userId]);
 
-  const loadCampaign = async () => {
+  useEffect(() => {
+    if (!campaign || ["completed", "failed"].includes(campaign.status)) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadCampaign({ silent: true });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [campaign?.status, id, userId]);
+
+  const loadCampaign = async ({ silent = false } = {}) => {
+    let toastId;
+
     try {
-      const toastId = showLoading("Loading campaign...");
+      if (!silent) {
+        toastId = showLoading("Loading campaign...");
+      }
       const res = await getCampaignById(id, userId);
       const data = res.data.data;
 
-      dismissToast(toastId);
+      if (toastId) {
+        dismissToast(toastId);
+      }
 
       setCampaign(data.campaign);
       setMessages(data.messages || []);
@@ -59,8 +183,10 @@ const CampaignDetails = () => {
       // 🔄 background sync
       // await syncStatusIfNeeded(data.campaign);
     } catch (err) {
-      dismissToast(toastId);
-      showError("Failed to load campaign details");
+      if (toastId) {
+        dismissToast(toastId);
+        showError("Failed to load campaign details");
+      }
     } finally {
       setLoading(false);
     }
@@ -88,11 +214,14 @@ const CampaignDetails = () => {
 
   const filteredMessages = messages.filter((msg) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch =
       msg.contact_name?.toLowerCase().includes(q) ||
       msg.phone_number?.includes(q) ||
-      msg.status?.toLowerCase().includes(q)
-    );
+      msg.status?.toLowerCase().includes(q);
+    const matchesStatus =
+      statusFilter === "all" ? true : msg.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
   });
 
   const handleRetryCampaign = async () => {
@@ -167,6 +296,7 @@ const CampaignDetails = () => {
       scheduled: "bg-yellow-100 text-yellow-700",
       failed: "bg-red-100 text-red-700",
     }[campaign.status] || "bg-gray-100 text-gray-600";
+  const analytics = getCampaignAnalytics(stats, messages, campaign);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 py-8 px-4">
@@ -195,7 +325,7 @@ const CampaignDetails = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
+              {/* <button
                 onClick={async () => {
                   // await syncCampaignStatus(id, userId);
                   await loadCampaign();
@@ -207,7 +337,7 @@ const CampaignDetails = () => {
               >
                 <Clock className="w-4 h-4" />
                 Refresh Status
-              </button>
+              </button> */}
 
               {/* Download PDF */}
               <button
@@ -252,17 +382,26 @@ const CampaignDetails = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
           <StatCard title="Total" value={stats.total} icon={Users} />
-          <StatCard title="Processed" value={stats.sent} icon={Send} />
-          {/* <StatCard
+          <StatCard title="Processed" value={analytics.processed} icon={Send} />
+          <StatCard
             title="Delivered"
             value={stats.delivered}
             icon={CheckCircle}
           />
-          <StatCard title="Read" value={stats.read} icon={MessageSquare} /> */}
+          <StatCard title="Read" value={stats.read} icon={MessageSquare} />
           <StatCard title="Pending" value={stats.pending} icon={Clock} />
           <StatCard title="Failed" value={stats.failed} icon={XCircle} />
+        </div> */}
+
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <CampaignOverviewChart analytics={analytics} />
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
+            <CampaignProgressCard analytics={analytics} />
+            <CampaignEtaCard analytics={analytics} status={campaign.status} />
+          </div>
         </div>
 
         {/* Details */}
@@ -301,12 +440,26 @@ const CampaignDetails = () => {
             <h2 className="text-lg font-semibold">
               Messages ({filteredMessages.length})
             </h2>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, number or status"
-              className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="flex items-center gap-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All statuses</option>
+                <option value="read">Read</option>
+                <option value="delivered">Delivered</option>
+                <option value="failed">Failed</option>
+                <option value="sent">Sent</option>
+                <option value="pending">Pending</option>
+              </select>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, number or status"
+                className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div className="space-y-3 max-h-[420px] overflow-y-auto">
@@ -328,16 +481,6 @@ const CampaignDetails = () => {
                     </p>
                     <p className="text-sm text-gray-500">{msg.phone_number}</p>
                   </div>
-
-                  {/* <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      msg.status === "sent"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {msg.status}
-                  </span> */}
 
                   <div className="relative group">
                     <span
@@ -400,5 +543,154 @@ const DetailItem = ({ icon: Icon, label, value }) => (
     </div>
   </div>
 );
+
+const CampaignOverviewChart = ({ analytics }) => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="flex items-center justify-between gap-4 mb-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">
+          Campaign Overview
+        </h2>
+        <p className="text-sm text-gray-500">
+          Message status distribution from campaign stats
+        </p>
+      </div>
+
+      <div className="text-right">
+        <p className="text-2xl font-semibold text-gray-900">
+          {analytics.total}
+        </p>
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          Total recipients
+        </p>
+      </div>
+    </div>
+
+    {analytics.pieData.length > 0 ? (
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={analytics.pieData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={62}
+              outerRadius={98}
+              paddingAngle={3}
+              label={({ name, value }) => `${name}: ${value}`}
+            >
+              {analytics.pieData.map((entry) => (
+                <Cell key={entry.key} fill={PIE_COLORS[entry.key]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value) => [value, "Count"]} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    ) : (
+      <div className="h-72 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-500">
+        No analytics available yet
+      </div>
+    )}
+  </div>
+);
+
+const CampaignProgressCard = ({ analytics }) => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+        <Gauge className="w-5 h-5 text-blue-600" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Progress</h2>
+        <p className="text-sm text-gray-500">
+          Completed vs remaining recipients
+        </p>
+      </div>
+    </div>
+
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <p className="text-3xl font-semibold text-gray-900">
+        {analytics.completionPercent.toFixed(1)}%
+      </p>
+      <p className="text-sm text-gray-500">
+        {analytics.processed} of {analytics.total} done
+      </p>
+    </div>
+
+    <div className="w-full h-3 rounded-full bg-gray-100 overflow-hidden">
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-500 transition-all duration-500"
+        style={{ width: `${analytics.completionPercent}%` }}
+      />
+    </div>
+
+    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+      <div className="rounded-xl bg-emerald-50 px-3 py-2">
+        <p className="text-emerald-700 font-medium">Completed</p>
+        <p className="text-gray-900">{analytics.processed}</p>
+      </div>
+      <div className="rounded-xl bg-amber-50 px-3 py-2">
+        <p className="text-amber-700 font-medium">Remaining</p>
+        <p className="text-gray-900">{analytics.remaining}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const CampaignEtaCard = ({ analytics, status }) => {
+  const isTerminal = ["completed", "failed"].includes(status);
+  const isFinished = analytics.remaining === 0 || status === "completed";
+  const etaLabel = isFinished
+    ? "Campaign complete"
+    : analytics.etaSeconds
+      ? formatDuration(analytics.etaSeconds)
+      : analytics.sendingSpeed
+        ? "Less than a minute"
+        : "Waiting for enough data";
+  const speedLabel = analytics.sendingSpeed
+    ? `${analytics.sendingSpeed.toFixed(2)} msg/sec`
+    : "Not enough data";
+  const durationLabel = analytics.durationSeconds
+    ? formatDuration(analytics.durationSeconds)
+    : "In progress";
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center">
+          <TimerReset className="w-5 h-5 text-violet-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {isTerminal ? "Campaign Timing" : "Expected Time Remaining"}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {isTerminal
+              ? "Final timing summary"
+              : "Based on current campaign throughput"}
+          </p>
+        </div>
+      </div>
+
+      <p className="text-3xl font-semibold text-gray-900">
+        {/* {isTerminal ? durationLabel : etaLabel} */}
+        {isTerminal ? "" : etaLabel}
+      </p>
+
+      <div className="mt-4 space-y-3 text-sm">
+        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+          <span className="text-gray-500">Sending speed</span>
+          <span className="font-medium text-gray-900">{speedLabel}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+          <span className="text-gray-500">Campaign duration</span>
+          <span className="font-medium text-gray-900">{durationLabel}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default CampaignDetails;
