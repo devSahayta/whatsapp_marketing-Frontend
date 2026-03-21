@@ -507,3 +507,20 @@
     padding-right: 16px;
   }
 }
+
+
+/*daily limit card*/
+
+/* Tier Usage Card */
+.wa-status-card__icon.tier-usage {
+  background: linear-gradient(135deg, #f69f5c 0%, #f69f5c 100%);
+  color: white;
+}
+
+.wa-status-card--tier-usage {
+  border-left: 4px solid #f69f5c;
+}
+
+.wa-status-card--tier-usage .wa-progress__fill {
+  background: linear-gradient(90deg, #f69f5c 0%, #f69f5c 100%);
+}

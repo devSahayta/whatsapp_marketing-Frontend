@@ -33,6 +33,10 @@ import { convertISTtoUTC, isFutureDateTime } from "../utils/timezoneHelper";
 // ✅ NEW: Import MediaGallery component
 import MediaGallery from "../components/campaigns/MediaGallery";
 
+
+import WarmupErrorModal from "../components/warm-up/WarmupErrorModal";
+import "../styles/warmup-error-modal.css";
+
 const CreateCampaign = () => {
   const navigate = useNavigate();
   const { user } = useKindeAuth();
@@ -53,6 +57,9 @@ const CreateCampaign = () => {
   const [mediaSelectionMode, setMediaSelectionMode] = useState('upload'); // 'upload' or 'existing'
   const [existingMediaList, setExistingMediaList] = useState([]);
   const [loadingExistingMedia, setLoadingExistingMedia] = useState(false);
+
+  // ✅ ADD THIS LINE:
+const [warmupError, setWarmupError] = useState(null);
 
   // WhatsApp account
   const [whatsappAccount, setWhatsappAccount] = useState(null);
@@ -506,45 +513,65 @@ const CreateCampaign = () => {
   };
 
   // Submit campaign
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  // Submit campaign
+const handleSubmit = async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      // Convert IST to UTC before sending to backend
-      const utcScheduledAt = convertISTtoUTC(formData.scheduled_at);
+    // Convert IST to UTC before sending to backend
+    const utcScheduledAt = convertISTtoUTC(formData.scheduled_at);
 
-      const payload = {
-        user_id: user.id,
-        campaign_name: formData.campaign_name,
-        description: formData.description,
-        group_id: formData.group_id,
-        wt_id: formData.wt_id,
-        account_id: selectedTemplate?.account_id,
-        scheduled_at: utcScheduledAt,  // ← UTC time
-        timezone: "Asia/Kolkata",       // ← Still send timezone for reference
-        template_variables: formData.template_variables,
-        media_id: uploadedMediaId, // ← Include selected media ID
-      };
+    const payload = {
+      user_id: user.id,
+      campaign_name: formData.campaign_name,
+      description: formData.description,
+      group_id: formData.group_id,
+      wt_id: formData.wt_id,
+      account_id: selectedTemplate?.account_id,
+      scheduled_at: utcScheduledAt,
+      timezone: "Asia/Kolkata",
+      template_variables: formData.template_variables,
+      media_id: uploadedMediaId,
+    };
 
-      console.log("Local time (IST):", formData.scheduled_at);
-      console.log("Converted to UTC:", utcScheduledAt);
+    console.log("Local time (IST):", formData.scheduled_at);
+    console.log("Converted to UTC:", utcScheduledAt);
 
-      const res = await createCampaign(payload);
+    const res = await createCampaign(payload);
 
-      if (res.data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate("/campaigns");
-        }, 2000);
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || "Failed to create campaign");
-      console.error("Create campaign error:", err);
-    } finally {
-      setLoading(false);
+    if (res.data.success) {
+      setSuccess(true);
+      setTimeout(() => {
+        navigate("/campaigns");
+      }, 2000);
     }
-  };
+  } catch (err) {
+    // ✅ NEW: Check for warm-up/tier limit errors
+    const errorData = err.response?.data;
+    
+    const warmupErrors = [
+      'WARMUP_DAILY_LIMIT_EXCEEDED',
+      'WARMUP_STAGE_LIMIT_EXCEEDED',
+      'DAILY_TIER_LIMIT_EXCEEDED',
+      'TIER_DAILY_LIMIT_EXCEEDED',
+      'WARMUP_LIMIT_EXCEEDED'
+    ];
+
+    if (errorData && warmupErrors.includes(errorData.error)) {
+      // Show warmup error modal
+      setWarmupError(errorData);
+      setLoading(false);
+      return;
+    }
+
+    // Handle other errors normally
+    setError(errorData?.error || errorData?.message || "Failed to create campaign");
+    console.error("Create campaign error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Progress indicator
   const steps = [
@@ -1195,6 +1222,12 @@ const CreateCampaign = () => {
           </div>
         </div>
       </div>
+      {warmupError && (
+          <WarmupErrorModal 
+            error={warmupError}
+            onClose={() => setWarmupError(null)}
+          />
+        )}
     </div>
   );
 };

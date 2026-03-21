@@ -10,6 +10,8 @@ import {
   HelpCircle,
   Signal,
   X,
+  Activity
+  
 } from "lucide-react";
 import WhatsaapForm from "../components/WhatsaapForm";
 import WebhookHelp from "../components/WebhookHelp";
@@ -20,6 +22,7 @@ import {
   showSuccess,
 } from "../utils/toast";
 import "../styles/waccount-page.css";
+import WarmupGuideSection from "../components/warm-up/WarmupGuideSection";
 
 const formatLabel = (value) => {
   if (!value) return "--";
@@ -316,6 +319,47 @@ const WAccountPage = () => {
                   </>
                 )}
               </article>
+              <article className="wa-status-card wa-status-card--tier-usage">
+    <div className="wa-status-card__icon tier-usage">
+      <Activity size={18} />
+    </div>
+    <p className="wa-status-card__label">Today's Tier Usage</p>
+    <h3 className="wa-status-card__value">
+      {formatNumber(existingData.tier_daily_sent || 0)}/
+      {formatNumber(existingData.messaging_limit_per_day)}
+    </h3>
+    <p className="wa-status-card__meta">
+      {formatNumber(
+        Math.max(
+          0, 
+          (existingData.messaging_limit_per_day || 0) - 
+          (existingData.tier_daily_sent || 0)
+        )
+      )} messages remaining today
+    </p>
+
+    {/* Progress Bar */}
+    <div className="wa-progress">
+      <div
+        className="wa-progress__fill"
+        style={{ 
+          width: `${Math.min(
+            100, 
+            ((existingData.tier_daily_sent || 0) / 
+              (existingData.messaging_limit_per_day || 0) * 100
+            )
+          )}%` 
+        }}
+      />
+    </div>
+    <p className="wa-progress__text">
+      {Math.round(
+        ((existingData.tier_daily_sent || 0) / 
+          (existingData.messaging_limit_per_day || 0) * 100
+        )
+      )}% used • Resets at midnight UTC (5:30 AM IST)
+    </p>
+  </article>
 
               <article className="wa-status-card">
                 <div className="wa-status-card__icon sync">
@@ -366,6 +410,14 @@ const WAccountPage = () => {
           </section>
         </>
       )}
+
+      {existingData && !isEditingAccount && (
+  <WarmupGuideSection 
+    currentStage={existingData.warmup_stage}
+    warmupCompleted={existingData.warmup_completed}
+    tier={existingData.messaging_limit_tier}
+  />
+)}
 
       {existingData && !isEditingAccount && (
         <section className="wa-helper-note">
