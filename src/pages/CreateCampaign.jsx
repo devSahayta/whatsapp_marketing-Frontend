@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
-import { 
+import {
   ArrowLeft,
   ArrowRight,
   Check,
@@ -18,21 +18,20 @@ import {
   AlertCircle,
   ImageIcon,
   Upload,
-  FolderOpen
+  FolderOpen,
 } from "lucide-react";
-import { 
-  getUserGroups, 
-  getUserTemplates, 
+import {
+  getUserGroups,
+  getUserTemplates,
   createCampaign,
 } from "../api/campaigns";
 
-import { fetchWhatsappAccount } from "../api/waccount";
+import { fetchWhatsappAccount, syncWhatsappAccountInfo } from "../api/waccount";
 
 import { convertISTtoUTC, isFutureDateTime } from "../utils/timezoneHelper";
 
 // ✅ NEW: Import MediaGallery component
 import MediaGallery from "../components/campaigns/MediaGallery";
-
 
 import WarmupErrorModal from "../components/warm-up/WarmupErrorModal";
 import "../styles/warmup-error-modal.css";
@@ -41,7 +40,7 @@ const CreateCampaign = () => {
   const navigate = useNavigate();
   const { user } = useKindeAuth();
 
-  console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL);
+  console.log("🌐 Backend URL:", import.meta.env.VITE_BACKEND_URL);
 
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -54,12 +53,12 @@ const CreateCampaign = () => {
   const [mediaPreview, setMediaPreview] = useState(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
-  const [mediaSelectionMode, setMediaSelectionMode] = useState('upload'); // 'upload' or 'existing'
+  const [mediaSelectionMode, setMediaSelectionMode] = useState("upload"); // 'upload' or 'existing'
   const [existingMediaList, setExistingMediaList] = useState([]);
   const [loadingExistingMedia, setLoadingExistingMedia] = useState(false);
 
   // ✅ ADD THIS LINE:
-const [warmupError, setWarmupError] = useState(null);
+  const [warmupError, setWarmupError] = useState(null);
 
   // WhatsApp account
   const [whatsappAccount, setWhatsappAccount] = useState(null);
@@ -94,10 +93,10 @@ const [warmupError, setWarmupError] = useState(null);
         const res = await fetchWhatsappAccount(user.id);
         if (res?.data?.data) {
           setWhatsappAccount(res.data.data);
-          setFormData(prev => ({ ...prev, account_id: res.data.data.wa_id }));
+          setFormData((prev) => ({ ...prev, account_id: res.data.data.wa_id }));
         }
       } catch (err) {
-        console.error('Error loading account:', err);
+        console.error("Error loading account:", err);
       }
     };
 
@@ -141,13 +140,13 @@ const [warmupError, setWarmupError] = useState(null);
   // Function to get template preview
   const getTemplatePreview = () => {
     if (!formData.wt_id) return null;
-    
-    const template = templates.find(t => t.wt_id === formData.wt_id);
+
+    const template = templates.find((t) => t.wt_id === formData.wt_id);
     if (!template) return null;
 
     // Parse components
     let components = template.components;
-    if (typeof components === 'string') {
+    if (typeof components === "string") {
       try {
         components = JSON.parse(components);
       } catch (e) {
@@ -157,7 +156,7 @@ const [warmupError, setWarmupError] = useState(null);
 
     // Parse preview (for template preview image)
     let preview = template.preview;
-    if (typeof preview === 'string') {
+    if (typeof preview === "string") {
       try {
         preview = JSON.parse(preview);
       } catch (e) {
@@ -165,19 +164,22 @@ const [warmupError, setWarmupError] = useState(null);
       }
     }
 
-    const headerComp = components.find(c => c.type === 'HEADER');
-    const bodyComp = components.find(c => c.type === 'BODY');
-    const buttonsComp = components.find(c => c.type === 'BUTTONS');
+    const headerComp = components.find((c) => c.type === "HEADER");
+    const bodyComp = components.find((c) => c.type === "BODY");
+    const buttonsComp = components.find((c) => c.type === "BUTTONS");
 
     // Get template preview URL (the image used when creating template)
-    const templatePreviewUrl = preview?.components?.find(c => c.type === 'HEADER')
-      ?.example?.header_handle?.[0];
+    const templatePreviewUrl = preview?.components?.find(
+      (c) => c.type === "HEADER",
+    )?.example?.header_handle?.[0];
 
     return {
       header: headerComp,
       body: bodyComp,
       buttons: buttonsComp,
-      hasMedia: headerComp && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComp.format),
+      hasMedia:
+        headerComp &&
+        ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format),
       mediaType: headerComp?.format,
       templatePreviewUrl, // ← The image from template creation
       preview,
@@ -188,68 +190,68 @@ const [warmupError, setWarmupError] = useState(null);
   const handleMediaUpload = async (file) => {
     try {
       setUploadingMedia(true);
-      
-      console.log('🔍 Checking template...', { selectedTemplate, formData });
-      
+
+      console.log("🔍 Checking template...", { selectedTemplate, formData });
+
       // Check if template is selected
       if (!selectedTemplate || !selectedTemplate.account_id) {
-        alert('❌ Please select a template first');
+        alert("❌ Please select a template first");
         setUploadingMedia(false);
         return;
       }
-      
-      console.log('✅ Template found:', selectedTemplate.name);
-      
+
+      console.log("✅ Template found:", selectedTemplate.name);
+
       // Get WhatsApp account
       const accountRes = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/waccount/get-waccount?user_id=${user.id}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/waccount/get-waccount?user_id=${user.id}`,
       );
       const accountData = await accountRes.json();
-      
+
       if (!accountData.success || !accountData.data) {
-        alert('❌ WhatsApp account not found');
+        alert("❌ WhatsApp account not found");
         setUploadingMedia(false);
         return;
       }
-      
+
       const account = accountData.data;
-      console.log('✅ WhatsApp account loaded');
+      console.log("✅ WhatsApp account loaded");
 
       // Create FormData
       const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      formDataUpload.append('type', file.type);
-      formDataUpload.append('messaging_product', 'whatsapp');
+      formDataUpload.append("file", file);
+      formDataUpload.append("type", file.type);
+      formDataUpload.append("messaging_product", "whatsapp");
 
-      console.log('📤 Uploading to WhatsApp...');
+      console.log("📤 Uploading to WhatsApp...");
 
       // Upload to WhatsApp
       const response = await fetch(
         `https://graph.facebook.com/v21.0/${account.phone_number_id}/media`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${account.system_user_access_token}`,
+            Authorization: `Bearer ${account.system_user_access_token}`,
           },
           body: formDataUpload,
-        }
+        },
       );
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed');
+        throw new Error(data.error?.message || "Upload failed");
       }
 
       const mediaId = data.id;
-      console.log('✅ Media uploaded to WhatsApp:', mediaId);
-      
+      console.log("✅ Media uploaded to WhatsApp:", mediaId);
+
       // Save to database
       const saveResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/media/upload`, 
+        `${import.meta.env.VITE_BACKEND_URL}/api/media/upload`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             account_id: account.wa_id,
             media_id: mediaId,
@@ -258,30 +260,30 @@ const [warmupError, setWarmupError] = useState(null);
             mime_type: file.type,
             size_bytes: file.size,
           }),
-        }
+        },
       );
 
       const saveData = await saveResponse.json();
-      
+
       if (!saveData.success) {
-        throw new Error('Failed to save media to database');
+        throw new Error("Failed to save media to database");
       }
 
-      console.log('✅ Media saved to database');
+      console.log("✅ Media saved to database");
 
       // Set media preview
       const previewUrl = URL.createObjectURL(file);
       setMediaPreview(previewUrl);
       setUploadedMediaId(mediaId);
       setSelectedMedia({ id: mediaId, type: file.type, name: file.name });
-      
+
       // Reload existing media list
       loadExistingMedia(account.wa_id);
-      
-      alert('✅ Media uploaded successfully!');
+
+      alert("✅ Media uploaded successfully!");
     } catch (err) {
-      console.error('❌ Upload error:', err);
-      alert('Failed to upload media: ' + err.message);
+      console.error("❌ Upload error:", err);
+      alert("Failed to upload media: " + err.message);
     } finally {
       setUploadingMedia(false);
     }
@@ -289,162 +291,162 @@ const [warmupError, setWarmupError] = useState(null);
 
   // ✅ NEW: Handle selecting media from MediaGallery
   const handleSelectMediaFromGallery = (media) => {
-    console.log('🖼️ Media selected from gallery:', media);
-    
-    setSelectedMedia({ 
-      id: media.media_id, 
-      type: media.type, 
+    console.log("🖼️ Media selected from gallery:", media);
+
+    setSelectedMedia({
+      id: media.media_id,
+      type: media.type,
       name: media.file_name,
       wmu_id: media.wmu_id,
       size_bytes: media.size_bytes,
-      uploaded_at: media.uploaded_at
+      uploaded_at: media.uploaded_at,
     });
     setUploadedMediaId(media.media_id);
-    
+
     // Can't preview WhatsApp media directly, but you can show info
     setMediaPreview(null);
-    
-    console.log('✅ Media selected:', media.file_name);
+
+    console.log("✅ Media selected:", media.file_name);
   };
 
   // Handle selecting existing media from dropdown (keep for backwards compatibility)
   const handleSelectExistingMediaItem = (media) => {
-    setSelectedMedia({ 
-      id: media.media_id, 
-      type: media.type, 
-      name: media.file_name 
+    setSelectedMedia({
+      id: media.media_id,
+      type: media.type,
+      name: media.file_name,
     });
     setUploadedMediaId(media.media_id);
-    
+
     // Try to show preview (you won't be able to show WhatsApp media directly)
     setMediaPreview(null); // Can't preview WhatsApp media IDs directly
-    
-    console.log('✅ Selected existing media:', media.file_name);
+
+    console.log("✅ Selected existing media:", media.file_name);
   };
 
   // Function to select existing media
   const handleSelectExistingMedia = async () => {
     try {
       if (!formData.account_id) {
-        alert('Please select a template first');
+        alert("Please select a template first");
         return;
       }
 
       // Fetch existing media
       const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/media/list?account_id=${formData.account_id}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/media/list?account_id=${formData.account_id}`,
       );
       const data = await res.json();
-      
+
       if (!data.success || !data.data || data.data.length === 0) {
-        alert('No media found. Please upload media first.');
+        alert("No media found. Please upload media first.");
         return;
       }
 
       // For now, use the latest media (you can create a modal later)
       const media = data.data[0];
-      setSelectedMedia({ 
-        id: media.media_id, 
-        type: media.type, 
-        name: media.file_name 
+      setSelectedMedia({
+        id: media.media_id,
+        type: media.type,
+        name: media.file_name,
       });
       setUploadedMediaId(media.media_id);
-      
+
       // Try to create a preview if it's an image
-      if (media.type && media.type.startsWith('image/')) {
+      if (media.type && media.type.startsWith("image/")) {
         // Note: You can't directly preview WhatsApp media IDs
         // This is just a placeholder
         setMediaPreview(null); // Or show a placeholder image
       }
-      
+
       alert(`✅ Selected media: ${media.file_name}`);
     } catch (err) {
-      console.error('❌ Fetch media error:', err);
-      alert('Failed to fetch media list');
+      console.error("❌ Fetch media error:", err);
+      alert("Failed to fetch media list");
     }
   };
 
   // Handle form input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setError("");
   };
 
   // Handle group selection
   const handleGroupSelect = (groupId) => {
-    setFormData(prev => ({ ...prev, group_id: groupId }));
-    const group = groups.find(g => g.group_id === groupId);
+    setFormData((prev) => ({ ...prev, group_id: groupId }));
+    const group = groups.find((g) => g.group_id === groupId);
     setSelectedGroup(group);
     setError("");
   };
 
   // Handle template selection
   const handleTemplateSelect = (wtId) => {
-    console.log('🎯 handleTemplateSelect called with wtId:', wtId);
-    
-    const template = templates.find(t => t.wt_id === wtId);
-    
-    console.log('📋 Found template:', template);
-    console.log('📋 Template account_id:', template?.account_id);
-    
+    console.log("🎯 handleTemplateSelect called with wtId:", wtId);
+
+    const template = templates.find((t) => t.wt_id === wtId);
+
+    console.log("📋 Found template:", template);
+    console.log("📋 Template account_id:", template?.account_id);
+
     if (!template) {
-      console.error('❌ Template not found for wtId:', wtId);
+      console.error("❌ Template not found for wtId:", wtId);
       return;
     }
-    
+
     // Update formData
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData((prev) => ({
+      ...prev,
       wt_id: wtId,
-      account_id: template.account_id
+      account_id: template.account_id,
     }));
-    
+
     // Update selectedTemplate - THIS IS CRUCIAL
     setSelectedTemplate(template);
-    
+
     // Reset media
     setSelectedMedia(null);
     setUploadedMediaId(null);
     setMediaPreview(null);
-    setMediaSelectionMode('upload');
+    setMediaSelectionMode("upload");
     setError("");
-    
-    console.log('✅ Template selected, account_id:', template.account_id);
-    
+
+    console.log("✅ Template selected, account_id:", template.account_id);
+
     // Load existing media IMMEDIATELY
     if (template.account_id) {
-      console.log('📡 Loading media for account:', template.account_id);
+      console.log("📡 Loading media for account:", template.account_id);
       loadExistingMedia(template.account_id);
     } else {
-      console.warn('⚠️ No account_id found in template');
+      console.warn("⚠️ No account_id found in template");
     }
   };
 
   // Load existing media from database
   const loadExistingMedia = async (accountId) => {
     try {
-      console.log('🔍 Loading existing media for account:', accountId);
+      console.log("🔍 Loading existing media for account:", accountId);
       setLoadingExistingMedia(true);
-      
+
       const url = `${import.meta.env.VITE_BACKEND_URL}/api/media/list?account_id=${accountId}`;
-      console.log('📡 Fetching from:', url);
-      
+      console.log("📡 Fetching from:", url);
+
       const res = await fetch(url);
       const data = await res.json();
-      
-      console.log('📦 Media API Response:', data);
-      
+
+      console.log("📦 Media API Response:", data);
+
       if (data.success && data.data) {
         setExistingMediaList(data.data);
-        console.log('✅ Loaded existing media count:', data.data.length);
-        console.log('📋 Media list:', data.data);
+        console.log("✅ Loaded existing media count:", data.data.length);
+        console.log("📋 Media list:", data.data);
       } else {
-        console.log('⚠️ No media data in response');
+        console.log("⚠️ No media data in response");
         setExistingMediaList([]);
       }
     } catch (err) {
-      console.error('❌ Failed to load existing media:', err);
+      console.error("❌ Failed to load existing media:", err);
       setExistingMediaList([]);
     } finally {
       setLoadingExistingMedia(false);
@@ -473,14 +475,16 @@ const [warmupError, setWarmupError] = useState(null);
           setError("Please select a template");
           return false;
         }
-        
+
         // Check if template requires media
         const templatePreview = getTemplatePreview();
         if (templatePreview?.hasMedia && !uploadedMediaId) {
-          setError(`Please upload or select ${templatePreview.mediaType} for this template`);
+          setError(
+            `Please upload or select ${templatePreview.mediaType} for this template`,
+          );
           return false;
         }
-        
+
         if (!formData.scheduled_at) {
           setError("Please select date and time");
           return false;
@@ -490,7 +494,7 @@ const [warmupError, setWarmupError] = useState(null);
           setError("Scheduled time must be in the future");
           return false;
         }
-        
+
         return true;
 
       default:
@@ -501,77 +505,90 @@ const [warmupError, setWarmupError] = useState(null);
   // Next step
   const handleNext = () => {
     if (validateStep()) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
       setError("");
     }
   };
 
   // Previous step
   const handleBack = () => {
-    setCurrentStep(prev => prev - 1);
+    setCurrentStep((prev) => prev - 1);
     setError("");
   };
 
   // Submit campaign
   // Submit campaign
-const handleSubmit = async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    // Convert IST to UTC before sending to backend
-    const utcScheduledAt = convertISTtoUTC(formData.scheduled_at);
+      // 🔄 STEP 1: Sync latest WhatsApp tier & quality
+      try {
+        console.log("🔄 Syncing WhatsApp account info...");
+        await syncWhatsappAccountInfo(user.id);
+        console.log("✅ Sync completed");
+      } catch (syncErr) {
+        console.warn("⚠️ Sync failed, proceeding anyway:", syncErr);
+        // Don't block campaign creation if sync fails
+      }
 
-    const payload = {
-      user_id: user.id,
-      campaign_name: formData.campaign_name,
-      description: formData.description,
-      group_id: formData.group_id,
-      wt_id: formData.wt_id,
-      account_id: selectedTemplate?.account_id,
-      scheduled_at: utcScheduledAt,
-      timezone: "Asia/Kolkata",
-      template_variables: formData.template_variables,
-      media_id: uploadedMediaId,
-    };
+      // 🔄 STEP 2
+      // Convert IST to UTC before sending to backend
+      const utcScheduledAt = convertISTtoUTC(formData.scheduled_at);
 
-    console.log("Local time (IST):", formData.scheduled_at);
-    console.log("Converted to UTC:", utcScheduledAt);
+      const payload = {
+        user_id: user.id,
+        campaign_name: formData.campaign_name,
+        description: formData.description,
+        group_id: formData.group_id,
+        wt_id: formData.wt_id,
+        account_id: selectedTemplate?.account_id,
+        scheduled_at: utcScheduledAt,
+        timezone: "Asia/Kolkata",
+        template_variables: formData.template_variables,
+        media_id: uploadedMediaId,
+      };
 
-    const res = await createCampaign(payload);
+      console.log("Local time (IST):", formData.scheduled_at);
+      console.log("Converted to UTC:", utcScheduledAt);
 
-    if (res.data.success) {
-      setSuccess(true);
-      setTimeout(() => {
-        navigate("/campaigns");
-      }, 2000);
-    }
-  } catch (err) {
-    // ✅ NEW: Check for warm-up/tier limit errors
-    const errorData = err.response?.data;
-    
-    const warmupErrors = [
-      'WARMUP_DAILY_LIMIT_EXCEEDED',
-      'WARMUP_STAGE_LIMIT_EXCEEDED',
-      'DAILY_TIER_LIMIT_EXCEEDED',
-      'TIER_DAILY_LIMIT_EXCEEDED',
-      'WARMUP_LIMIT_EXCEEDED'
-    ];
+      const res = await createCampaign(payload);
 
-    if (errorData && warmupErrors.includes(errorData.error)) {
-      // Show warmup error modal
-      setWarmupError(errorData);
+      if (res.data.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate("/campaigns");
+        }, 2000);
+      }
+    } catch (err) {
+      // ✅ NEW: Check for warm-up/tier limit errors
+      const errorData = err.response?.data;
+
+      const warmupErrors = [
+        "WARMUP_DAILY_LIMIT_EXCEEDED",
+        "WARMUP_STAGE_LIMIT_EXCEEDED",
+        "DAILY_TIER_LIMIT_EXCEEDED",
+        "TIER_DAILY_LIMIT_EXCEEDED",
+        "WARMUP_LIMIT_EXCEEDED",
+      ];
+
+      if (errorData && warmupErrors.includes(errorData.error)) {
+        // Show warmup error modal
+        setWarmupError(errorData);
+        setLoading(false);
+        return;
+      }
+
+      // Handle other errors normally
+      setError(
+        errorData?.error || errorData?.message || "Failed to create campaign",
+      );
+      console.error("Create campaign error:", err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Handle other errors normally
-    setError(errorData?.error || errorData?.message || "Failed to create campaign");
-    console.error("Create campaign error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Progress indicator
   const steps = [
@@ -594,7 +611,7 @@ const handleSubmit = async () => {
     // Get template preview URL (from template creation)
     const templateMediaUrl = preview.templatePreviewUrl
       ? `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-          preview.templatePreviewUrl
+          preview.templatePreviewUrl,
         )}&user_id=${user.id}`
       : null;
 
@@ -619,7 +636,7 @@ const handleSubmit = async () => {
                 <div className="p-6 text-gray-400 text-sm">
                   Failed to load template preview
                 </div>
-              ) : preview.mediaType === 'IMAGE' ? (
+              ) : preview.mediaType === "IMAGE" ? (
                 <img
                   src={templateMediaUrl}
                   alt="Template header"
@@ -630,7 +647,7 @@ const handleSubmit = async () => {
                     setIsMediaLoading(false);
                   }}
                 />
-              ) : preview.mediaType === 'VIDEO' ? (
+              ) : preview.mediaType === "VIDEO" ? (
                 <video
                   src={templateMediaUrl}
                   controls
@@ -671,7 +688,8 @@ const handleSubmit = async () => {
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-blue-900">
-            This is how the template was created. Below, you can select which media to actually send in this campaign.
+            This is how the template was created. Below, you can select which
+            media to actually send in this campaign.
           </p>
         </div>
       </div>
@@ -690,8 +708,12 @@ const handleSubmit = async () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Campaigns
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Campaign</h1>
-          <p className="text-gray-600 mt-2">Schedule WhatsApp messages to your contacts</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Create New Campaign
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Schedule WhatsApp messages to your contacts
+          </p>
         </div>
 
         {/* Progress Steps */}
@@ -709,25 +731,25 @@ const handleSubmit = async () => {
                     <div
                       className={`
                         w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all
-                        ${isCompleted ? 'bg-green-500 border-green-500' : ''}
-                        ${isActive ? 'bg-blue-500 border-blue-500' : ''}
-                        ${!isActive && !isCompleted ? 'bg-white border-gray-300' : ''}
+                        ${isCompleted ? "bg-green-500 border-green-500" : ""}
+                        ${isActive ? "bg-blue-500 border-blue-500" : ""}
+                        ${!isActive && !isCompleted ? "bg-white border-gray-300" : ""}
                       `}
                     >
                       {isCompleted ? (
                         <Check className="w-6 h-6 text-white" />
                       ) : (
                         <Icon
-                          className={`w-6 h-6 ${isActive ? 'text-white' : 'text-gray-400'}`}
+                          className={`w-6 h-6 ${isActive ? "text-white" : "text-gray-400"}`}
                         />
                       )}
                     </div>
                     <span
                       className={`
                         text-xs mt-2 font-medium text-center hidden sm:block
-                        ${isActive ? 'text-blue-600' : ''}
-                        ${isCompleted ? 'text-green-600' : ''}
-                        ${!isActive && !isCompleted ? 'text-gray-500' : ''}
+                        ${isActive ? "text-blue-600" : ""}
+                        ${isCompleted ? "text-green-600" : ""}
+                        ${!isActive && !isCompleted ? "text-gray-500" : ""}
                       `}
                     >
                       {step.title}
@@ -739,7 +761,7 @@ const handleSubmit = async () => {
                     <div
                       className={`
                         h-0.5 flex-1 mx-2 transition-colors
-                        ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-300'}
+                        ${currentStep > step.number ? "bg-green-500" : "bg-gray-300"}
                       `}
                     />
                   )}
@@ -768,7 +790,9 @@ const handleSubmit = async () => {
               <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-green-800 font-medium">Success!</p>
-                <p className="text-green-600 text-sm">Campaign created successfully. Redirecting...</p>
+                <p className="text-green-600 text-sm">
+                  Campaign created successfully. Redirecting...
+                </p>
               </div>
             </div>
           )}
@@ -794,7 +818,8 @@ const handleSubmit = async () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description <span className="text-gray-400">(optional)</span>
+                    Description{" "}
+                    <span className="text-gray-400">(optional)</span>
                   </label>
                   <textarea
                     name="description"
@@ -809,9 +834,12 @@ const handleSubmit = async () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-blue-900 text-sm font-medium">Quick Tip</p>
+                    <p className="text-blue-900 text-sm font-medium">
+                      Quick Tip
+                    </p>
                     <p className="text-blue-700 text-sm mt-1">
-                      Choose a descriptive name to easily identify this campaign later.
+                      Choose a descriptive name to easily identify this campaign
+                      later.
                     </p>
                   </div>
                 </div>
@@ -834,8 +862,12 @@ const handleSubmit = async () => {
                   ) : groups.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-xl">
                       <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 font-medium">No groups found</p>
-                      <p className="text-gray-500 text-sm mt-1">Create a group first to continue</p>
+                      <p className="text-gray-600 font-medium">
+                        No groups found
+                      </p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Create a group first to continue
+                      </p>
                       <button
                         onClick={() => navigate("/groups")}
                         className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -850,9 +882,10 @@ const handleSubmit = async () => {
                           key={group.group_id}
                           className={`
                             block p-4 border-2 rounded-xl cursor-pointer transition-all
-                            ${formData.group_id === group.group_id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                            ${
+                              formData.group_id === group.group_id
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
                             }
                           `}
                         >
@@ -866,9 +899,12 @@ const handleSubmit = async () => {
                               className="w-5 h-5 text-blue-600 focus:ring-blue-500"
                             />
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">{group.group_name}</p>
+                              <p className="font-medium text-gray-900">
+                                {group.group_name}
+                              </p>
                               <p className="text-sm text-gray-500">
-                                {group.contact_count} contact{group.contact_count !== 1 ? 's' : ''}
+                                {group.contact_count} contact
+                                {group.contact_count !== 1 ? "s" : ""}
                               </p>
                             </div>
                           </div>
@@ -888,11 +924,13 @@ const handleSubmit = async () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     WhatsApp Template <span className="text-red-500">*</span>
                   </label>
-                  
+
                   {loadingTemplates ? (
                     <div className="text-gray-500">Loading templates...</div>
                   ) : templates.length === 0 ? (
-                    <div className="text-gray-500">No approved templates found</div>
+                    <div className="text-gray-500">
+                      No approved templates found
+                    </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3">
                       {templates.map((template) => (
@@ -900,8 +938,8 @@ const handleSubmit = async () => {
                           key={template.wt_id}
                           className={`relative flex items-start p-4 border rounded-xl cursor-pointer transition-all ${
                             formData.wt_id === template.wt_id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-300 hover:border-gray-400'
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-300 hover:border-gray-400"
                           }`}
                         >
                           <input
@@ -916,10 +954,16 @@ const handleSubmit = async () => {
                           />
                           <div className="ml-3 flex-1">
                             <div className="flex items-center justify-between">
-                              <span className="font-medium text-gray-900">{template.name}</span>
-                              <span className="text-xs text-gray-500">{template.language}</span>
+                              <span className="font-medium text-gray-900">
+                                {template.name}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {template.language}
+                              </span>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">{template.category}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {template.category}
+                            </p>
                           </div>
                         </label>
                       ))}
@@ -937,7 +981,7 @@ const handleSubmit = async () => {
                       <ImageIcon className="w-5 h-5 text-yellow-600" />
                       Select Media to Send in Campaign
                     </h3>
-                    
+
                     {/* Selected Media Display */}
                     {selectedMedia && (
                       <div className="mb-4 p-4 bg-white rounded-lg border border-gray-300">
@@ -945,8 +989,12 @@ const handleSubmit = async () => {
                           <div className="flex items-center gap-3">
                             <CheckCircle className="w-5 h-5 text-green-600" />
                             <div>
-                              <p className="font-medium text-gray-900">{selectedMedia.name}</p>
-                              <p className="text-sm text-gray-600">Media ID: {selectedMedia.id}</p>
+                              <p className="font-medium text-gray-900">
+                                {selectedMedia.name}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Media ID: {selectedMedia.id}
+                              </p>
                             </div>
                           </div>
                           <button
@@ -961,14 +1009,14 @@ const handleSubmit = async () => {
                             <XCircle className="w-5 h-5" />
                           </button>
                         </div>
-                        
+
                         {/* Show preview if available */}
                         {mediaPreview && (
                           <div className="mt-3">
-                            <img 
-                              src={mediaPreview} 
-                              alt="Preview" 
-                              className="max-w-full h-32 object-contain rounded border border-gray-200" 
+                            <img
+                              src={mediaPreview}
+                              alt="Preview"
+                              className="max-w-full h-32 object-contain rounded border border-gray-200"
                             />
                           </div>
                         )}
@@ -985,44 +1033,60 @@ const handleSubmit = async () => {
                               type="radio"
                               name="mediaMode"
                               value="upload"
-                              checked={mediaSelectionMode === 'upload'}
-                              onChange={(e) => setMediaSelectionMode(e.target.value)}
+                              checked={mediaSelectionMode === "upload"}
+                              onChange={(e) =>
+                                setMediaSelectionMode(e.target.value)
+                              }
                               className="w-4 h-4 text-blue-600"
                             />
-                            <span className="text-sm font-medium text-gray-700">Upload New Media</span>
+                            <span className="text-sm font-medium text-gray-700">
+                              Upload New Media
+                            </span>
                           </label>
-                          
+
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="mediaMode"
                               value="existing"
-                              checked={mediaSelectionMode === 'existing'}
-                              onChange={(e) => setMediaSelectionMode(e.target.value)}
+                              checked={mediaSelectionMode === "existing"}
+                              onChange={(e) =>
+                                setMediaSelectionMode(e.target.value)
+                              }
                               className="w-4 h-4 text-blue-600"
                             />
-                            <span className="text-sm font-medium text-gray-700">Choose Existing Media</span>
+                            <span className="text-sm font-medium text-gray-700">
+                              Choose Existing Media
+                            </span>
                           </label>
                         </div>
 
                         {/* Upload New Media */}
-                        {mediaSelectionMode === 'upload' && (
+                        {mediaSelectionMode === "upload" && (
                           <div>
                             <label className="block w-full">
                               <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-yellow-500 transition-all cursor-pointer">
                                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                <p className="text-gray-700 font-medium">Click to Upload</p>
+                                <p className="text-gray-700 font-medium">
+                                  Click to Upload
+                                </p>
                                 <p className="text-sm text-gray-500 mt-1">
-                                  {getTemplatePreview().mediaType === 'IMAGE' && 'PNG, JPG (Max 5MB)'}
-                                  {getTemplatePreview().mediaType === 'VIDEO' && 'MP4 (Max 16MB)'}
-                                  {getTemplatePreview().mediaType === 'DOCUMENT' && 'PDF (Max 100MB)'}
+                                  {getTemplatePreview().mediaType === "IMAGE" &&
+                                    "PNG, JPG (Max 5MB)"}
+                                  {getTemplatePreview().mediaType === "VIDEO" &&
+                                    "MP4 (Max 16MB)"}
+                                  {getTemplatePreview().mediaType ===
+                                    "DOCUMENT" && "PDF (Max 100MB)"}
                                 </p>
                                 <input
                                   type="file"
                                   accept={
-                                    getTemplatePreview().mediaType === 'IMAGE' ? 'image/*' :
-                                    getTemplatePreview().mediaType === 'VIDEO' ? 'video/*' :
-                                    'application/pdf'
+                                    getTemplatePreview().mediaType === "IMAGE"
+                                      ? "image/*"
+                                      : getTemplatePreview().mediaType ===
+                                          "VIDEO"
+                                        ? "video/*"
+                                        : "application/pdf"
                                   }
                                   onChange={(e) => {
                                     if (e.target.files[0]) {
@@ -1038,17 +1102,19 @@ const handleSubmit = async () => {
                         )}
 
                         {/* ✅ NEW: Choose Existing Media with MediaGallery */}
-                        {mediaSelectionMode === 'existing' && (
+                        {mediaSelectionMode === "existing" && (
                           <div>
                             {loadingExistingMedia ? (
                               <div className="text-center py-4">
                                 <Loader className="w-6 h-6 animate-spin mx-auto text-yellow-600" />
-                                <p className="text-sm text-gray-600 mt-2">Loading media...</p>
+                                <p className="text-sm text-gray-600 mt-2">
+                                  Loading media...
+                                </p>
                               </div>
                             ) : (
                               <MediaGallery
                                 userId={user.id}
-                                accountId={formData.account_id}  // ✅ Pass account_id instead of user_id
+                                accountId={formData.account_id} // ✅ Pass account_id instead of user_id
                                 onSelect={handleSelectMediaFromGallery}
                                 selectedMediaId={uploadedMediaId}
                               />
@@ -1059,7 +1125,9 @@ const handleSubmit = async () => {
                         {uploadingMedia && (
                           <div className="mt-4 text-center">
                             <Loader className="w-6 h-6 text-yellow-600 animate-spin mx-auto" />
-                            <p className="text-sm text-gray-600 mt-2">Uploading media...</p>
+                            <p className="text-sm text-gray-600 mt-2">
+                              Uploading media...
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1075,7 +1143,9 @@ const handleSubmit = async () => {
                   <input
                     type="datetime-local"
                     value={formData.scheduled_at}
-                    onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, scheduled_at: e.target.value })
+                    }
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-2">
@@ -1089,7 +1159,9 @@ const handleSubmit = async () => {
             {currentStep === 4 && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Review Campaign</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Review Campaign
+                  </h3>
 
                   <div className="space-y-4">
                     {/* Campaign Name */}
@@ -1097,7 +1169,9 @@ const handleSubmit = async () => {
                       <FileText className="w-5 h-5 text-gray-600 mt-0.5" />
                       <div>
                         <p className="text-sm text-gray-600">Campaign Name</p>
-                        <p className="font-medium text-gray-900">{formData.campaign_name}</p>
+                        <p className="font-medium text-gray-900">
+                          {formData.campaign_name}
+                        </p>
                       </div>
                     </div>
 
@@ -1107,7 +1181,9 @@ const handleSubmit = async () => {
                         <Info className="w-5 h-5 text-gray-600 mt-0.5" />
                         <div>
                           <p className="text-sm text-gray-600">Description</p>
-                          <p className="font-medium text-gray-900">{formData.description}</p>
+                          <p className="font-medium text-gray-900">
+                            {formData.description}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1117,9 +1193,12 @@ const handleSubmit = async () => {
                       <Users className="w-5 h-5 text-gray-600 mt-0.5" />
                       <div>
                         <p className="text-sm text-gray-600">Contact Group</p>
-                        <p className="font-medium text-gray-900">{selectedGroup?.group_name}</p>
+                        <p className="font-medium text-gray-900">
+                          {selectedGroup?.group_name}
+                        </p>
                         <p className="text-sm text-gray-500">
-                          {selectedGroup?.contact_count} recipient{selectedGroup?.contact_count !== 1 ? 's' : ''}
+                          {selectedGroup?.contact_count} recipient
+                          {selectedGroup?.contact_count !== 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>
@@ -1129,9 +1208,12 @@ const handleSubmit = async () => {
                       <MessageSquare className="w-5 h-5 text-gray-600 mt-0.5" />
                       <div>
                         <p className="text-sm text-gray-600">Template</p>
-                        <p className="font-medium text-gray-900">{selectedTemplate?.name}</p>
+                        <p className="font-medium text-gray-900">
+                          {selectedTemplate?.name}
+                        </p>
                         <p className="text-sm text-gray-500">
-                          {selectedTemplate?.category} • {selectedTemplate?.language}
+                          {selectedTemplate?.category} •{" "}
+                          {selectedTemplate?.language}
                         </p>
                       </div>
                     </div>
@@ -1141,9 +1223,15 @@ const handleSubmit = async () => {
                       <div className="flex items-start gap-3">
                         <ImageIcon className="w-5 h-5 text-gray-600 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-600">Selected Media</p>
-                          <p className="font-medium text-gray-900">{selectedMedia?.name}</p>
-                          <p className="text-sm text-gray-500">Media ID: {selectedMedia?.id}</p>
+                          <p className="text-sm text-gray-600">
+                            Selected Media
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {selectedMedia?.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Media ID: {selectedMedia?.id}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1154,10 +1242,14 @@ const handleSubmit = async () => {
                       <div>
                         <p className="text-sm text-gray-600">Scheduled For</p>
                         <p className="font-medium text-gray-900">
-                          {new Date(formData.scheduled_at).toLocaleString('en-IN', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })} IST
+                          {new Date(formData.scheduled_at).toLocaleString(
+                            "en-IN",
+                            {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            },
+                          )}{" "}
+                          IST
                         </p>
                         <p className="text-sm text-gray-500">
                           (Will be sent in India Standard Time)
@@ -1170,9 +1262,12 @@ const handleSubmit = async () => {
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-green-900 text-sm font-medium">Ready to Schedule</p>
+                    <p className="text-green-900 text-sm font-medium">
+                      Ready to Schedule
+                    </p>
                     <p className="text-green-700 text-sm mt-1">
-                      Your campaign will be sent automatically at the scheduled time.
+                      Your campaign will be sent automatically at the scheduled
+                      time.
                     </p>
                   </div>
                 </div>
@@ -1223,11 +1318,11 @@ const handleSubmit = async () => {
         </div>
       </div>
       {warmupError && (
-          <WarmupErrorModal 
-            error={warmupError}
-            onClose={() => setWarmupError(null)}
-          />
-        )}
+        <WarmupErrorModal
+          error={warmupError}
+          onClose={() => setWarmupError(null)}
+        />
+      )}
     </div>
   );
 };
