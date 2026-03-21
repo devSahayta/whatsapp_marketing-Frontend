@@ -1,0 +1,347 @@
+/* styles/warmup-error-modal.css */
+
+.warmup-error-modal__backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.warmup-error-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.warmup-error-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.warmup-error-modal__icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+.warmup-error-modal__icon--warmup {
+  color: #f97316;
+}
+
+.warmup-error-modal__icon--alert {
+  color: #dc2626;
+}
+
+.warmup-error-modal__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.warmup-error-modal__close:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.warmup-error-modal__content {
+  padding: 1.5rem;
+}
+
+.warmup-error-modal__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.75rem;
+}
+
+.warmup-error-modal__message {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+  white-space: pre-line;
+}
+
+/* Stats Grid */
+.warmup-error-modal__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.warmup-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.warmup-stat__label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.warmup-stat__value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.warmup-stat__value--highlight {
+  color: #f97316;
+}
+
+/* Actions Info */
+.warmup-error-modal__actions-info {
+  margin-bottom: 1.5rem;
+}
+
+.warmup-error-modal__subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.warmup-error-modal__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.warmup-error-modal__list li {
+  padding-left: 1.5rem;
+  position: relative;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.warmup-error-modal__list li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+  color: #f97316;
+  font-weight: bold;
+}
+
+.warmup-error-modal__list li strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Warmup Stages */
+.warmup-error-modal__stages {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fef3c7;
+  border-radius: 12px;
+  border: 1px solid #fcd34d;
+}
+
+.warmup-stages-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.warmup-stage-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.warmup-stage-chip--current {
+  border-color: #f97316;
+  background: #fff7ed;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.warmup-stage-chip--completed {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.warmup-stage-chip--upcoming {
+  opacity: 0.6;
+}
+
+.warmup-stage-chip__number {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.warmup-stage-chip--current .warmup-stage-chip__number {
+  color: #f97316;
+}
+
+.warmup-stage-chip--completed .warmup-stage-chip__number {
+  color: #10b981;
+}
+
+.warmup-stage-chip__limit {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Suggestion */
+.warmup-error-modal__suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #eff6ff;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+  margin-bottom: 1.5rem;
+}
+
+.warmup-error-modal__suggestion svg {
+  flex-shrink: 0;
+  color: #3b82f6;
+}
+
+.warmup-error-modal__suggestion span {
+  font-size: 0.9375rem;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Footer */
+.warmup-error-modal__footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.warmup-error-modal__btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.warmup-error-modal__btn--secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.warmup-error-modal__btn--secondary:hover {
+  background: #e5e7eb;
+}
+
+.warmup-error-modal__btn--primary {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+
+.warmup-error-modal__btn--primary:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .warmup-error-modal {
+    max-height: 95vh;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .warmup-error-modal__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .warmup-error-modal__footer {
+    flex-direction: column;
+  }
+
+  .warmup-stages-list {
+    flex-direction: column;
+  }
+
+  .warmup-stage-chip {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
