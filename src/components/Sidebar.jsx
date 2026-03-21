@@ -4,9 +4,7 @@ import { NavLink } from "react-router-dom";
 import {
   Calendar,
   MessageSquare,
-  FileText,
   LayersIcon,
-  Library,
   BarChart3,
 } from "lucide-react";
 import "../styles/sidebar.css";
@@ -49,12 +47,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     },
     { name: "Groups", path: "/groups", icon: <Calendar size={18} /> },
     { name: "Templates", path: "/templates", icon: <LayersIcon size={18} /> },
-
-    {
-      name: "Create Template",
-      path: "/template/create",
-      icon: <FileText size={18} />,
-    },
 
     {
       name: "Campaigns",

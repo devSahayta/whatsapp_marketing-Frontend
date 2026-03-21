@@ -1,620 +1,773 @@
-// // src/pages/TemplateList.jsx
-
-// import React, { useEffect, useState } from "react";
-// import useAuthUser from "../hooks/useAuthUser";
-// import { fetchMetaTemplates } from "../api/templates";
-// import { deleteMetaTemplate } from "../api/templates";
-// import { useNavigate } from "react-router-dom";
-
-// // WhatsApp-style Preview Component
-// function TemplatePreview({ template, userId }) {
-//   const header = template.components.find((c) => c.type === "HEADER");
-//   const body = template.components.find((c) => c.type === "BODY");
-//   const buttons = template.components.find((c) => c.type === "BUTTONS");
-
-//   console.log({ hookUserId: userId, template });
-
-//   // Build proxy URL for header_handle media
-//   const mediaUrl = header?.example?.header_handle?.[0]
-//     ? `${
-//         import.meta.env.VITE_BACKEND_URL
-//       }/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-//         header.example.header_handle[0],
-//       )}&user_id=${userId}`
-//     : null;
-
-//   const [isMediaLoading, setIsMediaLoading] = useState(true);
-//   const [mediaError, setMediaError] = useState(false);
-
-//   const mediaType = header?.format?.toLowerCase();
-
-//   return (
-//     <div className="bg-gray-50 rounded-xl p-4 border shadow-sm w-full max-w-2xl mx-auto mt-4">
-//       <h3 className="font-semibold text-lg mb-2">Your template</h3>
-
-//       <div className="bg-[url('/wa-bg.png')] bg-cover bg-center rounded-xl p-4">
-//         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-//           {/* HEADER (IMG / VIDEO) */}
-//           {mediaUrl && (
-//             <div className="w-full max-h-80 bg-gray-100 flex items-center justify-center relative">
-//               {isMediaLoading && (
-//                 <div className="absolute inset-0 animate-pulse bg-gray-200 flex items-center justify-center">
-//                   <span className="text-gray-500 text-sm">Loading media…</span>
-//                 </div>
-//               )}
-
-//               {mediaError ? (
-//                 <div className="p-6 text-gray-400 text-sm">
-//                   Failed to load media
-//                 </div>
-//               ) : mediaType === "image" ? (
-//                 <img
-//                   src={mediaUrl}
-//                   alt="header"
-//                   className="max-w-96 max-h-64 object-contain"
-//                   onLoad={() => setIsMediaLoading(false)}
-//                   onError={() => setMediaError(true)}
-//                 />
-//               ) : mediaType === "video" ? (
-//                 <video
-//                   src={mediaUrl}
-//                   controls
-//                   className="w-full"
-//                   onLoadedData={() => setIsMediaLoading(false)}
-//                   onError={() => setMediaError(true)}
-//                 />
-//               ) : (
-//                 <div className="p-6 text-gray-500">Unsupported header type</div>
-//               )}
-//             </div>
-//           )}
-
-//           {/* BODY */}
-//           <div className="p-4 whitespace-pre-wrap leading-relaxed text-gray-800">
-//             {(() => {
-//               const templateText = body?.text || "";
-//               const exampleValues = body?.example?.body_text?.[0] || [];
-
-//               let parts = [];
-
-//               // Handle positional variables like {{1}}
-//               let filled = templateText.replace(
-//                 /\{\{(\d+)\}\}/g,
-//                 (match, index) => {
-//                   const value = exampleValues[index - 1] || match;
-//                   return `%%${value}%%`; // mark for bold
-//                 },
-//               );
-
-//               // Handle named variables like {{guest}}
-//               filled = filled.replace(/\{\{(\w+)\}\}/g, (match, name) => {
-//                 const idx = exampleValues.findIndex(
-//                   (v) => v.toLowerCase() === name.toLowerCase(),
-//                 );
-//                 const value = idx !== -1 ? exampleValues[idx] : match;
-//                 return `%%${value}%%`;
-//               });
-
-//               // Split bold markers into parts
-//               filled.split(/(%%.*?%%)/).forEach((chunk, i) => {
-//                 if (chunk.startsWith("%%") && chunk.endsWith("%%")) {
-//                   const text = chunk.replace(/%%/g, "");
-//                   parts.push(
-//                     <strong key={i} className="font-semibold">
-//                       {text}
-//                     </strong>,
-//                   );
-//                 } else {
-//                   parts.push(<span key={i}>{chunk}</span>);
-//                 }
-//               });
-
-//               return parts;
-//             })()}
-//           </div>
-
-//           {/* BUTTONS */}
-//           {buttons?.buttons && (
-//             <div className="border-t">
-//               {buttons.buttons.map((btn, i) => (
-//                 <button
-//                   key={i}
-//                   className="w-full text-blue-600 py-3 flex items-center justify-center hover:bg-blue-50 transition"
-//                 >
-//                   ➜ {btn.text}
-//                 </button>
-//               ))}
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default function TemplateList() {
-//   const { userId } = useAuthUser();
-//   const navigate = useNavigate();
-//   const [templates, setTemplates] = useState([]);
-//   const [expanded, setExpanded] = useState(null);
-//   const [loading, setLoading] = useState(true);
-
-//   // Fetch templates from backend
-//   const loadTemplates = async () => {
-//     try {
-//       setLoading(true);
-//       const res = await fetchMetaTemplates(userId);
-//       setTemplates(res.data.templates || []);
-
-//       console.log({ templateData: res.data.templates });
-//     } catch (err) {
-//       console.error("Error loading templates:", err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     if (userId) loadTemplates();
-//   }, [userId]);
-
-//   // Delete handler for template
-//   const handleDelete = async (tpl) => {
-//     if (!confirm(`Are you sure you want to delete template "${tpl.name}"?`))
-//       return;
-
-//     try {
-//       await deleteMetaTemplate(tpl.id, tpl.name, userId);
-//       alert("Template deleted");
-//       loadTemplates();
-//     } catch (err) {
-//       alert("Delete failed: " + (err.response?.data?.error || err.message));
-//     }
-//   };
-
-//   return (
-//     <div className="p-6">
-//       <h2 className="text-xl sm:text-3xl uppercase font-inter text-center font-bold mt-4 mb-8">
-//         WhatsApp Templates
-//       </h2>
-
-//       {/* Loading State */}
-//       {loading && (
-//         <div className="text-center text-gray-600 py-10">
-//           <div className="animate-pulse text-lg">Loading templates…</div>
-//         </div>
-//       )}
-
-//       {/* Empty State */}
-//       {!loading && templates.length === 0 && (
-//         <div className="text-center text-gray-500 py-10">
-//           No templates found.
-//         </div>
-//       )}
-
-//       {/* Template Table */}
-//       <div className="overflow-x-auto">
-//         <table className="w-full border-collapse min-w-[600px]">
-//           <thead>
-//             <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-600">
-//               <th className="p-3">Template Name</th>
-//               <th className="p-3">Category</th>
-//               <th className="p-3">Language</th>
-//               <th className="p-3">Status</th>
-//               <th className="p-3 text-center">Actions</th>
-//             </tr>
-//           </thead>
-
-//           <tbody>
-//             {templates.map((tpl) => (
-//               <React.Fragment key={tpl.id}>
-//                 <tr className="border-b hover:bg-gray-50">
-//                   <td className="p-3">{tpl.name}</td>
-//                   <td className="p-3">{tpl.category}</td>
-//                   <td className="p-3">{tpl.language}</td>
-
-//                   <td className="p-3">
-//                     <span
-//                       className={`px-3 py-1 text-xs rounded-full ${
-//                         tpl.status === "APPROVED"
-//                           ? "bg-green-100 text-green-600"
-//                           : "bg-yellow-100 text-yellow-700"
-//                       }`}
-//                     >
-//                       {tpl.status}
-//                     </span>
-//                   </td>
-
-//                   {/* ACTION BUTTONS */}
-//                   <td className="p-3 text-center flex gap-2 justify-center">
-//                     <button
-//                       className="px-3 py-1 text-sm bg-blue-400 text-white rounded hover:bg-blue-500"
-//                       onClick={() =>
-//                         setExpanded(expanded === tpl.id ? null : tpl.id)
-//                       }
-//                     >
-//                       {expanded === tpl.id ? "Hide" : "View"}
-//                     </button>
-
-//                     <button
-//                       className={`px-3 py-1 text-sm bg-green-400 text-white rounded hover:bg-green-500 ${
-//                         tpl.status === "APPROVED" ? "inline-block" : "hidden"
-//                       } `}
-//                       onClick={() => navigate(`/templates/send/${tpl.id}`)}
-//                       disabled={tpl.status === "APPROVED" ? false : true}
-//                     >
-//                       Send
-//                     </button>
-
-//                     <button
-//                       className="px-3 py-1 text-sm bg-red-400 text-white rounded hover:bg-red-500"
-//                       // onClick={() => deleteTemplate(tpl.id)}
-//                       onClick={() => handleDelete(tpl)}
-//                     >
-//                       Delete
-//                     </button>
-//                   </td>
-//                 </tr>
-
-//                 {/* Expanded Preview Row */}
-//                 {expanded === tpl.id && (
-//                   <tr>
-//                     <td colSpan="5">
-//                       <TemplatePreview template={tpl} userId={userId} />
-//                     </td>
-//                   </tr>
-//                 )}
-//               </React.Fragment>
-//             ))}
-//           </tbody>
-//         </table>
-//       </div>
-//     </div>
-//   );
-// }
-
 import React, { useEffect, useRef, useState } from "react";
-import useAuthUser from "../hooks/useAuthUser";
-import { fetchMetaTemplates, deleteMetaTemplate } from "../api/templates";
 import { useNavigate } from "react-router-dom";
-import { MoreVertical, Eye, Send, Trash2 } from "lucide-react";
-import { dismissToast, showLoading, showSuccess } from "../utils/toast";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  Image as ImageIcon,
+  Languages,
+  LayoutTemplate,
+  MessageSquareText,
+  MoreVertical,
+  Plus,
+  Send,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
+import useAuthUser from "../hooks/useAuthUser";
+import { deleteMetaTemplate, fetchMetaTemplates } from "../api/templates";
+import {
+  dismissToast,
+  showError,
+  showLoading,
+  showSuccess,
+} from "../utils/toast";
 
-/* ================================
-   WhatsApp-style Preview Component
-================================ */
-function TemplatePreview({ template, userId }) {
-  const header = template.components.find((c) => c.type === "HEADER");
-  const body = template.components.find((c) => c.type === "BODY");
-  const buttons = template.components.find((c) => c.type === "BUTTONS");
+const STATUS_STYLES = {
+  APPROVED: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  PENDING: "bg-amber-100 text-amber-700 border-amber-200",
+  REJECTED: "bg-rose-100 text-rose-700 border-rose-200",
+  PAUSED: "bg-slate-100 text-slate-700 border-slate-200",
+};
 
-  const mediaUrl = header?.example?.header_handle?.[0]
-    ? `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-        header.example.header_handle[0],
-      )}&user_id=${userId}`
-    : null;
+const getComponent = (template, type) =>
+  template?.components?.find((component) => component.type === type);
+
+const getBodyText = (template) => getComponent(template, "BODY")?.text || "";
+
+const getHeaderComponent = (template) => getComponent(template, "HEADER");
+
+const getButtons = (template) =>
+  getComponent(template, "BUTTONS")?.buttons || [];
+
+const getHeaderMediaUrl = (template, userId) => {
+  const header = getHeaderComponent(template);
+  const mediaSource = header?.example?.header_handle?.[0];
+
+  if (!mediaSource || !userId) return null;
+
+  return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(
+    mediaSource,
+  )}&user_id=${userId}`;
+};
+
+const formatTemplateText = (text = "", values = []) => {
+  if (!text) return "No body content";
+
+  const positionalValues = Array.isArray(values) ? values : [];
+
+  return text.replace(/\{\{(\d+)\}\}/g, (match, index) => {
+    return positionalValues[Number(index) - 1] || match;
+  });
+};
+
+function TemplatePhonePreview({ template, userId }) {
+  const header = getHeaderComponent(template);
+  const body = getComponent(template, "BODY");
+  const footer = getComponent(template, "FOOTER");
+  const buttons = getButtons(template);
 
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
+
+  const mediaUrl = getHeaderMediaUrl(template, userId);
   const mediaType = header?.format?.toLowerCase();
+  const headerText = header?.text;
+  const bodyText = formatTemplateText(
+    body?.text,
+    body?.example?.body_text?.[0] || [],
+  );
+
+  useEffect(() => {
+    setIsMediaLoading(true);
+    setMediaError(false);
+  }, [template?.id]);
 
   return (
-    <div className="w-full max-w-3xl mx-auto my-8 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/40 shadow-xl p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        Template Preview
-      </h3>
+    <div className="rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
+      <div className="overflow-hidden rounded-[1.6rem] bg-[#e8f5e9]">
+        <div className="flex items-center justify-between bg-[#103529] px-4 py-3 text-white">
+          <div>
+            <p className="text-sm font-semibold">WhatsApp preview</p>
+            <p className="text-xs text-white/70">Business template</p>
+          </div>
+          <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+        </div>
 
-      <div className="bg-[url('/wa-bg.png')] bg-cover bg-center rounded-2xl p-5">
-        <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-          {/* HEADER */}
-          {mediaUrl && (
-            <div className="relative bg-gray-100 flex justify-center items-center max-h-72">
-              {isMediaLoading && (
-                <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center text-sm text-gray-500">
-                  Loading media…
-                </div>
+        <div
+          className="min-h-[28rem] space-y-3 bg-cover bg-center p-4"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(235,252,240,0.94), rgba(235,252,240,0.94)), url('/wa-bg.png')",
+          }}
+        >
+          <div className="ml-auto max-w-[92%] overflow-hidden rounded-[1.4rem] rounded-tr-md bg-white shadow-lg">
+            {mediaUrl && (
+              <div className="relative min-h-40 bg-slate-100">
+                {isMediaLoading && !mediaError && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+                    Loading media...
+                  </div>
+                )}
+
+                {mediaError ? (
+                  <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
+                    Media preview unavailable
+                  </div>
+                ) : mediaType === "image" ? (
+                  <img
+                    src={mediaUrl}
+                    alt={template.name}
+                    className="max-h-72 w-full object-cover"
+                    onLoad={() => setIsMediaLoading(false)}
+                    onError={() => {
+                      setIsMediaLoading(false);
+                      setMediaError(true);
+                    }}
+                  />
+                ) : mediaType === "video" ? (
+                  <video
+                    src={mediaUrl}
+                    controls
+                    className="max-h-72 w-full bg-black"
+                    onLoadedData={() => setIsMediaLoading(false)}
+                    onError={() => {
+                      setIsMediaLoading(false);
+                      setMediaError(true);
+                    }}
+                  />
+                ) : (
+                  <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
+                    {header?.format || "Media"} header attached
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-3 px-4 py-4 text-[15px] leading-6 text-slate-800">
+              {headerText && (
+                <p className="text-sm font-semibold text-slate-900">
+                  {headerText}
+                </p>
               )}
 
-              {mediaError ? (
-                <div className="p-6 text-gray-400 text-sm">
-                  Failed to load media
+              <p className="whitespace-pre-wrap">{bodyText}</p>
+
+              {footer?.text && (
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
+                  {footer.text}
+                </p>
+              )}
+
+              <p className="text-right text-[11px] text-slate-400">12:07 PM</p>
+            </div>
+
+            {buttons.length > 0 && (
+              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2">
+                <div className="space-y-2">
+                  {buttons.map((button, index) => (
+                    <button
+                      key={`${button.text}-${index}`}
+                      type="button"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-sky-700"
+                    >
+                      {button.type === "PHONE_NUMBER" ||
+                      button.type === "URL" ? (
+                        <ArrowRight className="h-4 w-4" />
+                      ) : (
+                        <MessageSquareText className="h-4 w-4" />
+                      )}
+                      {button.text}
+                    </button>
+                  ))}
                 </div>
-              ) : mediaType === "image" ? (
-                <img
-                  src={mediaUrl}
-                  alt="header"
-                  className="max-h-64 object-contain"
-                  onLoad={() => setIsMediaLoading(false)}
-                  onError={() => setMediaError(true)}
-                />
-              ) : mediaType === "video" ? (
-                <video
-                  src={mediaUrl}
-                  controls
-                  className="w-full"
-                  onLoadedData={() => setIsMediaLoading(false)}
-                  onError={() => setMediaError(true)}
-                />
-              ) : null}
-            </div>
-          )}
-
-          {/* BODY */}
-          <div className="p-4 text-gray-800 leading-relaxed whitespace-pre-wrap">
-            {(() => {
-              const templateText = body?.text || "";
-              const exampleValues = body?.example?.body_text?.[0] || [];
-
-              let filled = templateText.replace(
-                /\{\{(\d+)\}\}/g,
-                (match, index) => `%%${exampleValues[index - 1] || match}%%`,
-              );
-
-              filled = filled.replace(/\{\{(\w+)\}\}/g, (match, name) => {
-                const value =
-                  exampleValues.find(
-                    (v) => v.toLowerCase() === name.toLowerCase(),
-                  ) || match;
-                return `%%${value}%%`;
-              });
-
-              return filled.split(/(%%.*?%%)/).map((chunk, i) =>
-                chunk.startsWith("%%") ? (
-                  <strong key={i} className="font-semibold">
-                    {chunk.replace(/%%/g, "")}
-                  </strong>
-                ) : (
-                  <span key={i}>{chunk}</span>
-                ),
-              );
-            })()}
+              </div>
+            )}
           </div>
-
-          {/* BUTTONS */}
-          {buttons?.buttons && (
-            <div className="border-t">
-              {buttons.buttons.map((btn, i) => (
-                <button
-                  key={i}
-                  className="w-full py-3 text-indigo-600 font-medium hover:bg-indigo-50 transition"
-                >
-                  ➜ {btn.text}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* ================================
-   Template List Page
-================================ */
+function PreviewDrawer({ template, userId, onClose, onSend }) {
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [onClose]);
+
+  const buttons = getButtons(template);
+  const header = getHeaderComponent(template);
+  const body = getComponent(template, "BODY");
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-label="Close preview"
+      />
+
+      <aside className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l border-white/20 bg-gradient-to-b from-slate-50 via-white to-slate-100 shadow-2xl">
+        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+          <div className="flex items-start justify-between gap-4 px-6 py-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">
+                Template Preview
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                {template.name}
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    STATUS_STYLES[template.status] ||
+                    "border-slate-200 bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {template.status}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                  {template.category || "Uncategorized"}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                  {template.language || "Unknown language"}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+              aria-label="Close preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <TemplatePhonePreview template={template} userId={userId} />
+
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Template Details
+              </h3>
+              <div className="mt-4 space-y-3 text-sm text-slate-600">
+                <div className="flex items-center justify-between gap-3">
+                  <span>Name</span>
+                  <span className="font-medium text-slate-900">
+                    {template.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Category</span>
+                  <span className="font-medium text-slate-900">
+                    {template.category || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Language</span>
+                  <span className="font-medium text-slate-900">
+                    {template.language || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Format</span>
+                  <span className="font-medium text-slate-900">
+                    {template.parameter_format || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Header</span>
+                  <span className="font-medium uppercase text-slate-900">
+                    {header?.format || header?.type || "None"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Buttons</span>
+                  <span className="font-medium text-slate-900">
+                    {buttons.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Body Content
+              </h3>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                {body?.text || "No body content"}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Quick Actions
+              </h3>
+              <div className="mt-4 space-y-3">
+                {template.status === "APPROVED" && (
+                  <button
+                    type="button"
+                    onClick={() => onSend(template.id)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Template
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function TemplateCard({
+  template,
+  isMenuOpen,
+  onMenuToggle,
+  onPreview,
+  onSend,
+  onDelete,
+  attachMenuRef,
+}) {
+  const header = getHeaderComponent(template);
+  const buttons = getButtons(template);
+  const bodyText = getBodyText(template);
+  const previewText =
+    bodyText.length > 120 ? `${bodyText.slice(0, 120)}...` : bodyText;
+
+  return (
+    <article className="group rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                STATUS_STYLES[template.status] ||
+                "border-slate-200 bg-slate-100 text-slate-700"
+              }`}
+            >
+              {template.status}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              {template.category || "Uncategorized"}
+            </span>
+          </div>
+
+          <h3 className="mt-4 truncate text-xl font-semibold text-slate-900">
+            {template.name}
+          </h3>
+          <p className="mt-2 min-h-[3rem] text-sm leading-6 text-slate-600">
+            {previewText || "No body content added to this template yet."}
+          </p>
+        </div>
+
+        {/* <div
+          className="relative shrink-0"
+          ref={isMenuOpen ? attachMenuRef : null}
+        >
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onMenuToggle();
+            }}
+            className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+            aria-label="Template actions"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <button
+                type="button"
+                onClick={onPreview}
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
+              >
+                <Eye className="h-4 w-4" />
+                Preview
+              </button>
+
+              {template.status === "APPROVED" && (
+                <button
+                  type="button"
+                  onClick={() => onSend(template.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-sky-700 transition hover:bg-sky-50"
+                >
+                  <Send className="h-4 w-4" />
+                  Send
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => onDelete(template)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-rose-700 transition hover:bg-rose-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div> */}
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <Languages className="h-4 w-4" />
+            Language
+          </div>
+          <p className="mt-2 text-sm font-medium text-slate-900">
+            {template.language || "-"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {header?.format === "IMAGE" ? (
+              <ImageIcon className="h-4 w-4" />
+            ) : header?.format === "VIDEO" ? (
+              <Video className="h-4 w-4" />
+            ) : (
+              <LayoutTemplate className="h-4 w-4" />
+            )}
+            Header
+          </div>
+          <p className="mt-2 text-sm font-medium text-slate-900">
+            {header?.format || "None"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <MessageSquareText className="h-4 w-4" />
+            Buttons
+          </div>
+          <p className="mt-2 text-sm font-medium text-slate-900">
+            {buttons.length > 0 ? `${buttons.length} attached` : "No buttons"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onPreview}
+          className="flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <Eye className="h-4 w-4" />
+          Preview
+        </button>
+
+        {template.status === "APPROVED" && (
+          <button
+            type="button"
+            onClick={() => onSend(template.id)}
+            className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onDelete(template)}
+          className="flex items-center gap-2 rounded-2xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </button>
+      </div>
+    </article>
+  );
+}
+
 export default function TemplateList() {
   const { userId } = useAuthUser();
   const navigate = useNavigate();
 
   const [templates, setTemplates] = useState([]);
-  const [expanded, setExpanded] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Popover menu state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+
   const menuRef = useRef(null);
 
   const loadTemplates = async () => {
     try {
       setLoading(true);
       const res = await fetchMetaTemplates(userId);
-      setTemplates(res.data.templates || []);
-    } catch (err) {
-      console.error(err);
+      setTemplates(res?.data?.templates || []);
+    } catch (error) {
+      console.error(error);
+      showError("Failed to load templates");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (userId) loadTemplates();
+    if (userId) {
+      loadTemplates();
+    }
   }, [userId]);
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenuId(null);
       }
     };
 
-    if (openMenuId) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    if (!openMenuId) return undefined;
+
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openMenuId]);
 
-  const handleDelete = async (tpl) => {
-    if (!confirm(`Delete template "${tpl.name}"?`)) return;
+  const handleDelete = async (template) => {
+    if (!window.confirm(`Delete template "${template.name}"?`)) return;
+
     const toastId = showLoading("Deleting template...");
 
-    await deleteMetaTemplate(tpl.id, tpl.name, userId);
+    try {
+      await deleteMetaTemplate(template.id, template.name, userId);
+      dismissToast(toastId);
+      showSuccess("Template deleted");
 
-    dismissToast(toastId);
-    showSuccess("Template deleted");
-    loadTemplates();
+      if (selectedTemplate?.id === template.id) {
+        setSelectedTemplate(null);
+      }
+
+      loadTemplates();
+    } catch (error) {
+      dismissToast(toastId);
+      console.error(error);
+      showError("Failed to delete template");
+    }
   };
 
+  const approvedTemplates = templates.filter(
+    (template) => template.status === "APPROVED",
+  ).length;
+  const pendingTemplates = templates.filter(
+    (template) => template.status === "PENDING",
+  ).length;
+
+  const filteredTemplates = templates.filter((template) => {
+    const query = search.trim().toLowerCase();
+    const bodyText = getBodyText(template).toLowerCase();
+    const matchesSearch =
+      !query ||
+      template.name?.toLowerCase().includes(query) ||
+      template.category?.toLowerCase().includes(query) ||
+      template.language?.toLowerCase().includes(query) ||
+      bodyText.includes(query);
+    const matchesStatus =
+      statusFilter === "ALL" ? true : template.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h2 className="text-3xl font-semibold tracking-wider uppercase text-center mb-10">
-        WhatsApp Templates
-      </h2>
+    <>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.22),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(134,239,172,0.22),_transparent_32%),linear-gradient(180deg,_#f8fbff_0%,_#f4f7fb_100%)] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-8">
+          <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div className="grid gap-8 px-6 py-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)] lg:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sky-600">
+                  WhatsApp Templates
+                </p>
+                <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-slate-900">
+                  Manage, preview, and send your approved Meta templates.
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                  This view is rebuilt around template discovery. Users can scan
+                  status quickly, open a right-side preview drawer, and start
+                  template creation directly from this page.
+                </p>
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex justify-center py-16 text-gray-600 animate-pulse">
-          Loading templates…
-        </div>
-      )}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/template/create")}
+                    className="flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Template
+                  </button>
 
-      {/* Empty */}
-      {!loading && templates.length === 0 && (
-        <div className="text-center py-20 text-gray-500">
-          No templates found
-        </div>
-      )}
+                  <button
+                    type="button"
+                    onClick={loadTemplates}
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Refresh List
+                  </button>
+                </div>
+              </div>
 
-      {/* Table */}
-      {!loading && templates.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-lg">
-          <table className="min-w-[700px] w-full">
-            <thead>
-              <tr className="bg-white text-xs uppercase tracking-wide text-gray-600">
-                <th className="p-4">Name</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Language</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
+              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-[1.75rem] bg-slate-900 p-5 text-white shadow-lg">
+                  <p className="text-sm text-white">Total templates</p>
+                  <p className="mt-3 text-4xl font-semibold text-white">
+                    {templates.length}
+                  </p>
+                </div>
+                <div className="rounded-[1.75rem] bg-emerald-50 p-5 ring-1 ring-emerald-100">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <p className="text-sm font-medium text-emerald-700">
+                      Approved
+                    </p>
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold text-slate-900">
+                    {approvedTemplates}
+                  </p>
+                </div>
+                <div className="rounded-[1.75rem] bg-amber-50 p-5 ring-1 ring-amber-100">
+                  <div className="flex items-center gap-3">
+                    <LayoutTemplate className="h-5 w-5 text-amber-600" />
+                    <p className="text-sm font-medium text-amber-700">
+                      Pending review
+                    </p>
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold text-slate-900">
+                    {pendingTemplates}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
 
-            <tbody>
-              {templates.map((tpl) => (
-                <React.Fragment key={tpl.id}>
-                  <tr className="border-t text-center hover:bg-white/60 transition">
-                    <td className="p-4 font-medium">{tpl.name}</td>
-                    <td className="p-4 text-sm">{tpl.category}</td>
-                    <td className="p-4 text-sm">{tpl.language}</td>
+          <section className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-[0_15px_40px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Template Library
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Search by name, body copy, category, or language.
+                </p>
+              </div>
 
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          tpl.status === "APPROVED"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {tpl.status}
-                      </span>
-                    </td>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search templates"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100 sm:min-w-72"
+                />
 
-                    <td className="p-4 text-center">
-                      <div
-                        className="relative inline-block"
-                        ref={openMenuId === tpl.id ? menuRef : null}
-                      >
-                        {/* Trigger */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(
-                              openMenuId === tpl.id ? null : tpl.id,
-                            );
-                          }}
-                          className="p-2 rounded-lg hover:bg-gray-100 transition"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical size={18} />
-                        </button>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="ALL">All statuses</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="PAUSED">Paused</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
-                        {/* Popover */}
-                        {openMenuId === tpl.id && (
-                          <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
-                            {/* Preview */}
-                            <button
-                              onClick={() => {
-                                setExpanded(
-                                  expanded === tpl.id ? null : tpl.id,
-                                );
-                                setOpenMenuId(null);
-                              }}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <Eye size={16} />
-                              {expanded === tpl.id ? "Hide Preview" : "Preview"}
-                            </button>
+          {loading && (
+            <div className="rounded-[2rem] border border-white/70 bg-white/90 px-6 py-16 text-center text-slate-500 shadow-sm">
+              Loading templates...
+            </div>
+          )}
 
-                            {/* Send (Approved only) */}
-                            {tpl.status === "APPROVED" && (
-                              <button
-                                onClick={() => {
-                                  navigate(`/templates/send/${tpl.id}`);
-                                  setOpenMenuId(null);
-                                }}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50"
-                              >
-                                <Send size={16} />
-                                Send
-                              </button>
-                            )}
+          {!loading && filteredTemplates.length === 0 && (
+            <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/80 px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto max-w-md">
+                <h3 className="text-xl font-semibold text-slate-900">
+                  No templates match this view
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-500">
+                  Try a different search or status filter. If you have not
+                  created any templates yet, start from the create action above.
+                </p>
+              </div>
+            </div>
+          )}
 
-                            {/* Delete */}
-                            <button
-                              onClick={() => {
-                                handleDelete(tpl);
-                                setOpenMenuId(null);
-                              }}
-                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 size={16} />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* <td className="p-4">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          className="px-3 py-1.5 text-xs rounded-lg bg-indigo-500 text-white hover:bg-indigo-600"
-                          onClick={() =>
-                            setExpanded(expanded === tpl.id ? null : tpl.id)
-                          }
-                        >
-                          {expanded === tpl.id ? "Hide" : "Preview"}
-                        </button>
-
-                        {tpl.status === "APPROVED" && (
-                          <button
-                            className="px-3 py-1.5 text-xs rounded-lg bg-emerald-500 text-white hover:bg-emerald-600"
-                            onClick={() =>
-                              navigate(`/templates/send/${tpl.id}`)
-                            }
-                          >
-                            Send
-                          </button>
-                        )}
-
-                        <button
-                          className="px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white hover:bg-red-600"
-                          onClick={() => handleDelete(tpl)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td> */}
-                  </tr>
-
-                  {expanded === tpl.id && (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="bg-gradient-to-r from-pink-50 to-violet-50"
-                      >
-                        <TemplatePreview template={tpl} userId={userId} />
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+          {!loading && filteredTemplates.length > 0 && (
+            <section className="grid gap-5 xl:grid-cols-2">
+              {filteredTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  isMenuOpen={openMenuId === template.id}
+                  attachMenuRef={menuRef}
+                  onMenuToggle={() =>
+                    setOpenMenuId((current) =>
+                      current === template.id ? null : template.id,
+                    )
+                  }
+                  onPreview={() => {
+                    setSelectedTemplate(template);
+                    setOpenMenuId(null);
+                  }}
+                  onSend={(templateId) => {
+                    setOpenMenuId(null);
+                    navigate(`/templates/send/${templateId}`);
+                  }}
+                  onDelete={handleDelete}
+                />
               ))}
-            </tbody>
-          </table>
+            </section>
+          )}
         </div>
+      </div>
+
+      {selectedTemplate && (
+        <PreviewDrawer
+          template={selectedTemplate}
+          userId={userId}
+          onClose={() => setSelectedTemplate(null)}
+          onSend={(templateId) => navigate(`/templates/send/${templateId}`)}
+        />
       )}
-    </div>
+    </>
   );
 }
