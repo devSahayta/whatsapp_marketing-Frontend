@@ -66,19 +66,22 @@ const Campaigns = () => {
 
     if (searchTerm) {
       filtered = filtered.filter((campaign) =>
-        campaign.campaign_name.toLowerCase().includes(searchTerm.toLowerCase())
+        campaign.campaign_name.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((campaign) => campaign.status === statusFilter);
+      filtered = filtered.filter(
+        (campaign) => campaign.status === statusFilter,
+      );
     }
 
     setFilteredCampaigns(filtered);
   };
 
   const handleDelete = async (campaignId) => {
-    if (!window.confirm("Are you sure you want to delete this campaign?")) return;
+    if (!window.confirm("Are you sure you want to delete this campaign?"))
+      return;
 
     try {
       await deleteCampaign(campaignId, user.id);
@@ -90,7 +93,8 @@ const Campaigns = () => {
   };
 
   const handleCancel = async (campaignId) => {
-    if (!window.confirm("Are you sure you want to cancel this campaign?")) return;
+    if (!window.confirm("Are you sure you want to cancel this campaign?"))
+      return;
 
     try {
       await cancelCampaign(campaignId, user.id);
@@ -111,23 +115,56 @@ const Campaigns = () => {
   };
 
   // Calculate total recipients from all campaigns
-  const totalRecipients = campaigns.reduce((sum, c) => sum + (c.total_recipients || 0), 0);
-  const totalSent = campaigns.reduce((sum, c) => sum + (c.messages_sent || 0), 0);
+  const totalRecipients = campaigns.reduce(
+    (sum, c) => sum + (c.total_recipients || 0),
+    0,
+  );
+  const totalSent = campaigns.reduce(
+    (sum, c) => sum + (c.messages_sent || 0),
+    0,
+  );
 
   // Status Badge
   const StatusBadge = ({ status }) => {
     const config = {
-      scheduled: { bg: "bg-blue-100", text: "text-blue-700", icon: Clock, label: "Scheduled" },
-      processing: { bg: "bg-orange-100", text: "text-orange-700", icon: Loader, label: "Processing" },
-      completed: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle, label: "Completed" },
-      failed: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Failed" },
-      cancelled: { bg: "bg-gray-100", text: "text-gray-700", icon: Ban, label: "Cancelled" },
+      scheduled: {
+        bg: "bg-blue-100",
+        text: "text-blue-700",
+        icon: Clock,
+        label: "Scheduled",
+      },
+      processing: {
+        bg: "bg-orange-100",
+        text: "text-orange-700",
+        icon: Loader,
+        label: "Processing",
+      },
+      completed: {
+        bg: "bg-green-100",
+        text: "text-green-700",
+        icon: CheckCircle,
+        label: "Completed",
+      },
+      failed: {
+        bg: "bg-red-100",
+        text: "text-red-700",
+        icon: XCircle,
+        label: "Failed",
+      },
+      cancelled: {
+        bg: "bg-gray-100",
+        text: "text-gray-700",
+        icon: Ban,
+        label: "Cancelled",
+      },
     };
 
     const { bg, text, icon: Icon, label } = config[status] || config.scheduled;
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${bg} ${text}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${bg} ${text}`}
+      >
         <Icon className="w-4 h-4" />
         {label}
       </span>
@@ -193,16 +230,22 @@ const Campaigns = () => {
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-gray-500">Scheduled</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {scheduledDate.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                  {scheduledDate.toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                   {" at "}
-                  {scheduledDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                  {scheduledDate.toLocaleTimeString("en-IN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Stats Section - Fixed Height */}
-          <div className="mt-auto pt-4 border-t border-gray-100">
+          {/* <div className="mt-auto pt-4 border-t border-gray-100">
             {campaign.status === "completed" ? (
               // Completed Campaign Stats
               <div className="grid grid-cols-3 gap-2 text-center">
@@ -241,7 +284,7 @@ const Campaigns = () => {
                 </span>
               </div>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* Actions - Fixed Height */}
@@ -257,7 +300,9 @@ const Campaigns = () => {
           {campaign.status === "scheduled" && (
             <>
               <button
-                onClick={() => navigate(`/campaigns/edit/${campaign.campaign_id}`)}
+                onClick={() =>
+                  navigate(`/campaigns/edit/${campaign.campaign_id}`)
+                }
                 className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 title="Edit"
               >
@@ -295,7 +340,9 @@ const Campaigns = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Campaigns</h1>
-              <p className="text-gray-600 mt-1">Manage your WhatsApp marketing campaigns</p>
+              <p className="text-gray-600 mt-1">
+                Manage your WhatsApp marketing campaigns
+              </p>
             </div>
             <button
               onClick={() => navigate("/campaigns/create")}
@@ -310,30 +357,35 @@ const Campaigns = () => {
         {/* Improved Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Total Campaigns */}
-        <div className="bg-white rounded-xl p-6 border-2 border-amber-200 hover:border-amber-400 transition-all">
-  <div className="flex items-center justify-between mb-2">
-    <div>
-      <p className="text-gray-600 text-sm font-medium">Total Campaigns</p>
-      <p className="text-3xl font-bold text-amber-600 mt-1">{stats.total}</p>
-    </div>
-    <div className="w-14 h-14 bg-amber-100 rounded-lg flex items-center justify-center">
-      <TrendingUp className="w-7 h-7 text-amber-600" />
-    </div>
-  </div>
+          <div className="bg-white rounded-xl p-6 border-2 border-amber-200 hover:border-amber-400 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">
+                  Total Campaigns
+                </p>
+                <p className="text-3xl font-bold text-amber-600 mt-1">
+                  {stats.total}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-amber-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-7 h-7 text-amber-600" />
+              </div>
+            </div>
 
-  <div className="flex items-center gap-1 text-gray-500 text-xs mt-3">
-    <Send className="w-3 h-3" />
-    <span>{totalSent.toLocaleString()} messages sent</span>
-  </div>
-</div>
-    
+            <div className="flex items-center gap-1 text-gray-500 text-xs mt-3">
+              <Send className="w-3 h-3" />
+              <span>{totalSent.toLocaleString()} messages sent</span>
+            </div>
+          </div>
 
           {/* Scheduled */}
           <div className="bg-white rounded-xl p-6 border-2 border-blue-200 hover:border-blue-400 transition-all">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Scheduled</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.scheduled}</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">
+                  {stats.scheduled}
+                </p>
               </div>
               <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Clock className="w-7 h-7 text-blue-600" />
@@ -347,14 +399,18 @@ const Campaigns = () => {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Completed</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{stats.completed}</p>
+                <p className="text-3xl font-bold text-green-600 mt-1">
+                  {stats.completed}
+                </p>
               </div>
               <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center">
                 <CheckCircle className="w-7 h-7 text-green-600" />
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              {stats.processing > 0 ? `${stats.processing} processing now` : "All finished"}
+              {stats.processing > 0
+                ? `${stats.processing} processing now`
+                : "All finished"}
             </p>
           </div>
 
@@ -363,7 +419,9 @@ const Campaigns = () => {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Failed</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{stats.failed}</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">
+                  {stats.failed}
+                </p>
               </div>
               <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center">
                 <XCircle className="w-7 h-7 text-red-600" />
@@ -407,7 +465,9 @@ const Campaigns = () => {
               disabled={loading}
               className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-5 h-5 ${loading ? "animate-spin" : ""}`}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -431,7 +491,9 @@ const Campaigns = () => {
           <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {searchTerm || statusFilter !== "all" ? "No campaigns found" : "No campaigns yet"}
+              {searchTerm || statusFilter !== "all"
+                ? "No campaigns found"
+                : "No campaigns yet"}
             </h3>
             <p className="text-gray-600 mb-6">
               {searchTerm || statusFilter !== "all"
@@ -452,7 +514,8 @@ const Campaigns = () => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-600">
-                Showing {filteredCampaigns.length} campaign{filteredCampaigns.length !== 1 ? "s" : ""}
+                Showing {filteredCampaigns.length} campaign
+                {filteredCampaigns.length !== 1 ? "s" : ""}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
