@@ -258,3 +258,13 @@ p {
 .root-background {
   background: linear-gradient(120deg, #f1f5f9, #eef2ff, #fce7f3);
 }
+
+.max-h-350 {
+  max-height: 350px;
+}
+
+@media (max-width: 640px) {
+  .max-h-350 {
+    max-height: 650px;
+  }
+}
