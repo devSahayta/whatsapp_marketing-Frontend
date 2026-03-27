@@ -26,6 +26,7 @@ import WAccountPage from "./pages/WAccountPage";
 
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { addUserToBackend } from "./api/userApi";
+import { setAuthToken } from "./api/apiClient";
 
 import "./styles/global.css";
 import { fetchWhatsappAccount } from "./api/waccount";
@@ -109,7 +110,7 @@ function WhatsappAccountRoute({ children }) {
 }
 
 function AppContent() {
-  const { user, isAuthenticated, isLoading } = useKindeAuth();
+  const { user, isAuthenticated, isLoading, getToken } = useKindeAuth();
   const location = useLocation();
 
   // Sidebar open/close state managed here
@@ -118,10 +119,14 @@ function AppContent() {
   // Hide NavBar on document upload
   const hideNavBar = location.pathname.startsWith("/document-upload");
 
-  // Sync user on first login
+  // Sync user on first login and set auth token
   useEffect(() => {
     if (isAuthenticated && user) {
       addUserToBackend(user);
+      getToken().then((token) => {
+        setAuthToken(token);
+        // console.log("Kinde Bearer Token:", token);
+      });
     }
   }, [isAuthenticated, user]);
 
