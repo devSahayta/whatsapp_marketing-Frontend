@@ -1,18 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  CheckCircle,
-  XCircle,
+  FileText,
+  Gauge,
+  Info,
+  Phone,
   Send,
-  Clock,
-  MessageSquare,
+  TimerReset,
   Users,
   Calendar,
-  FileText,
-  Phone,
-  TimerReset,
-  Gauge,
+  XCircle,
 } from "lucide-react";
 import {
   Cell,
@@ -37,13 +35,56 @@ import {
 } from "../utils/toast";
 
 const PIE_COLORS = {
-  sent: "#3B82F6",
   delivered: "#10B981",
-  // read: "#14B8A6",
-  read: "#facc15",
+  read: "#FACC15",
+  processing: "#3B82F6",
   pending: "#F59E0B",
   failed: "#EF4444",
+  undelivered: "#8B5CF6",
 };
+
+const STATUS_STYLES = {
+  sent: "bg-blue-100 text-blue-700",
+  delivered: "bg-green-100 text-green-700",
+  read: "bg-emerald-100 text-emerald-700",
+  failed: "bg-red-100 text-red-700",
+  assumed_failed: "bg-rose-100 text-rose-700",
+  pending: "bg-amber-100 text-amber-700",
+};
+
+const METRIC_INFO = [
+  { label: "Total", description: "All campaign message records." },
+  {
+    label: "Sent",
+    description: "Messages that got a sent timestamp from the backend.",
+  },
+  {
+    label: "Delivered",
+    description: "Messages confirmed as delivered to the recipient.",
+  },
+  {
+    label: "Read",
+    description: "Messages confirmed as read by the recipient.",
+  },
+  {
+    label: "Processing",
+    description:
+      "Messages still in sent state and waiting for further updates.",
+  },
+  {
+    label: "Pending",
+    description: "Messages that have not been processed yet.",
+  },
+  {
+    label: "Failed",
+    description: "Messages that failed and returned an error.",
+  },
+  {
+    label: "Undelivered",
+    description:
+      "Messages marked as assumed_failed because they were not delivered within 24 hours.",
+  },
+];
 
 const formatDuration = (seconds) => {
   if (!Number.isFinite(seconds) || seconds <= 0) return "0 sec";
@@ -68,13 +109,15 @@ const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
   const failed = Number(stats.failed) || 0;
   const delivered = Number(stats.delivered) || 0;
   const read = Number(stats.read) || 0;
+  const processing = Number(stats.processing) || 0;
+  const undelivered = Number(stats.undelivered) || 0;
   const pending = Math.max(
     0,
     Number.isFinite(Number(stats.pending))
       ? Number(stats.pending)
-      : total - (sent + failed),
+      : total - (processing + failed + undelivered),
   );
-  const processed = Math.min(total, sent + failed);
+  const processed = Math.min(total, total - pending);
   const completionPercent =
     total > 0 ? Math.min(100, (processed / total) * 100) : 0;
 
@@ -114,6 +157,8 @@ const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
     delivered,
     read,
     failed,
+    processing,
+    undelivered,
     pending,
     processed,
     remaining,
@@ -122,13 +167,32 @@ const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
     etaSeconds,
     durationSeconds,
     pieData: [
-      { name: "Sent", value: sent, key: "sent" },
       { name: "Delivered", value: delivered, key: "delivered" },
       { name: "Read", value: read, key: "read" },
+      { name: "Processing", value: processing, key: "processing" },
       { name: "Pending", value: pending, key: "pending" },
       { name: "Failed", value: failed, key: "failed" },
+      { name: "Undelivered", value: undelivered, key: "undelivered" },
     ].filter((item) => item.value > 0),
   };
+};
+
+const formatMessageStatusLabel = (status) =>
+  status === "assumed_failed" ? "undelivered" : status;
+
+const getMessageStatusHelp = (message) => {
+  if (message.status === "assumed_failed") {
+    return (
+      message.error_message ||
+      "This message was marked undelivered because it was not delivered within 24 hours."
+    );
+  }
+
+  if (message.status === "failed") {
+    return message.error_message || "This message failed to send.";
+  }
+
+  return null;
 };
 
 const CampaignDetails = () => {
@@ -140,8 +204,7 @@ const CampaignDetails = () => {
   const [loading, setLoading] = useState(true);
   const [campaign, setCampaign] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [stats, setStats] = useState(null);
-
+  const [stats, setStats] = useState({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [retryLoading, setRetryLoading] = useState(false);
@@ -169,6 +232,7 @@ const CampaignDetails = () => {
       if (!silent) {
         toastId = showLoading("Loading campaign...");
       }
+
       const res = await getCampaignById(id, userId);
       const data = res.data.data;
 
@@ -179,14 +243,11 @@ const CampaignDetails = () => {
       setCampaign(data.campaign);
       setMessages(data.messages || []);
       setStats(data.stats || {});
-
-      // 🔄 background sync
-      // await syncStatusIfNeeded(data.campaign);
     } catch (err) {
       if (toastId) {
         dismissToast(toastId);
-        showError("Failed to load campaign details");
       }
+      showError("Failed to load campaign details");
     } finally {
       setLoading(false);
     }
@@ -194,23 +255,16 @@ const CampaignDetails = () => {
 
   const syncStatusIfNeeded = async (campaignData) => {
     if (!campaignData) return;
-
-    // 🚫 Do not sync while scheduled
     if (campaignData.status === "scheduled") return;
 
     try {
       await syncCampaignStatus(id, userId);
     } catch (err) {
-      // silent fail (this is a background sync)
       console.warn("Status sync skipped / failed");
     }
   };
 
-  // useEffect(() => {
-  //   if (messagesRef.current) {
-  //     messagesRef.current.scrollIntoView({ behavior: "smooth" });
-  //   }
-  // }, [messages]);
+  void syncStatusIfNeeded;
 
   const filteredMessages = messages.filter((msg) => {
     const q = search.toLowerCase();
@@ -229,10 +283,7 @@ const CampaignDetails = () => {
       setRetryLoading(true);
 
       const res = await retryCampaign(id, userId);
-
-      // ✅ success message from backend
       const message = res?.data?.message || "Retry scheduled successfully";
-
       const retryMinutes = res?.data?.retry_after_minutes;
 
       showSuccess(
@@ -241,11 +292,8 @@ const CampaignDetails = () => {
           : message,
       );
 
-      await loadCampaign(); // refresh UI
+      await loadCampaign();
     } catch (err) {
-      console.log({ err });
-
-      // ✅ always trust backend error first
       showError(
         err?.response?.data?.error ||
           err?.response?.data?.details ||
@@ -273,13 +321,12 @@ const CampaignDetails = () => {
             Campaign not found
           </h2>
           <p className="text-gray-600 mt-2">
-            This campaign may have been deleted or you don’t have access to it.
+            This campaign may have been deleted or you do not have access to it.
           </p>
 
           <button
             onClick={() => navigate("/campaigns")}
-            className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg
-            bg-blue-600 text-white font-medium hover:bg-blue-700"
+            className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Campaigns
@@ -296,12 +343,13 @@ const CampaignDetails = () => {
       scheduled: "bg-yellow-100 text-yellow-700",
       failed: "bg-red-100 text-red-700",
     }[campaign.status] || "bg-gray-100 text-gray-600";
+
   const analytics = getCampaignAnalytics(stats, messages, campaign);
+  const hasProcessingMessages = Number(stats?.processing) > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 py-8 px-4">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
         <div>
           <button
             onClick={() => navigate("/campaigns")}
@@ -325,21 +373,6 @@ const CampaignDetails = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* <button
-                onClick={async () => {
-                  // await syncCampaignStatus(id, userId);
-                  await loadCampaign();
-                  showSuccess("Campaign status refreshed");
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
-    border border-gray-200 text-gray-700 font-medium
-    hover:bg-gray-100 transition"
-              >
-                <Clock className="w-4 h-4" />
-                Refresh Status
-              </button> */}
-
-              {/* Download PDF */}
               <button
                 onClick={() =>
                   exportCampaignPdf({
@@ -348,24 +381,23 @@ const CampaignDetails = () => {
                     messages: filteredMessages,
                   })
                 }
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
-        border border-blue-200 text-blue-600 font-medium
-        hover:bg-blue-50 transition"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-medium hover:bg-blue-50 transition"
               >
                 <FileText className="w-4 h-4" />
                 Download Report
               </button>
 
-              {/* Retry button */}
               {["completed", "failed"].includes(campaign.status) &&
-                stats.failed > 0 && (
+                (stats?.failed > 0 || stats?.undelivered > 0) && (
                   <button
                     onClick={handleRetryCampaign}
-                    disabled={retryLoading}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
-            bg-gradient-to-r from-orange-500 to-red-500
-            text-white font-medium shadow-sm
-            hover:opacity-90 disabled:opacity-50"
+                    disabled={retryLoading || hasProcessingMessages}
+                    title={
+                      hasProcessingMessages
+                        ? "Retry is available after processing messages finish."
+                        : undefined
+                    }
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-medium shadow-sm hover:opacity-90 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
                     {retryLoading ? "Retrying..." : "Retry Failed Messages"}
@@ -381,20 +413,6 @@ const CampaignDetails = () => {
           )}
         </div>
 
-        {/* Stats */}
-        {/* <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
-          <StatCard title="Total" value={stats.total} icon={Users} />
-          <StatCard title="Processed" value={analytics.processed} icon={Send} />
-          <StatCard
-            title="Delivered"
-            value={stats.delivered}
-            icon={CheckCircle}
-          />
-          <StatCard title="Read" value={stats.read} icon={MessageSquare} />
-          <StatCard title="Pending" value={stats.pending} icon={Clock} />
-          <StatCard title="Failed" value={stats.failed} icon={XCircle} />
-        </div> */}
-
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <CampaignOverviewChart analytics={analytics} />
 
@@ -404,7 +422,6 @@ const CampaignDetails = () => {
           </div>
         </div>
 
-        {/* Details */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 grid md:grid-cols-2 gap-6">
           <DetailItem
             icon={Users}
@@ -431,16 +448,15 @@ const CampaignDetails = () => {
           />
         </div>
 
-        {/* Messages */}
         <div
           ref={messagesRef}
           className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h2 className="text-lg font-semibold">
               Messages ({filteredMessages.length})
             </h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -450,6 +466,7 @@ const CampaignDetails = () => {
                 <option value="read">Read</option>
                 <option value="delivered">Delivered</option>
                 <option value="failed">Failed</option>
+                <option value="assumed_failed">Undelivered</option>
                 <option value="sent">Sent</option>
                 <option value="pending">Pending</option>
               </select>
@@ -469,70 +486,57 @@ const CampaignDetails = () => {
               </p>
             )}
 
-            {filteredMessages.map((msg) => (
-              <div
-                key={msg.cm_id}
-                className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {msg.contact_name}
-                    </p>
-                    <p className="text-sm text-gray-500">{msg.phone_number}</p>
+            {filteredMessages.map((msg) => {
+              const statusHelp = getMessageStatusHelp(msg);
+
+              return (
+                <div
+                  key={msg.cm_id}
+                  className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {msg.contact_name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {msg.phone_number}
+                      </p>
+                    </div>
+
+                    <div className="relative group">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          STATUS_STYLES[msg.status] ||
+                          "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {formatMessageStatusLabel(msg.status)}
+                      </span>
+
+                      {statusHelp && (
+                        <div className="absolute right-0 mt-2 w-64 p-3 rounded-lg shadow-lg bg-red-50 border border-red-200 text-xs text-red-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                          {statusHelp}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="relative group">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        msg.status === "sent"
-                          ? "bg-blue-100 text-blue-700"
-                          : msg.status === "delivered"
-                            ? "bg-green-100 text-green-700"
-                            : msg.status === "read"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : msg.status === "failed"
-                                ? "bg-red-100 text-red-700 cursor-pointer"
-                                : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {msg.status}
-                    </span>
-
-                    {/* ❌ Error Tooltip (only for failed) */}
-                    {msg.status === "failed" && msg.error_message && (
-                      <div className="absolute right-0 mt-2 w-64 p-3 rounded-lg shadow-lg bg-red-50 border border-red-200 text-xs text-red-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
-                        {msg.error_message}
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Sent at{" "}
+                    {msg.sent_at
+                      ? new Date(msg.sent_at).toLocaleTimeString("en-IN")
+                      : "-"}
+                  </p>
                 </div>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  Sent at {new Date(msg.sent_at).toLocaleTimeString("en-IN")}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-/* ------------------ Small Components ------------------ */
-
-const StatCard = ({ title, value, icon: Icon }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-pink-100 flex items-center justify-center">
-      <Icon className="w-5 h-5 text-blue-600" />
-    </div>
-    <div>
-      <p className="text-lg font-semibold">{value}</p>
-      <p className="text-xs text-gray-500">{title}</p>
-    </div>
-  </div>
-);
 
 const DetailItem = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-3">
@@ -544,57 +548,136 @@ const DetailItem = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-const CampaignOverviewChart = ({ analytics }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-    <div className="flex items-center justify-between gap-4 mb-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">
-          Campaign Overview
-        </h2>
-        <p className="text-sm text-gray-500">
-          Message status distribution from campaign stats
-        </p>
+const CampaignOverviewChart = ({ analytics }) => {
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+  return (
+    <>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-start gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Campaign Overview
+              </h2>
+              <p className="text-sm text-gray-500">
+                Message status distribution from campaign stats
+              </p>
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsInfoOpen((open) => !open)}
+                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition"
+                aria-label="View metric information"
+                aria-expanded={isInfoOpen}
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <p className="text-2xl font-semibold text-gray-900">
+              {analytics.total}
+            </p>
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              Total
+            </p>
+          </div>
+        </div>
+
+        {analytics.pieData.length > 0 ? (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={analytics.pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={62}
+                  outerRadius={98}
+                  paddingAngle={3}
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {analytics.pieData.map((entry) => (
+                    <Cell key={entry.key} fill={PIE_COLORS[entry.key]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => [value, "Count"]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-72 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-500">
+            No analytics available yet
+          </div>
+        )}
       </div>
 
-      <div className="text-right">
-        <p className="text-2xl font-semibold text-gray-900">
-          {analytics.total}
-        </p>
-        <p className="text-xs uppercase tracking-wide text-gray-500">
-          Total recipients
-        </p>
-      </div>
-    </div>
+      {isInfoOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-4 pb-6 pt-6"
+          onClick={() => setIsInfoOpen(false)}
+        >
+          <div
+            className="mx-auto mt-12 flex h-[min(42rem,calc(100dvh-8rem))] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Campaign Metric Meanings
+                </h3>
+                <p className="text-sm text-gray-500">
+                  How to read the campaign overview numbers
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInfoOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition"
+                aria-label="Close metric information"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
 
-    {analytics.pieData.length > 0 ? (
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={analytics.pieData}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={62}
-              outerRadius={98}
-              paddingAngle={3}
-              label={({ name, value }) => `${name}: ${value}`}
-            >
-              {analytics.pieData.map((entry) => (
-                <Cell key={entry.key} fill={PIE_COLORS[entry.key]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => [value, "Count"]} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    ) : (
-      <div className="h-72 rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-500">
-        No analytics available yet
-      </div>
-    )}
-  </div>
-);
+            <div className="max-h-350 flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {METRIC_INFO.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+                  >
+                    <p className="text-sm font-semibold text-gray-900">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-gray-600">
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsInfoOpen(false)}
+                className="inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const CampaignProgressCard = ({ analytics }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
@@ -675,7 +758,6 @@ const CampaignEtaCard = ({ analytics, status }) => {
       </div>
 
       <p className="text-3xl font-semibold text-gray-900">
-        {/* {isTerminal ? durationLabel : etaLabel} */}
         {isTerminal ? "" : etaLabel}
       </p>
 
