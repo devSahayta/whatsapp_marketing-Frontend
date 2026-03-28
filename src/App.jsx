@@ -47,6 +47,7 @@ import AboutUs from "./pages/AboutUs";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
+import Integrations from "./pages/Integrations";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -220,6 +221,15 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <WAccountPage />
+              </PrivateSubscribedRoute>
+            }
+          />
+
+          <Route
+            path="/integrations"
+            element={
+              <PrivateSubscribedRoute>
+                <Integrations />
               </PrivateSubscribedRoute>
             }
           />
