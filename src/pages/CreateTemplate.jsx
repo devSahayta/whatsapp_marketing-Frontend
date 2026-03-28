@@ -441,12 +441,76 @@ export default function CreateTemplate() {
     }
   };
 
+  // const onHeaderFileSelected = async (ev) => {
+  //   const file = ev.target.files?.[0];
+  //   if (!file) return;
+  //   // create upload session -> upload binary
+  //   const sessionId = await handleCreateUploadSession(file);
+  //   if (!sessionId) return;
+  //   await handleUploadBinary(file, sessionId);
+  // };
+
   const onHeaderFileSelected = async (ev) => {
     const file = ev.target.files?.[0];
     if (!file) return;
-    // create upload session -> upload binary
+
+    setUploadError(null);
+
+    const sizeMB = file.size / (1024 * 1024);
+    const type = file.type;
+
+    // IMAGE VALIDATION
+    if (headerType === "IMAGE") {
+      if (!["image/jpeg", "image/png"].includes(type)) {
+        setUploadError("Only JPG and PNG images are allowed.");
+        return;
+      }
+      if (sizeMB > 5) {
+        setUploadError("Image must be less than 5 MB.");
+        return;
+      }
+    }
+
+    // VIDEO VALIDATION
+    if (headerType === "VIDEO") {
+      if (!["video/mp4", "video/3gpp"].includes(type)) {
+        setUploadError("Only MP4 and 3GP videos are allowed.");
+        return;
+      }
+      if (sizeMB > 16) {
+        setUploadError("Video must be less than 16 MB.");
+        return;
+      }
+    }
+
+    // DOCUMENT VALIDATION
+    if (headerType === "DOCUMENT") {
+      const allowedDocs = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+      ];
+
+      if (!allowedDocs.includes(type)) {
+        setUploadError("Unsupported document type.");
+        return;
+      }
+
+      if (sizeMB > 100) {
+        setUploadError("Document must be less than 100 MB.");
+        return;
+      }
+    }
+
+    // ✅ Proceed only if valid
     const sessionId = await handleCreateUploadSession(file);
     if (!sessionId) return;
+
     await handleUploadBinary(file, sessionId);
   };
 
@@ -1046,7 +1110,7 @@ export default function CreateTemplate() {
                             </div>
 
                             <div className="mt-2">
-                              <input
+                              {/* <input
                                 ref={headerFileRef}
                                 type="file"
                                 accept={
@@ -1058,7 +1122,31 @@ export default function CreateTemplate() {
                                 }
                                 onChange={onHeaderFileSelected}
                                 className="text-sm"
+                              /> */}
+
+                              <input
+                                ref={headerFileRef}
+                                type="file"
+                                accept={
+                                  headerType === "IMAGE"
+                                    ? "image/jpeg,image/png"
+                                    : headerType === "VIDEO"
+                                      ? "video/mp4,video/3gpp"
+                                      : headerType === "DOCUMENT"
+                                        ? ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                        : undefined
+                                }
+                                onChange={onHeaderFileSelected}
+                                className="text-sm"
                               />
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {headerType === "IMAGE" &&
+                                "Allowed: JPG, PNG • Max size: 5 MB"}
+                              {headerType === "VIDEO" &&
+                                "Allowed: MP4, 3GP • Max size: 16 MB"}
+                              {headerType === "DOCUMENT" &&
+                                "Allowed: PDF, DOC, XLS, PPT, TXT • Max size: 100 MB"}
                             </div>
 
                             {uploadingHeader && (
