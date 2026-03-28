@@ -6,6 +6,7 @@ import {
   MessageSquare,
   LayersIcon,
   BarChart3,
+  PlugZap,
 } from "lucide-react";
 import "../styles/sidebar.css";
 
@@ -52,6 +53,12 @@ const Sidebar = ({ isOpen, onClose }) => {
       name: "Campaigns",
       path: "/campaigns",
       icon: <Calendar size={18} />,
+    },
+
+    {
+      name: "Integrations",
+      path: "/integrations",
+      icon: <PlugZap size={18} />,
     },
 
     

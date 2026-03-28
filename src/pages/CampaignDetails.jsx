@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   FileText,
+  FileSpreadsheet,
   Gauge,
   Info,
   Phone,
@@ -25,6 +26,7 @@ import {
   retryCampaign,
   syncCampaignStatus,
 } from "../api/campaigns";
+import { exportCampaignToGoogleSheet } from "../api/googleSheets";
 import useAuthUser from "../hooks/useAuthUser";
 import { exportCampaignPdf } from "../utils/exportCampaignPdf";
 import {
@@ -45,6 +47,7 @@ const PIE_COLORS = {
 
 const STATUS_STYLES = {
   sent: "bg-blue-100 text-blue-700",
+  processing: "bg-blue-100 text-blue-700",
   delivered: "bg-green-100 text-green-700",
   read: "bg-emerald-100 text-emerald-700",
   failed: "bg-red-100 text-red-700",
@@ -96,12 +99,34 @@ const formatDuration = (seconds) => {
   return `${hours}h ${minutes}m`;
 };
 
-const getSentTimeline = (messages = []) =>
-  messages
+const formatMessageStatusLabel = (status) => {
+  if (status === "assumed_failed") return "undelivered";
+  if (status === "sent") return "processing";
+  return status;
+};
+
+const getMessageStatusFilterValue = (status) => {
+  if (status === "processing") return "sent";
+  if (status === "undelivered") return "assumed_failed";
+  return status;
+};
+
+const getSentTimeline = (messages = [], campaign = null) => {
+  const startedAt = campaign?.started_at
+    ? new Date(campaign.started_at).getTime()
+    : null;
+
+  return messages
     .filter((message) => message.sent_at)
     .map((message) => new Date(message.sent_at).getTime())
+    .filter(
+      (value) =>
+        Number.isFinite(value) &&
+        (!Number.isFinite(startedAt) || value >= startedAt),
+    )
     .filter((value) => Number.isFinite(value))
     .sort((a, b) => a - b);
+};
 
 const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
   const total = Number(stats.total) || 0;
@@ -121,7 +146,7 @@ const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
   const completionPercent =
     total > 0 ? Math.min(100, (processed / total) * 100) : 0;
 
-  const sentTimeline = getSentTimeline(messages);
+  const sentTimeline = getSentTimeline(messages, campaign);
   let sendingSpeed = null;
 
   if (sentTimeline.length >= 2) {
@@ -177,9 +202,6 @@ const getCampaignAnalytics = (stats = {}, messages = [], campaign = null) => {
   };
 };
 
-const formatMessageStatusLabel = (status) =>
-  status === "assumed_failed" ? "undelivered" : status;
-
 const getMessageStatusHelp = (message) => {
   if (message.status === "assumed_failed") {
     return (
@@ -208,6 +230,7 @@ const CampaignDetails = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [retryLoading, setRetryLoading] = useState(false);
+  const [exportingSheet, setExportingSheet] = useState(false);
 
   useEffect(() => {
     loadCampaign();
@@ -268,12 +291,16 @@ const CampaignDetails = () => {
 
   const filteredMessages = messages.filter((msg) => {
     const q = search.toLowerCase();
+    const displayStatus = formatMessageStatusLabel(msg.status);
     const matchesSearch =
       msg.contact_name?.toLowerCase().includes(q) ||
       msg.phone_number?.includes(q) ||
-      msg.status?.toLowerCase().includes(q);
+      msg.status?.toLowerCase().includes(q) ||
+      displayStatus?.toLowerCase().includes(q);
     const matchesStatus =
-      statusFilter === "all" ? true : msg.status === statusFilter;
+      statusFilter === "all"
+        ? true
+        : msg.status === getMessageStatusFilterValue(statusFilter);
 
     return matchesSearch && matchesStatus;
   });
@@ -301,6 +328,35 @@ const CampaignDetails = () => {
       );
     } finally {
       setRetryLoading(false);
+    }
+  };
+
+  const handleExportToGoogleSheet = async () => {
+    try {
+      setExportingSheet(true);
+
+      const response = await exportCampaignToGoogleSheet({
+        campaign_id: id,
+      });
+
+      const spreadsheetUrl = response?.data?.spreadsheetUrl;
+      const rowsExported = response?.data?.rowsExported;
+
+      showSuccess(
+        rowsExported
+          ? `Campaign exported to Google Sheets with ${rowsExported} rows.`
+          : "Campaign exported to Google Sheets.",
+      );
+
+      if (spreadsheetUrl) {
+        window.open(spreadsheetUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      showError(
+        err?.response?.data?.error || "Failed to export campaign to Google Sheets",
+      );
+    } finally {
+      setExportingSheet(false);
     }
   };
 
@@ -372,7 +428,7 @@ const CampaignDetails = () => {
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <button
                 onClick={() =>
                   exportCampaignPdf({
@@ -381,10 +437,19 @@ const CampaignDetails = () => {
                     messages: filteredMessages,
                   })
                 }
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-medium hover:bg-blue-50 transition"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50 sm:w-auto"
               >
                 <FileText className="w-4 h-4" />
                 Download Report
+              </button>
+
+              <button
+                onClick={handleExportToGoogleSheet}
+                disabled={exportingSheet}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 px-4 py-2 font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {exportingSheet ? "Exporting..." : "Export to Google Sheets"}
               </button>
 
               {["completed", "failed"].includes(campaign.status) &&
@@ -397,7 +462,7 @@ const CampaignDetails = () => {
                         ? "Retry is available after processing messages finish."
                         : undefined
                     }
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-medium shadow-sm hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-medium text-white shadow-sm hover:opacity-90 disabled:opacity-50 sm:w-auto"
                   >
                     <Send className="w-4 h-4" />
                     {retryLoading ? "Retrying..." : "Retry Failed Messages"}
@@ -466,8 +531,8 @@ const CampaignDetails = () => {
                 <option value="read">Read</option>
                 <option value="delivered">Delivered</option>
                 <option value="failed">Failed</option>
-                <option value="assumed_failed">Undelivered</option>
-                <option value="sent">Sent</option>
+                <option value="undelivered">Undelivered</option>
+                <option value="processing">Processing</option>
                 <option value="pending">Pending</option>
               </select>
               <input

@@ -47,6 +47,7 @@ import AboutUs from "./pages/AboutUs";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
+import Integrations from "./pages/Integrations";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -125,7 +126,7 @@ function AppContent() {
       addUserToBackend(user);
       getToken().then((token) => {
         setAuthToken(token);
-        // console.log("Kinde Bearer Token:", token);
+        console.log("Kinde Bearer Token:", token);
       });
     }
   }, [isAuthenticated, user]);
@@ -218,6 +219,15 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <WAccountPage />
+              </PrivateSubscribedRoute>
+            }
+          />
+
+          <Route
+            path="/integrations"
+            element={
+              <PrivateSubscribedRoute>
+                <Integrations />
               </PrivateSubscribedRoute>
             }
           />
