@@ -13,7 +13,7 @@ export const showInfo = (message) => {
 };
 
 export const showLoading = (message = "Loading...") => {
-  return toast.loading(message);
+  return toast.loading(message, { duration: Infinity });
 };
 
 export const dismissToast = (toastId) => {
