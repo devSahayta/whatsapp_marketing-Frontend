@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   Link2,
@@ -106,6 +106,7 @@ const Integrations = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [integrationStatus, setIntegrationStatus] = useState({});
+  const navigate = useNavigate();
 
   const loadIntegrationStatus = async ({ silent = false } = {}) => {
     try {
@@ -170,15 +171,21 @@ const Integrations = () => {
     return [
       {
         label: "Connected account",
-        value: google.connected ? google.email || "Email not available" : "No Google account linked",
+        value: google.connected
+          ? google.email || "Email not available"
+          : "No Google account linked",
       },
       {
         label: "Connected at",
-        value: google.connected ? formatDateTime(google.connected_at) : "Not connected yet",
+        value: google.connected
+          ? formatDateTime(google.connected_at)
+          : "Not connected yet",
       },
       {
         label: "Last updated",
-        value: google.connected ? formatDateTime(google.updated_at) : "Not connected yet",
+        value: google.connected
+          ? formatDateTime(google.updated_at)
+          : "Not connected yet",
       },
     ];
   }, [integrationStatus]);
@@ -193,11 +200,15 @@ const Integrations = () => {
       },
       {
         label: "Connected at",
-        value: woo.connected ? formatDateTime(woo.connected_at) : "Not connected yet",
+        value: woo.connected
+          ? formatDateTime(woo.connected_at)
+          : "Not connected yet",
       },
       {
         label: "Last updated",
-        value: woo.connected ? formatDateTime(woo.updated_at) : "Not connected yet",
+        value: woo.connected
+          ? formatDateTime(woo.updated_at)
+          : "Not connected yet",
       },
     ];
   }, [integrationStatus]);
@@ -281,15 +292,20 @@ const Integrations = () => {
             accent="amber"
             action={
               integrationStatus?.woocommerce?.connected ? (
-                <div className="inline-flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                <button
+                  onClick={() => navigate("/integrations/woocommerce")}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   <PlugZap className="h-4 w-4" />
-                  WooCommerce is connected.
-                </div>
+                  Manage WooCommerce
+                </button>
               ) : (
-                <div className="inline-flex items-center gap-2 rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-600">
-                  <XCircle className="h-4 w-4" />
-                  Not connected right now.
-                </div>
+                <button
+                  onClick={() => navigate("/integrations/woocommerce")}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Connect WooCommerce
+                </button>
               )
             }
           />

@@ -32,3 +32,6 @@ export const fetchTemplateBulkProgress = (userId, templateId) =>
   api.get(
     `/api/watemplates/bulk-progress?user_id=${userId}&templateId=${templateId}`,
   );
+
+export const fetchDbTemplates = (userId) =>
+  api.get(`/api/watemplates?user_id=${userId}`);

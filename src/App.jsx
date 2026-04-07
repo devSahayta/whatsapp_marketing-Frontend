@@ -48,6 +48,8 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
 import Integrations from "./pages/Integrations";
+import WooCommercePage from "./pages/WooCommercePage";
+import WooCommerceTemplateGuide from "./pages/WooCommerceTemplateGuide";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -124,12 +126,14 @@ function AppContent() {
   useEffect(() => {
     if (isAuthenticated && user) {
       addUserToBackend(user);
-      getToken().then((token) => {
-        setAuthToken(token);
-        console.log("Kinde Bearer Token:", token);
-      }).catch((err) => {
-        console.error("getToken failed:", err);
-      });
+      getToken()
+        .then((token) => {
+          setAuthToken(token);
+          console.log("Kinde Bearer Token:", token);
+        })
+        .catch((err) => {
+          console.error("getToken failed:", err);
+        });
     }
   }, [isAuthenticated, user]);
 
@@ -171,7 +175,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/groups"
             element={
@@ -180,7 +183,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/createGroup"
             element={
@@ -189,7 +191,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/dashboard/:eventId"
             element={
@@ -198,7 +199,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           {/* <Route
             path="/call-batch/:eventId"
             element={
@@ -215,7 +215,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/whatsapp-account"
             element={
@@ -224,7 +223,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/integrations"
             element={
@@ -233,7 +231,23 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
+          // Inside your routes:
+          <Route
+            path="/integrations/woocommerce"
+            element={
+              <PrivateSubscribedRoute>
+                <WooCommercePage />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/integrations/woocommerce/templates"
+            element={
+              <PrivateSubscribedRoute>
+                <WooCommerceTemplateGuide />
+              </PrivateSubscribedRoute>
+            }
+          />
           <Route
             path="/templates"
             element={
@@ -244,7 +258,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/template/create"
             element={
@@ -255,7 +268,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/templates/send/:templateId"
             element={
@@ -266,7 +278,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/campaigns/create"
             element={
@@ -291,7 +302,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/campaigns/:id"
             element={
@@ -300,7 +310,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           {/* <Route
             path="/templates/media"
             element={
@@ -309,7 +318,6 @@ function AppContent() {
               </PrivateRoute>
             }
           /> */}
-
           <Route
             path="/document-upload/:participantId"
             element={<DocumentUpload />}
@@ -318,7 +326,6 @@ function AppContent() {
             path="/document-viewer/:participantId"
             element={<DocumentViewer />}
           />
-
           <Route
             path="/knowledge-bases"
             element={
@@ -343,7 +350,6 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route
             path="/flight-status/:eventId"
             element={
@@ -352,10 +358,8 @@ function AppContent() {
               </PrivateSubscribedRoute>
             }
           />
-
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/expired" element={<SubscriptionExpired />} />
-
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/about" element={<AboutUs />} />
           <Route
@@ -367,7 +371,6 @@ function AppContent() {
             path="/refund-cancellation-policy"
             element={<RefundCancellationPolicy />}
           />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
