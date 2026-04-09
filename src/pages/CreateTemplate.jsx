@@ -869,6 +869,8 @@ export default function CreateTemplate() {
         parameter_format,
         components: comps,
         media_id: mediaId,
+        header_format: headerType !== "NONE" ? headerType : null,
+        header_handle: headerHandle || null,
       };
 
       const resp = await apiCreateTemplate(payload);

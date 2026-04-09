@@ -48,6 +48,8 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
 import Integrations from "./pages/Integrations";
+import ChatbotFlows from "./pages/ChatbotFlows";
+import ChatbotBuilder from "./pages/ChatbotBuilder";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -347,6 +349,23 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <FlightStatus />
+              </PrivateSubscribedRoute>
+            }
+          />
+
+          <Route
+            path="/chatbot"
+            element={
+              <PrivateSubscribedRoute>
+                <ChatbotFlows />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/chatbot/builder/:flowId"
+            element={
+              <PrivateSubscribedRoute>
+                <ChatbotBuilder />
               </PrivateSubscribedRoute>
             }
           />

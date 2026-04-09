@@ -7,6 +7,7 @@ import {
   LayersIcon,
   BarChart3,
   PlugZap,
+  Bot,
 } from "lucide-react";
 import "../styles/sidebar.css";
 
@@ -56,12 +57,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     },
 
     {
+      name: "Chatbot Flows",
+      path: "/chatbot",
+      icon: <Bot size={18} />,
+    },
+    {
       name: "Integrations",
       path: "/integrations",
       icon: <PlugZap size={18} />,
     },
-
-    
 
     // {
     //   name: "Knowledge Base",
