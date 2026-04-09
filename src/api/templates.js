@@ -4,6 +4,9 @@ import api from "./apiClient";
 export const fetchMetaTemplates = (userId) =>
   api.get(`/api/watemplates/meta/list?user_id=${userId}`);
 
+export const fetchTemplatesForBuilder = (userId) =>
+  api.get(`/api/watemplates/all?user_id=${userId}`);
+
 export const fetchMetaTemplatesById = (templateId, userId) =>
   api.get(
     `/api/watemplates/meta/template?templateId=${templateId}&user_id=${userId}`,
