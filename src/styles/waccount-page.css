@@ -508,7 +508,6 @@
   }
 }
 
-
 /*daily limit card*/
 
 /* Tier Usage Card */
@@ -523,4 +522,51 @@
 
 .wa-status-card--tier-usage .wa-progress__fill {
   background: linear-gradient(90deg, #f69f5c 0%, #f69f5c 100%);
+}
+
+/* Meta Connect Button */
+.wa-meta-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #0866ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.wa-meta-connect-btn:hover:not(:disabled) {
+  background: #0550c8;
+}
+
+.wa-meta-connect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Inline fallback link */
+.wa-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary, #0866ff);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wa-spin {
+  animation: spin 1s linear infinite;
 }

@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Send,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   connectWooStore,
@@ -74,7 +76,8 @@ export default function WooCommercePage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [connection, setConnection] = useState(null);
+  const [connections, setConnections] = useState([]);
+  const [activeConnection, setActiveConnection] = useState(null);
   const [automations, setAutomations] = useState([]);
   const [logs, setLogs] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -83,6 +86,7 @@ export default function WooCommercePage() {
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [includeImage, setIncludeImage] = useState(true);
+  const [showStoreDetails, setShowStoreDetails] = useState(false);
 
   // Cart Recovery
   const [cartStats, setCartStats] = useState(null);
@@ -112,16 +116,22 @@ export default function WooCommercePage() {
       const [connRes, autoRes, logsRes, tplRes, cartStatsRes, cartLogsRes] =
         await Promise.allSettled([
           getWooConnections(),
-          getWooAutomations(),
-          getWooLogs(),
+          getWooAutomations(activeConnection?.id),
+          getWooLogs(activeConnection?.id),
           fetchDbTemplates(userId),
           getCartRecoveryStats(),
           getCartRecoveryLogs(),
         ]);
 
-      if (connRes.status === "fulfilled")
-        setConnection(connRes.value.data?.connections?.[0] || null);
-
+      if (connRes.status === "fulfilled") {
+        const conns = connRes.value.data?.connections || [];
+        setConnections(conns);
+        setActiveConnection((prev) =>
+          prev
+            ? conns.find((c) => c.id === prev.id) || conns[0] || null
+            : conns[0] || null,
+        );
+      }
       if (autoRes.status === "fulfilled") {
         const autos = autoRes.value.data?.automations || [];
         setAutomations(autos);
@@ -129,7 +139,6 @@ export default function WooCommercePage() {
           autos.find((a) => a.trigger_event === "cart.abandoned") || null,
         );
       }
-
       if (logsRes.status === "fulfilled")
         setLogs(logsRes.value.data?.logs || []);
       if (tplRes.status === "fulfilled") setTemplates(tplRes.value.data || []);
@@ -137,16 +146,24 @@ export default function WooCommercePage() {
         setCartStats(cartStatsRes.value.data?.stats || null);
       if (cartLogsRes.status === "fulfilled")
         setCartLogs(cartLogsRes.value.data?.logs || []);
-    } catch (e) {
+    } catch {
       showError("Failed to load WooCommerce data");
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, activeConnection?.id]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleSwitchStore = (conn) => {
+    setActiveConnection(conn);
+    setAutomations([]);
+    setLogs([]);
+    setCartAutomation(null);
+    setShowStoreDetails(false);
+  };
 
   const handleConnect = async () => {
     if (
@@ -182,12 +199,15 @@ export default function WooCommercePage() {
     )
       return;
     try {
-      await disconnectWooStore(connection.id);
+      await disconnectWooStore(activeConnection.id);
       showSuccess("Store disconnected");
-      setConnection(null);
+      setConnections((prev) =>
+        prev.filter((c) => c.id !== activeConnection.id),
+      );
+      setActiveConnection(null);
       setAutomations([]);
       load();
-    } catch (e) {
+    } catch {
       showError("Failed to disconnect");
     }
   };
@@ -229,13 +249,12 @@ export default function WooCommercePage() {
       }
     }
     const template_variable_map = {};
-    for (let i = 1; i <= variableCount; i++) {
+    for (let i = 1; i <= variableCount; i++)
       template_variable_map[String(i)] = VARIABLE_FIELDS[i - 1] || `field_${i}`;
-    }
 
     try {
       await createWooAutomation({
-        connection_id: connection.id,
+        connection_id: activeConnection.id,
         wt_id: autoForm.wt_id,
         trigger_event: autoForm.trigger_event,
         delay_minutes: 0,
@@ -246,7 +265,7 @@ export default function WooCommercePage() {
       setShowAutoModal(false);
       setIncludeImage(true);
       load();
-    } catch (e) {
+    } catch {
       showError("Failed to create automation");
     }
   };
@@ -261,7 +280,7 @@ export default function WooCommercePage() {
           a.id === automation.id ? { ...a, is_active: !a.is_active } : a,
         ),
       );
-    } catch (e) {
+    } catch {
       showError("Failed to update automation");
     }
   };
@@ -273,7 +292,7 @@ export default function WooCommercePage() {
       showSuccess("Automation deleted");
       setAutomations((prev) => prev.filter((a) => a.id !== id));
       if (cartAutomation?.id === id) setCartAutomation(null);
-    } catch (e) {
+    } catch {
       showError("Failed to delete automation");
     }
   };
@@ -286,7 +305,7 @@ export default function WooCommercePage() {
     try {
       setSavingCart(true);
       await createWooAutomation({
-        connection_id: connection.id,
+        connection_id: activeConnection.id,
         wt_id: cartForm.wt_id,
         trigger_event: "cart.abandoned",
         delay_minutes: cartForm.delay_minutes,
@@ -300,7 +319,7 @@ export default function WooCommercePage() {
       showSuccess("Cart recovery enabled!");
       setShowCartSetup(false);
       load();
-    } catch (e) {
+    } catch {
       showError("Failed to enable cart recovery");
     } finally {
       setSavingCart(false);
@@ -319,7 +338,7 @@ export default function WooCommercePage() {
           ? "Cart recovery paused"
           : "Cart recovery resumed",
       );
-    } catch (e) {
+    } catch {
       showError("Failed to update cart recovery");
     }
   };
@@ -335,6 +354,7 @@ export default function WooCommercePage() {
     (a) => a.is_active && a.trigger_event !== "cart.abandoned",
   );
   const sentLogs = logs.filter((l) => l.status === "sent").length;
+  const connection = activeConnection; // alias
 
   if (loading)
     return (
@@ -345,39 +365,43 @@ export default function WooCommercePage() {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 px-4 py-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-slate-500 mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-5 lg:space-y-6">
+        {/* ── Header ── */}
+        <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white/90 p-4 sm:p-6 lg:p-8 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-widest text-slate-500 mb-1 sm:mb-2">
                 Integrations / WooCommerce
               </p>
-              <h1 className="text-3xl font-semibold text-slate-900">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900">
                 WooCommerce
               </h1>
-              <p className="mt-2 text-sm text-slate-500 max-w-xl leading-6">
+              <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-slate-500 max-w-xl leading-relaxed hidden sm:block">
                 Automatically send WhatsApp messages when orders are placed,
                 shipped, delivered, cancelled, or refunded.
               </p>
             </div>
             <button
               onClick={load}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 flex-shrink-0"
             >
-              <RefreshCw className="h-4 w-4" /> Refresh
+              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── Stats ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           {[
             {
-              label: "Connection",
-              value: connection ? "Connected" : "Not connected",
-              sub: connection?.store_name || "No store linked",
+              label: "Stores",
+              value:
+                connections.length > 0
+                  ? `${connections.length} connected`
+                  : "Not connected",
+              sub: activeConnection?.store_name || "No store linked",
               icon: Store,
             },
             {
@@ -408,44 +432,54 @@ export default function WooCommercePage() {
           ].map((s) => (
             <div
               key={s.label}
-              className={`rounded-3xl border bg-white p-5 shadow-sm ${connection && s.label === "Connection" ? "border-amber-300" : "border-slate-200"}`}
+              className={`rounded-2xl sm:rounded-3xl border bg-white p-3 sm:p-4 lg:p-5 shadow-sm ${connections.length > 0 && s.label === "Stores" ? "border-amber-300" : "border-slate-200"}`}
             >
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1 sm:mb-2 truncate">
                 {s.label}
               </p>
-              <p className="text-xl font-semibold text-slate-900">{s.value}</p>
-              <p className="text-xs text-slate-400 mt-1 truncate">{s.sub}</p>
+              <p className="text-base sm:text-lg lg:text-xl font-semibold text-slate-900 truncate">
+                {s.value}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5 sm:mt-1 truncate">
+                {s.sub}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Store Connection Card */}
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-amber-50 flex items-center justify-center text-lg">
+        {/* ── Store Connection Card ── */}
+        <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-50 flex items-center justify-center text-base sm:text-lg">
                 🛒
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">
-                  Your Store
+                  Your Stores
                 </p>
-                <p className="text-xs text-slate-400">WooCommerce connection</p>
+                <p className="text-xs text-slate-400 hidden sm:block">
+                  WooCommerce connections
+                </p>
               </div>
             </div>
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${connection ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"}`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${connection ? "bg-amber-500" : "bg-gray-400"}`}
-              ></span>
-              {connection ? "Connected" : "Not connected"}
-            </span>
+            {connections.length > 0 && (
+              <button
+                onClick={() => setShowConnectModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Add store</span>
+                <span className="inline sm:hidden">Add</span>
+              </button>
+            )}
           </div>
-          <div className="p-6">
-            {!connection ? (
+
+          <div className="p-4 sm:p-6">
+            {connections.length === 0 ? (
+              /* No stores */
               <div>
-                <div className="space-y-4 mb-6">
+                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                   {[
                     {
                       n: 1,
@@ -455,16 +489,16 @@ export default function WooCommercePage() {
                     {
                       n: 2,
                       title: "Generate API keys",
-                      desc: 'Click "Add Key", set permissions to Read/Write, and generate. Copy the Consumer Key and Consumer Secret — shown only once.',
+                      desc: 'Click "Add Key", set permissions to Read/Write, and generate.',
                     },
                     {
                       n: 3,
                       title: "Paste your credentials below",
-                      desc: "We'll verify the connection and register webhooks automatically so Samvaadik receives order events in real time.",
+                      desc: "We'll verify and register webhooks automatically.",
                     },
                   ].map((s) => (
-                    <div key={s.n} className="flex gap-3">
-                      <div className="w-6 h-6 rounded-full bg-amber-50 text-amber-700 text-xs font-medium flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div key={s.n} className="flex gap-2 sm:gap-3">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-50 text-amber-700 text-xs font-medium flex items-center justify-center flex-shrink-0 mt-0.5">
                         {s.n}
                       </div>
                       <div>
@@ -480,130 +514,204 @@ export default function WooCommercePage() {
                 </div>
                 <button
                   onClick={() => setShowConnectModal(true)}
-                  className="inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-2xl hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-medium px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl hover:bg-slate-800 w-full sm:w-auto justify-center sm:justify-start"
                 >
                   <PlugZap className="h-4 w-4" /> Connect WooCommerce store
                 </button>
               </div>
             ) : (
-              <div>
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl flex-shrink-0">
-                    🛒
+              /* Has stores */
+              <div className="space-y-2 sm:space-y-3">
+                {connections.map((conn) => {
+                  const isActive = activeConnection?.id === conn.id;
+                  return (
+                    <div
+                      key={conn.id}
+                      onClick={() => !isActive && handleSwitchStore(conn)}
+                      className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
+                        isActive
+                          ? "border-amber-300 bg-amber-50 cursor-default"
+                          : "border-slate-200 bg-slate-50 cursor-pointer hover:border-amber-200 hover:bg-amber-50/50"
+                      }`}
+                    >
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white border border-slate-200 flex items-center justify-center text-lg flex-shrink-0">
+                        🛒
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-slate-900 truncate">
+                            {conn.store_name || conn.store_url}
+                          </p>
+                          {isActive && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              <span className="hidden sm:inline">Active</span>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">
+                          {conn.store_url}
+                        </p>
+                      </div>
+                      {isActive ? (
+                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <span className="text-xs text-slate-400 flex-shrink-0 hidden sm:block">
+                          Switch
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Active store details — collapsible on mobile */}
+                {activeConnection && (
+                  <div className="mt-2 pt-3 sm:pt-4 border-t border-slate-100">
+                    <button
+                      onClick={() => setShowStoreDetails((p) => !p)}
+                      className="flex items-center justify-between w-full text-xs font-medium text-slate-500 sm:hidden mb-2"
+                    >
+                      Store details
+                      {showStoreDetails ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <div
+                      className={`space-y-2 ${showStoreDetails ? "block" : "hidden sm:block"}`}
+                    >
+                      {[
+                        {
+                          label: "Currency",
+                          value: activeConnection.store_currency || "INR",
+                        },
+                        {
+                          label: "Connected",
+                          value: new Date(
+                            activeConnection.connected_at,
+                          ).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          }),
+                        },
+                        { label: "Webhooks", value: "3 registered" },
+                      ].map((r) => (
+                        <div
+                          key={r.label}
+                          className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-slate-50"
+                        >
+                          <span className="text-xs text-slate-500">
+                            {r.label}
+                          </span>
+                          <span className="text-xs font-medium text-slate-900 text-right truncate ml-4 max-w-[180px] sm:max-w-xs">
+                            {r.value}
+                          </span>
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleDisconnect}
+                        className="mt-1 sm:mt-2 inline-flex items-center gap-1.5 text-red-600 text-xs font-medium border border-red-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Disconnect{" "}
+                        {activeConnection.store_name || "store"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900">
-                      {connection.store_name || connection.store_url}
-                    </p>
-                    <p className="text-xs text-slate-400 truncate">
-                      {connection.store_url}
-                    </p>
-                  </div>
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
-                </div>
-                {[
-                  {
-                    label: "Currency",
-                    value: connection.store_currency || "INR",
-                  },
-                  {
-                    label: "Connected",
-                    value: new Date(connection.connected_at).toLocaleString(
-                      "en-IN",
-                      { dateStyle: "medium", timeStyle: "short" },
-                    ),
-                  },
-                  {
-                    label: "Webhooks",
-                    value:
-                      "3 registered (order.created, order.updated, order.deleted)",
-                  },
-                ].map((r) => (
-                  <div
-                    key={r.label}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 mb-2"
-                  >
-                    <span className="text-xs text-slate-500">{r.label}</span>
-                    <span className="text-xs font-medium text-slate-900 text-right max-w-xs truncate">
-                      {r.value}
-                    </span>
-                  </div>
-                ))}
-                <button
-                  onClick={handleDisconnect}
-                  className="mt-4 inline-flex items-center gap-2 text-red-600 text-xs font-medium border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Disconnect store
-                </button>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Automations Card */}
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                Automations
-              </p>
-              <p className="text-xs text-slate-400">
-                Send WhatsApp messages when orders change status
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/integrations/woocommerce/templates")}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm hover:from-violet-600 hover:to-indigo-600 transition-all"
-              >
-                <Sparkles className="h-3.5 w-3.5" /> Template guide
-              </button>
-              <button
-                onClick={() => setShowAutoModal(true)}
-                disabled={!connection}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add rule
-              </button>
+        {/* ── Automations Card ── */}
+        <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          {/* Card header */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  Automations
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5 truncate hidden sm:block">
+                  {activeConnection
+                    ? `${activeConnection.store_name || activeConnection.store_url} — WhatsApp messages on order events`
+                    : "Send WhatsApp messages when orders change status"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <button
+                  onClick={() =>
+                    navigate("/integrations/woocommerce/templates")
+                  }
+                  className="inline-flex items-center gap-1 sm:gap-1.5 text-xs font-medium px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm hover:from-violet-600 hover:to-indigo-600"
+                >
+                  <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden sm:inline">Template guide</span>
+                  <span className="inline sm:hidden">Guide</span>
+                </button>
+                <button
+                  onClick={() => setShowAutoModal(true)}
+                  disabled={!activeConnection}
+                  className="inline-flex items-center gap-1 sm:gap-1.5 text-xs font-medium px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden sm:inline">Add rule</span>
+                  <span className="inline sm:hidden">Add</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-100 px-6 overflow-x-auto">
+          <div className="flex border-b border-slate-100 overflow-x-auto">
             {[
-              { key: "all", label: "All rules" },
-              { key: "active", label: `Active (${activeAutomations.length})` },
-              { key: "logs", label: "Send logs" },
-              { key: "cart-recovery", label: "🛒 Cart recovery" },
+              { key: "all", label: "All rules", short: "All" },
+              {
+                key: "active",
+                label: `Active (${activeAutomations.length})`,
+                short: `Active`,
+              },
+              { key: "logs", label: "Send logs", short: "Logs" },
+              {
+                key: "cart-recovery",
+                label: "🛒 Cart recovery",
+                short: "🛒 Cart",
+              },
             ].map((t) => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`py-3 px-4 text-xs font-medium border-b-2 -mb-px flex-shrink-0 transition-colors ${activeTab === t.key ? "border-amber-500 text-amber-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+                className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-medium border-b-2 -mb-px flex-shrink-0 transition-colors ${
+                  activeTab === t.key
+                    ? "border-amber-500 text-amber-700"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
               >
-                {t.label}
+                <span className="hidden sm:inline">{t.label}</span>
+                <span className="inline sm:hidden">{t.short}</span>
               </button>
             ))}
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* All rules */}
             {activeTab === "all" &&
               (automations.filter((a) => a.trigger_event !== "cart.abandoned")
                 .length === 0 ? (
-                <div className="text-center py-10">
+                <div className="text-center py-8 sm:py-10">
                   <div className="text-3xl mb-3">⚡</div>
                   <p className="text-sm font-medium text-slate-700 mb-1">
                     No automations yet
                   </p>
                   <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                    {connection
+                    {activeConnection
                       ? "Add your first rule to automatically message customers when orders change status."
                       : "Connect your store first, then add automation rules."}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {automations
                     .filter((a) => a.trigger_event !== "cart.abandoned")
                     .map((a) => {
@@ -615,27 +723,30 @@ export default function WooCommercePage() {
                       return (
                         <div
                           key={a.id}
-                          className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl bg-slate-50"
+                          className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-slate-100 rounded-xl sm:rounded-2xl bg-slate-50"
                         >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-base flex-shrink-0">
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sm sm:text-base flex-shrink-0">
                             {cfg.emoji}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-slate-900">
                               {cfg.label}
                             </p>
-                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                              <span className="text-xs text-slate-400 truncate max-w-[120px]">
+                            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap mt-0.5">
+                              <span className="text-xs text-slate-400 truncate max-w-[80px] sm:max-w-[120px]">
                                 {a.whatsapp_templates?.name || "Template"}
                               </span>
                               <span
-                                className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TAG_STYLES[cfg.color]}`}
+                                className={`inline-flex px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-medium ${TAG_STYLES[cfg.color]} hidden sm:inline-flex`}
                               >
                                 {a.trigger_event}
                               </span>
                               {a.include_product_image && (
-                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                                  🖼️ With image
+                                <span className="inline-flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                                  🖼️{" "}
+                                  <span className="hidden sm:inline">
+                                    With image
+                                  </span>
                                 </span>
                               )}
                             </div>
@@ -650,7 +761,7 @@ export default function WooCommercePage() {
                           </button>
                           <button
                             onClick={() => handleDelete(a.id)}
-                            className="text-slate-300 hover:text-red-500 transition-colors ml-1"
+                            className="text-slate-300 hover:text-red-500 transition-colors"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -663,13 +774,13 @@ export default function WooCommercePage() {
             {/* Active */}
             {activeTab === "active" &&
               (activeAutomations.length === 0 ? (
-                <div className="text-center py-10">
+                <div className="text-center py-8 sm:py-10">
                   <p className="text-sm text-slate-500">
                     No active automations
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {activeAutomations.map((a) => {
                     const cfg = EVENT_CONFIG[a.trigger_event] || {
                       label: a.trigger_event,
@@ -679,27 +790,27 @@ export default function WooCommercePage() {
                     return (
                       <div
                         key={a.id}
-                        className="flex items-center gap-3 p-4 border border-emerald-100 rounded-2xl bg-emerald-50"
+                        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-emerald-100 rounded-xl sm:rounded-2xl bg-emerald-50"
                       >
                         <div className="text-base">{cfg.emoji}</div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-900">
                             {cfg.label}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <p className="text-xs text-slate-400">
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <p className="text-xs text-slate-400 truncate">
                               {a.whatsapp_templates?.name}
                             </p>
                             {a.include_product_image && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                                🖼️ With image
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                                🖼️
                               </span>
                             )}
                           </div>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{" "}
-                          Active
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-100 px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span className="hidden sm:inline">Active</span>
                         </span>
                       </div>
                     );
@@ -710,7 +821,7 @@ export default function WooCommercePage() {
             {/* Logs */}
             {activeTab === "logs" &&
               (logs.length === 0 ? (
-                <div className="text-center py-10">
+                <div className="text-center py-8 sm:py-10">
                   <div className="text-3xl mb-3">📋</div>
                   <p className="text-sm font-medium text-slate-700 mb-1">
                     No logs yet
@@ -720,7 +831,7 @@ export default function WooCommercePage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {logs.map((l) => {
                     const cfg = EVENT_CONFIG[l.trigger_event] || {
                       label: l.trigger_event,
@@ -730,14 +841,16 @@ export default function WooCommercePage() {
                     return (
                       <div
                         key={l.id}
-                        className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl bg-slate-50"
+                        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-slate-100 rounded-xl sm:rounded-2xl bg-slate-50"
                       >
-                        <div className="text-base">{cfg.emoji}</div>
+                        <div className="text-base flex-shrink-0">
+                          {cfg.emoji}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900">
-                            {cfg.label} · Order #{l.wc_order_id}
+                          <p className="text-sm font-medium text-slate-900 truncate">
+                            {cfg.label} · #{l.wc_order_id}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">
                             {l.phone_number} ·{" "}
                             {new Date(l.triggered_at).toLocaleString("en-IN", {
                               dateStyle: "short",
@@ -746,7 +859,7 @@ export default function WooCommercePage() {
                           </p>
                         </div>
                         <span
-                          className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.status === "sent" ? "bg-emerald-50 text-emerald-700" : l.status === "failed" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}
+                          className={`text-xs font-medium px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0 ${l.status === "sent" ? "bg-emerald-50 text-emerald-700" : l.status === "failed" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}
                         >
                           {l.status}
                         </span>
@@ -756,21 +869,21 @@ export default function WooCommercePage() {
                 </div>
               ))}
 
-            {/* ✅ Cart Recovery tab */}
+            {/* Cart Recovery */}
             {activeTab === "cart-recovery" && (
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                   {[
                     {
-                      label: "Carts detected",
+                      label: "Detected",
                       value: cartStats?.total ?? 0,
                       icon: ShoppingCart,
                       color: "text-blue-600",
                       bg: "bg-blue-50",
                     },
                     {
-                      label: "Messages sent",
+                      label: "Sent",
                       value: cartStats?.sent ?? 0,
                       icon: Send,
                       color: "text-amber-600",
@@ -793,14 +906,16 @@ export default function WooCommercePage() {
                   ].map((s) => (
                     <div
                       key={s.label}
-                      className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                      className="rounded-xl sm:rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4"
                     >
                       <div
-                        className={`w-7 h-7 rounded-xl ${s.bg} flex items-center justify-center mb-2`}
+                        className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl ${s.bg} flex items-center justify-center mb-1.5 sm:mb-2`}
                       >
-                        <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+                        <s.icon
+                          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${s.color}`}
+                        />
                       </div>
-                      <p className="text-lg font-semibold text-slate-900">
+                      <p className="text-base sm:text-lg font-semibold text-slate-900">
                         {s.value}
                       </p>
                       <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
@@ -810,47 +925,49 @@ export default function WooCommercePage() {
 
                 {/* Setup / active card */}
                 {!cartAutomation ? (
-                  <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
-                    <div className="text-3xl mb-3">🛒</div>
+                  <div className="rounded-xl sm:rounded-2xl border border-dashed border-slate-300 p-4 sm:p-6 text-center">
+                    <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">🛒</div>
                     <p className="text-sm font-semibold text-slate-800 mb-1">
                       Set up abandoned cart recovery
                     </p>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed mb-4">
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed mb-3 sm:mb-4">
                       Automatically message customers who add items to cart but
-                      don't complete checkout. Recover lost sales on autopilot.
+                      don't complete checkout.
                     </p>
                     <button
                       onClick={() => setShowCartSetup(true)}
-                      disabled={!connection}
-                      className="inline-flex items-center gap-2 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                      disabled={!activeConnection}
+                      className="inline-flex items-center gap-2 bg-slate-900 text-white text-xs font-medium px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Plus className="h-3.5 w-3.5" /> Enable cart recovery
                     </button>
-                    {!connection && (
+                    {!activeConnection && (
                       <p className="text-xs text-slate-400 mt-2">
                         Connect your store first
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-base flex-shrink-0">
+                  <div className="rounded-xl sm:rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-2 sm:gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-base flex-shrink-0">
                           🛒
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-medium text-slate-900">
-                            Cart recovery is{" "}
+                            Cart recovery{" "}
                             {cartAutomation.is_active ? "active" : "paused"}
                           </p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <p className="text-xs text-slate-500">
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <p className="text-xs text-slate-500 truncate max-w-[100px] sm:max-w-none">
                               {cartAutomation.whatsapp_templates?.name ||
                                 "Template"}
                             </p>
-                            <span className="text-xs text-slate-400">·</span>
-                            <p className="text-xs text-slate-500">
+                            <span className="text-xs text-slate-400 hidden sm:inline">
+                              ·
+                            </span>
+                            <p className="text-xs text-slate-500 hidden sm:block">
                               {DELAY_OPTIONS.find(
                                 (d) => d.value === cartAutomation.delay_minutes,
                               )?.label ||
@@ -858,8 +975,8 @@ export default function WooCommercePage() {
                               delay
                             </p>
                             {cartAutomation.include_product_image && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                                🖼️ With image
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                                🖼️
                               </span>
                             )}
                           </div>
@@ -876,7 +993,7 @@ export default function WooCommercePage() {
                         </button>
                         <button
                           onClick={() => handleDelete(cartAutomation.id)}
-                          className="text-slate-300 hover:text-red-500 transition-colors"
+                          className="text-slate-300 hover:text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -887,15 +1004,14 @@ export default function WooCommercePage() {
 
                 {/* Recovery logs */}
                 <div>
-                  <p className="text-xs font-semibold text-slate-700 mb-3">
+                  <p className="text-xs font-semibold text-slate-700 mb-2 sm:mb-3">
                     Recovery log
                   </p>
                   {cartLogs.length === 0 ? (
-                    <div className="text-center py-8 rounded-2xl border border-slate-100 bg-slate-50">
+                    <div className="text-center py-6 sm:py-8 rounded-xl sm:rounded-2xl border border-slate-100 bg-slate-50">
                       <div className="text-2xl mb-2">📋</div>
                       <p className="text-xs text-slate-400">
-                        No recovery attempts yet. Logs appear here once the cron
-                        runs.
+                        No recovery attempts yet.
                       </p>
                     </div>
                   ) : (
@@ -924,19 +1040,19 @@ export default function WooCommercePage() {
                         return (
                           <div
                             key={l.id}
-                            className="flex items-center gap-3 p-3.5 border border-slate-100 rounded-2xl bg-slate-50"
+                            className="flex items-center gap-2 sm:gap-3 p-3 sm:p-3.5 border border-slate-100 rounded-xl sm:rounded-2xl bg-slate-50"
                           >
                             {firstItem?.image ? (
                               <img
                                 src={firstItem.image}
                                 alt={firstItem.name}
-                                className="w-9 h-9 rounded-xl object-cover flex-shrink-0 border border-slate-200"
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-cover flex-shrink-0 border border-slate-200"
                                 onError={(e) => {
                                   e.target.style.display = "none";
                                 }}
                               />
                             ) : (
-                              <div className="w-9 h-9 rounded-xl bg-slate-200 flex items-center justify-center text-base flex-shrink-0">
+                              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-slate-200 flex items-center justify-center text-sm flex-shrink-0">
                                 🛒
                               </div>
                             )}
@@ -950,11 +1066,11 @@ export default function WooCommercePage() {
                             </div>
                             <div className="text-right flex-shrink-0">
                               <span
-                                className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusStyle}`}
+                                className={`text-xs font-medium px-2 sm:px-2.5 py-1 rounded-full ${statusStyle}`}
                               >
                                 {statusLabel}
                               </span>
-                              <p className="text-xs text-slate-400 mt-1">
+                              <p className="text-xs text-slate-400 mt-1 hidden sm:block">
                                 {new Date(l.created_at).toLocaleString(
                                   "en-IN",
                                   { dateStyle: "short", timeStyle: "short" },
@@ -973,17 +1089,17 @@ export default function WooCommercePage() {
         </div>
       </div>
 
-      {/* Connect Modal */}
+      {/* ── Connect Modal ── */}
       {showConnectModal && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
           onClick={() => setShowConnectModal(false)}
         >
           <div
-            className="bg-white rounded-3xl border border-slate-200 w-full max-w-md max-h-screen overflow-y-auto"
+            className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
               <p className="text-base font-semibold">
                 Connect WooCommerce store
               </p>
@@ -994,11 +1110,10 @@ export default function WooCommercePage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 leading-relaxed">
                 We'll verify your credentials and automatically register
-                webhooks on your store so order events reach Samvaadik in real
-                time.
+                webhooks on your store.
               </div>
               {[
                 {
@@ -1040,7 +1155,7 @@ export default function WooCommercePage() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+            <div className="flex gap-3 px-5 sm:px-6 py-4 border-t border-slate-100">
               <button
                 onClick={() => setShowConnectModal(false)}
                 className="flex-1 py-2.5 text-sm font-medium border border-slate-200 rounded-2xl hover:bg-slate-50"
@@ -1062,20 +1177,20 @@ export default function WooCommercePage() {
         </div>
       )}
 
-      {/* Add Automation Modal */}
+      {/* ── Add Automation Modal ── */}
       {showAutoModal && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
           onClick={() => {
             setShowAutoModal(false);
             setIncludeImage(true);
           }}
         >
           <div
-            className="bg-white rounded-3xl border border-slate-200 w-full max-w-md"
+            className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
               <p className="text-base font-semibold">Add automation rule</p>
               <button
                 onClick={() => {
@@ -1087,7 +1202,7 @@ export default function WooCommercePage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl text-xs text-amber-700 leading-relaxed">
                 Choose which order event triggers a WhatsApp message and which
                 approved template to send.
@@ -1118,7 +1233,7 @@ export default function WooCommercePage() {
                 </p>
               </div>
               <div
-                className={`rounded-xl p-3.5 flex items-center gap-3 cursor-pointer transition-all ${includeImage ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}
+                className={`rounded-xl p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-all ${includeImage ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}
                 onClick={() => {
                   setIncludeImage((p) => !p);
                   setAutoForm((p) => ({ ...p, wt_id: "" }));
@@ -1135,7 +1250,7 @@ export default function WooCommercePage() {
                     className={`text-xs mt-0.5 leading-relaxed ${includeImage ? "text-blue-600" : "text-slate-400"}`}
                   >
                     {includeImage
-                      ? "Product photo attached automatically from the order. Requires an IMAGE header template."
+                      ? "Product photo attached automatically. Requires IMAGE header template."
                       : "Text-only message. Works with any TEXT header template."}
                   </p>
                 </div>
@@ -1182,54 +1297,46 @@ export default function WooCommercePage() {
                       className="underline font-medium"
                     >
                       Use template guide
-                    </button>{" "}
-                    to create one.
+                    </button>
+                    .
                   </p>
                 )}
                 {approvedTemplates.length > 0 &&
                   filteredTemplates.length === 0 && (
                     <p className="text-xs text-amber-600 mt-1.5">
-                      No {includeImage ? "IMAGE" : "TEXT"} header templates
-                      found.{" "}
+                      No {includeImage ? "IMAGE" : "TEXT"} templates found.{" "}
                       <button
                         onClick={() =>
                           navigate("/integrations/woocommerce/templates")
                         }
                         className="underline font-medium"
                       >
-                        {includeImage
-                          ? "Create an image template"
-                          : "Create a text template"}
+                        Create one
                       </button>{" "}
-                      or toggle the image option {includeImage ? "off" : "on"}.
+                      or toggle image {includeImage ? "off" : "on"}.
                     </p>
                   )}
                 {filteredTemplates.length > 0 && (
                   <p className="text-xs text-slate-400 mt-1">
-                    {filteredTemplates.length} {includeImage ? "IMAGE" : "TEXT"}{" "}
-                    template(s) available
+                    {filteredTemplates.length} template(s) available
                   </p>
                 )}
               </div>
-              <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-500 leading-relaxed space-y-1">
+              <div className="p-3 bg-slate-50 rounded-xl sm:rounded-2xl text-xs text-slate-500 leading-relaxed space-y-1">
                 <p className="font-medium text-slate-700 mb-1">
-                  Variables mapped automatically from order:
+                  Variables auto-filled from order:
                 </p>
                 <p>
-                  <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
-                  Customer name &nbsp;{" "}
-                  <code className="bg-white px-1 rounded">{"{{2}}"}</code> Order
-                  number
-                </p>
-                <p>
-                  <code className="bg-white px-1 rounded">{"{{3}}"}</code> Order
-                  total &nbsp;&nbsp;&nbsp;{" "}
-                  <code className="bg-white px-1 rounded">{"{{4}}"}</code> Item
-                  names
+                  <code className="bg-white px-1 rounded">{"{{1}}"}</code> Name
+                  &nbsp;<code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
+                  Order# &nbsp;
+                  <code className="bg-white px-1 rounded">{"{{3}}"}</code> Total
+                  &nbsp;<code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
+                  Items
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+            <div className="flex gap-3 px-5 sm:px-6 py-4 border-t border-slate-100">
               <button
                 onClick={() => {
                   setShowAutoModal(false);
@@ -1250,17 +1357,17 @@ export default function WooCommercePage() {
         </div>
       )}
 
-      {/* ✅ Cart Recovery Setup Modal */}
+      {/* ── Cart Recovery Setup Modal ── */}
       {showCartSetup && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
           onClick={() => setShowCartSetup(false)}
         >
           <div
-            className="bg-white rounded-3xl border border-slate-200 w-full max-w-md"
+            className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
               <div>
                 <p className="text-base font-semibold">Enable cart recovery</p>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -1274,7 +1381,7 @@ export default function WooCommercePage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 leading-relaxed">
                 Our system checks for abandoned checkouts every 30 minutes and
                 sends a recovery WhatsApp message automatically.
@@ -1304,7 +1411,7 @@ export default function WooCommercePage() {
                 </p>
               </div>
               <div
-                className={`rounded-xl p-3.5 flex items-center gap-3 cursor-pointer transition-all ${cartForm.include_product_image ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}
+                className={`rounded-xl p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-all ${cartForm.include_product_image ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}
                 onClick={() =>
                   setCartForm((p) => ({
                     ...p,
@@ -1384,7 +1491,7 @@ export default function WooCommercePage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+            <div className="flex gap-3 px-5 sm:px-6 py-4 border-t border-slate-100">
               <button
                 onClick={() => setShowCartSetup(false)}
                 className="flex-1 py-2.5 text-sm font-medium border border-slate-200 rounded-2xl hover:bg-slate-50"

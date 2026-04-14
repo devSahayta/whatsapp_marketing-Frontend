@@ -10,8 +10,7 @@ import {
   HelpCircle,
   Signal,
   X,
-  Activity
-  
+  Activity,
 } from "lucide-react";
 import WhatsaapForm from "../components/WhatsaapForm";
 import WebhookHelp from "../components/WebhookHelp";
@@ -23,6 +22,8 @@ import {
 } from "../utils/toast";
 import "../styles/waccount-page.css";
 import WarmupGuideSection from "../components/warm-up/WarmupGuideSection";
+// Add import at top
+import MetaSignupButton from "../components/MetaSignupButton";
 
 const formatLabel = (value) => {
   if (!value) return "--";
@@ -193,8 +194,9 @@ const WAccountPage = () => {
                 Connect your WhatsApp Business account
               </h2>
               <p className="wa-onboarding-panel__text">
-                Add your Meta credentials below. Once saved, this page will show
-                account status, quality rating, tier, and warmup progress.
+                Connect your Meta account with one click. We'll automatically
+                fetch your WhatsApp Business details, messaging tier, and
+                quality rating.
               </p>
             </div>
 
@@ -204,27 +206,31 @@ const WAccountPage = () => {
             </div>
           </div>
 
+          {/* Primary — Meta Embedded Signup */}
           <div className="wa-status-panel__actions">
-            <button
-              type="button"
-              className="wa-primary-action"
-              onClick={() => setIsEditingAccount(true)}
-            >
-              <FilePlus2 size={16} />
-              <span>Connect WhatsApp account</span>
-            </button>
+            <MetaSignupButton
+              userId={user?.id}
+              onSuccess={() => fetchAccount(user?.id)}
+            />
           </div>
 
-          {/* <div className="wa-helper-note wa-helper-note--soft">
+          {/* Fallback — Manual form */}
+          <div className="wa-helper-note wa-helper-note--soft">
             <p className="wa-helper-note__title">
               <HelpCircle size={16} />
-              <span>Need webhook setup help?</span>
+              <span>Prefer manual setup?</span>
             </p>
             <p className="wa-helper-note__text">
-              Open the setup form to enter account details and view the webhook
-              guide in the same place.
+              If you already have your Meta credentials, you can{" "}
+              <button
+                type="button"
+                className="wa-inline-link"
+                onClick={() => setIsEditingAccount(true)}
+              >
+                enter them manually instead.
+              </button>
             </p>
-          </div> */}
+          </div>
         </section>
       )}
 
@@ -306,11 +312,11 @@ const WAccountPage = () => {
                 {!warmupCompleted && (
                   <>
                     <div className="wa-progress">
-                    <div
-                      className="wa-progress__fill"
-                      style={{ width: `${warmupProgress}%` }}
-                    />
-                  </div>
+                      <div
+                        className="wa-progress__fill"
+                        style={{ width: `${warmupProgress}%` }}
+                      />
+                    </div>
                     <p className="wa-progress__text">
                       {formatNumber(warmupProgressCount)} of{" "}
                       {formatNumber(currentWarmupLimit)} messages used (
@@ -320,46 +326,48 @@ const WAccountPage = () => {
                 )}
               </article>
               <article className="wa-status-card wa-status-card--tier-usage">
-    <div className="wa-status-card__icon tier-usage">
-      <Activity size={18} />
-    </div>
-    <p className="wa-status-card__label">Today's Tier Usage</p>
-    <h3 className="wa-status-card__value">
-      {formatNumber(existingData.tier_daily_sent || 0)}/
-      {formatNumber(existingData.messaging_limit_per_day)}
-    </h3>
-    <p className="wa-status-card__meta">
-      {formatNumber(
-        Math.max(
-          0, 
-          (existingData.messaging_limit_per_day || 0) - 
-          (existingData.tier_daily_sent || 0)
-        )
-      )} messages remaining today
-    </p>
+                <div className="wa-status-card__icon tier-usage">
+                  <Activity size={18} />
+                </div>
+                <p className="wa-status-card__label">Today's Tier Usage</p>
+                <h3 className="wa-status-card__value">
+                  {formatNumber(existingData.tier_daily_sent || 0)}/
+                  {formatNumber(existingData.messaging_limit_per_day)}
+                </h3>
+                <p className="wa-status-card__meta">
+                  {formatNumber(
+                    Math.max(
+                      0,
+                      (existingData.messaging_limit_per_day || 0) -
+                        (existingData.tier_daily_sent || 0),
+                    ),
+                  )}{" "}
+                  messages remaining today
+                </p>
 
-    {/* Progress Bar */}
-    <div className="wa-progress">
-      <div
-        className="wa-progress__fill"
-        style={{ 
-          width: `${Math.min(
-            100, 
-            ((existingData.tier_daily_sent || 0) / 
-              (existingData.messaging_limit_per_day || 0) * 100
-            )
-          )}%` 
-        }}
-      />
-    </div>
-    <p className="wa-progress__text">
-      {Math.round(
-        ((existingData.tier_daily_sent || 0) / 
-          (existingData.messaging_limit_per_day || 0) * 100
-        )
-      )}% used • Resets at midnight UTC (5:30 AM IST)
-    </p>
-  </article>
+                {/* Progress Bar */}
+                <div className="wa-progress">
+                  <div
+                    className="wa-progress__fill"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        ((existingData.tier_daily_sent || 0) /
+                          (existingData.messaging_limit_per_day || 0)) *
+                          100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <p className="wa-progress__text">
+                  {Math.round(
+                    ((existingData.tier_daily_sent || 0) /
+                      (existingData.messaging_limit_per_day || 0)) *
+                      100,
+                  )}
+                  % used • Resets at midnight UTC (5:30 AM IST)
+                </p>
+              </article>
 
               <article className="wa-status-card">
                 <div className="wa-status-card__icon sync">
@@ -412,12 +420,12 @@ const WAccountPage = () => {
       )}
 
       {existingData && !isEditingAccount && (
-  <WarmupGuideSection 
-    currentStage={existingData.warmup_stage}
-    warmupCompleted={existingData.warmup_completed}
-    tier={existingData.messaging_limit_tier}
-  />
-)}
+        <WarmupGuideSection
+          currentStage={existingData.warmup_stage}
+          warmupCompleted={existingData.warmup_completed}
+          tier={existingData.messaging_limit_tier}
+        />
+      )}
 
       {existingData && !isEditingAccount && (
         <section className="wa-helper-note">

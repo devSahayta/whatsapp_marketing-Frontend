@@ -5,18 +5,28 @@ export const connectWooStore = (data) =>
 export const getWooConnections = () => api.get("/api/woocommerce/connections");
 export const disconnectWooStore = (id) =>
   api.delete(`/api/woocommerce/connections/${id}`);
-export const getWooAutomations = () => api.get("/api/woocommerce/automations");
+
+// ✅ Now accepts optional connection_id to filter by store
+export const getWooAutomations = (connection_id) =>
+  api.get(
+    `/api/woocommerce/automations${connection_id ? `?connection_id=${connection_id}` : ""}`,
+  );
+
 export const createWooAutomation = (data) =>
   api.post("/api/woocommerce/automations", data);
 export const updateWooAutomation = (id, data) =>
   api.patch(`/api/woocommerce/automations/${id}`, data);
 export const deleteWooAutomation = (id) =>
   api.delete(`/api/woocommerce/automations/${id}`);
-export const getWooLogs = () => api.get("/api/woocommerce/logs");
+
+// ✅ Now accepts optional connection_id to filter by store
+export const getWooLogs = (connection_id) =>
+  api.get(
+    `/api/woocommerce/logs${connection_id ? `?connection_id=${connection_id}` : ""}`,
+  );
+
 export const getWaAccountId = () => api.get("/api/woocommerce/account-id");
 
-// ✅ NEW: Gets a Meta header_handle using a placeholder image
-// Used by Template Guide when creating IMAGE header templates
 export const getPlaceholderHandle = () =>
   api.post("/api/woocommerce/placeholder-handle");
 
