@@ -8,6 +8,7 @@ import {
   BarChart3,
   PlugZap,
   Bot,
+  Key,
 } from "lucide-react";
 import "../styles/sidebar.css";
 
@@ -65,6 +66,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       name: "Integrations",
       path: "/integrations",
       icon: <PlugZap size={18} />,
+    },
+    {
+      name: "API Keys",
+      path: "/api-keys",
+      icon: <Key size={18} />,
     },
 
     // {
