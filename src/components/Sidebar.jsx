@@ -66,6 +66,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/integrations",
       icon: <PlugZap size={18} />,
     },
+    {
+      name: "Agents",
+      path: "/agents",
+      icon: <Bot size={18} />,
+    },
 
     // {
     //   name: "Knowledge Base",

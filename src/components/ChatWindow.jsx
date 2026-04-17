@@ -116,10 +116,21 @@ export default function ChatWindow({ chatId, userInfo }) {
 
   /* ================= MESSAGE UTILS ================= */
 
+  // Bot messages on LEFT (received), Admin messages on RIGHT (sent)
   const isSentByAdmin = (sender_type) => sender_type?.toLowerCase() === "admin";
 
-  const getSenderLabel = (sender_type) =>
-    sender_type?.toLowerCase() === "admin" ? "Admin" : "User";
+  const getSenderLabel = (sender_type) => {
+    switch (sender_type?.toLowerCase()) {
+      case "admin":
+        return "Admin";
+      case "bot":
+        return "Bot";
+      case "system":
+        return "System";
+      default:
+        return "User";
+    }
+  };
 
   /* ================= DATE SEPARATORS ================= */
 
@@ -246,7 +257,7 @@ export default function ChatWindow({ chatId, userInfo }) {
           </div>
           <div className="wa-header-meta">
             <h3>{getParticipantName(userInfo)}</h3>
-            <div className="wa-last-seen">👤 Participant</div>
+            <div className="wa-last-seen"> Participant</div>
           </div>
         </div>
       </div>

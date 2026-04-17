@@ -2,7 +2,15 @@
 // Right panel – edit config of the selected node
 
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  Sparkles,
+  ExternalLink,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
 import { NODE_META } from "./ChatbotNode";
 
 const inputStyle = {
@@ -148,7 +156,269 @@ function KeywordsField({ keywords = [], onChange }) {
   );
 }
 
-function ConfigEditor({ type, config, onChange, templates = [] }) {
+// ── AI Agent config editor ─────────────────────────────────────────────────────
+function AiAgentEditor({ config, onChange, agents = [], agentsLoading }) {
+  const update = (key, value) => onChange({ ...config, [key]: value });
+
+  const selectedAgent = agents.find((a) => a.agent_id === config.agent_id);
+
+  return (
+    <div>
+      {/* Agent selector */}
+      <div style={fieldStyle}>
+        <label style={labelStyle}>SELECT AGENT</label>
+
+        {agentsLoading ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 10px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 6,
+              fontSize: 11,
+              color: "#94a3b8",
+            }}
+          >
+            <Loader2
+              size={11}
+              style={{ animation: "spin 1s linear infinite" }}
+            />
+            Loading agents…
+          </div>
+        ) : agents.length === 0 ? (
+          <div
+            style={{
+              padding: "10px 12px",
+              background: "#fff7ed",
+              border: "1px solid #fed7aa",
+              borderRadius: 7,
+            }}
+          >
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+              <AlertTriangle
+                size={12}
+                color="#f97316"
+                style={{ flexShrink: 0, marginTop: 1 }}
+              />
+              <div>
+                <p
+                  style={{
+                    margin: "0 0 4px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#c2410c",
+                  }}
+                >
+                  No agents found
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 10,
+                    color: "#9a3412",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Create an agent first from the Agents section, then come back
+                  to use it here.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <select
+            value={config.agent_id || ""}
+            onChange={(e) => {
+              const agent = agents.find((a) => a.agent_id === e.target.value);
+              onChange({
+                ...config,
+                agent_id: agent?.agent_id || "",
+                agent_name: agent?.name || "",
+              });
+            }}
+            style={{ ...inputStyle, cursor: "pointer" }}
+          >
+            <option value="">Select an agent…</option>
+            {agents.map((a) => (
+              <option key={a.agent_id} value={a.agent_id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Selected agent preview card */}
+      {selectedAgent && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            background: "#faf5ff",
+            borderRadius: 8,
+            border: "1px solid #e9d5ff",
+          }}
+        >
+          {/* Agent name + model */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 6,
+            }}
+          >
+            <div
+              style={{
+                background: "#7c3aed",
+                borderRadius: 5,
+                padding: 3,
+                display: "flex",
+              }}
+            >
+              <Sparkles size={10} color="#fff" />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#4c1d95" }}>
+              {selectedAgent.name}
+            </span>
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: 9,
+                fontWeight: 700,
+                background: "#ede9fe",
+                color: "#6d28d9",
+                borderRadius: 4,
+                padding: "2px 6px",
+                letterSpacing: 0.3,
+              }}
+            >
+              {selectedAgent.model === "claude-haiku-4-5-20251001"
+                ? "Haiku"
+                : selectedAgent.model === "claude-sonnet-4-6"
+                  ? "Sonnet"
+                  : "Opus"}
+            </span>
+          </div>
+
+          {/* Description */}
+          {selectedAgent.description && (
+            <p
+              style={{
+                margin: "0 0 7px",
+                fontSize: 11,
+                color: "#6d28d9",
+                lineHeight: 1.5,
+                opacity: 0.8,
+              }}
+            >
+              {selectedAgent.description}
+            </p>
+          )}
+
+          {/* Quick stats */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: 10,
+                background: "#ede9fe",
+                color: "#6d28d9",
+                borderRadius: 4,
+                padding: "2px 7px",
+              }}
+            >
+              Max {selectedAgent.max_turns} turns
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                background: "#ede9fe",
+                color: "#6d28d9",
+                borderRadius: 4,
+                padding: "2px 7px",
+              }}
+            >
+              {selectedAgent.fallback_action === "handoff_to_agent"
+                ? "→ Handoff"
+                : "→ End flow"}
+            </span>
+            {selectedAgent.exit_keywords?.length > 0 && (
+              <span
+                style={{
+                  fontSize: 10,
+                  background: "#ede9fe",
+                  color: "#6d28d9",
+                  borderRadius: 4,
+                  padding: "2px 7px",
+                }}
+              >
+                {selectedAgent.exit_keywords.length} exit keyword
+                {selectedAgent.exit_keywords.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Save response as */}
+      <TextField
+        label="SAVE LAST RESPONSE AS (optional)"
+        value={config.save_response_as}
+        onChange={(v) => update("save_response_as", v)}
+        placeholder="agent_reply"
+      />
+      <p
+        style={{
+          margin: "-8px 0 12px",
+          fontSize: 10,
+          color: "#94a3b8",
+          lineHeight: 1.5,
+        }}
+      >
+        Store the agent's final reply in a session variable so later nodes can
+        use it.
+      </p>
+
+      {/* How it works info box */}
+      <div
+        style={{
+          padding: "9px 11px",
+          background: "#f0f9ff",
+          border: "1px solid #bae6fd",
+          borderRadius: 7,
+          fontSize: 10,
+          color: "#0369a1",
+          lineHeight: 1.7,
+        }}
+      >
+        <p style={{ margin: "0 0 4px", fontWeight: 700 }}>
+          How this node works
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 14 }}>
+          <li>
+            The agent handles the conversation until the user exits or max turns
+            is reached
+          </li>
+          <li>When done, the flow continues to the next connected node</li>
+          <li>Exit keywords defined on the agent will break out immediately</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ── Main config editor switch ──────────────────────────────────────────────────
+function ConfigEditor({
+  type,
+  config,
+  onChange,
+  templates = [],
+  agents = [],
+  agentsLoading = false,
+}) {
   const update = (key, value) => onChange({ ...config, [key]: value });
 
   switch (type) {
@@ -188,19 +458,25 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
         const body = components?.find((c) => c.type === "BODY");
         if (!body?.text) return [];
         const matches = body.text.match(/\{\{(\d+)\}\}/g) || [];
-        return [...new Set(matches.map((m) => m.replace(/[{}]/g, "")))]
-          .sort((a, b) => Number(a) - Number(b));
+        return [...new Set(matches.map((m) => m.replace(/[{}]/g, "")))].sort(
+          (a, b) => Number(a) - Number(b),
+        );
       };
 
-      const selectedTpl = templates.find((t) => t.name === config.template_name);
+      const selectedTpl = templates.find(
+        (t) => t.name === config.template_name,
+      );
       const variables = selectedTpl ? extractVars(selectedTpl.components) : [];
-      const headerComp = selectedTpl?.components?.find((c) => c.type === "HEADER");
+      const headerComp = selectedTpl?.components?.find(
+        (c) => c.type === "HEADER",
+      );
       const bodyComp = selectedTpl?.components?.find((c) => c.type === "BODY");
-      const buttonComp = selectedTpl?.components?.find((c) => c.type === "BUTTONS");
+      const buttonComp = selectedTpl?.components?.find(
+        (c) => c.type === "BUTTONS",
+      );
 
       return (
         <>
-          {/* Template selector */}
           <div style={fieldStyle}>
             <label style={labelStyle}>TEMPLATE</label>
             {templates.length === 0 ? (
@@ -211,9 +487,16 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
               <select
                 value={config.template_name || ""}
                 onChange={(e) => {
-                  const t = templates.find((tpl) => tpl.name === e.target.value);
+                  const t = templates.find(
+                    (tpl) => tpl.name === e.target.value,
+                  );
                   if (!t) {
-                    onChange({ ...config, template_name: "", template_id: "", template_variable_map: {} });
+                    onChange({
+                      ...config,
+                      template_name: "",
+                      template_id: "",
+                      template_variable_map: {},
+                    });
                     return;
                   }
                   onChange({
@@ -235,7 +518,6 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
             )}
           </div>
 
-          {/* Template preview */}
           {selectedTpl && (
             <div
               style={{
@@ -278,7 +560,14 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
                 </p>
               )}
               {buttonComp?.buttons?.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 4,
+                    marginTop: 4,
+                  }}
+                >
                   {buttonComp.buttons.map((btn, i) => (
                     <span
                       key={i}
@@ -299,17 +588,28 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
             </div>
           )}
 
-          {/* Variable mapping */}
           {variables.length > 0 && (
             <div>
               <label style={labelStyle}>VARIABLE MAPPING</label>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>
+              <p
+                style={{
+                  margin: "0 0 8px",
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  lineHeight: 1.5,
+                }}
+              >
                 Map each {"{{n}}"} to a session variable (e.g. {"{{name}}"})
               </p>
               {variables.map((pos) => (
                 <div
                   key={pos}
-                  style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 8,
+                  }}
                 >
                   <span
                     style={{
@@ -476,6 +776,16 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
         </div>
       );
 
+    case "ai_agent":
+      return (
+        <AiAgentEditor
+          config={config}
+          onChange={onChange}
+          agents={agents}
+          agentsLoading={agentsLoading}
+        />
+      );
+
     case "ai_fallback":
       return (
         <TextField
@@ -527,9 +837,16 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
             border: "1px solid #e2e8f0",
           }}
         >
-          <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.6 }}>
-            This flow will start when triggered via the API.
-            No additional configuration needed.
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              color: "#64748b",
+              lineHeight: 1.6,
+            }}
+          >
+            This flow will start when triggered via the API. No additional
+            configuration needed.
           </p>
         </div>
       );
@@ -543,7 +860,15 @@ function ConfigEditor({ type, config, onChange, templates = [] }) {
   }
 }
 
-export default function NodeProperties({ node, onChange, onClose, templates }) {
+// ── Exported panel ─────────────────────────────────────────────────────────────
+export default function NodeProperties({
+  node,
+  onChange,
+  onClose,
+  templates,
+  agents,
+  agentsLoading,
+}) {
   const [config, setConfig] = useState(node?.data || {});
 
   useEffect(() => {
@@ -637,8 +962,13 @@ export default function NodeProperties({ node, onChange, onClose, templates }) {
           config={config}
           onChange={handleChange}
           templates={templates}
+          agents={agents}
+          agentsLoading={agentsLoading}
         />
       </div>
+
+      {/* Spin keyframe for loader */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

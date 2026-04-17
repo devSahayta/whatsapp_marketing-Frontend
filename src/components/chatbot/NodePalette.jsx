@@ -7,7 +7,6 @@ import { NODE_META } from "./ChatbotNode";
 const PALETTE_GROUPS = [
   {
     label: "TRIGGERS",
-    // types: ["keyword_trigger", "api_trigger"],
     types: ["keyword_trigger"],
   },
   {
@@ -16,13 +15,11 @@ const PALETTE_GROUPS = [
   },
   {
     label: "LOGIC",
-    // types: ["wait_for_input", "condition", "http_request", "delay"],
     types: ["wait_for_input", "condition", "delay"],
   },
   {
     label: "ACTIONS",
-    // types: ["ai_fallback", "handoff_to_agent", "end_flow", "trigger_campaign"],
-    types: ["ai_fallback", "handoff_to_agent", "end_flow"],
+    types: ["ai_agent", "ai_fallback", "handoff_to_agent", "end_flow"],
   },
 ];
 
@@ -82,6 +79,8 @@ export default function NodePalette() {
                 const meta = NODE_META[type];
                 if (!meta) return null;
                 const Icon = meta.icon;
+                const isAiAgent = type === "ai_agent";
+
                 return (
                   <div
                     key={type}
@@ -98,6 +97,7 @@ export default function NodePalette() {
                       userSelect: "none",
                       border: `1px solid ${meta.color}33`,
                       transition: "transform 0.1s, box-shadow 0.1s",
+                      position: "relative",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = "translateY(-1px)";
@@ -128,10 +128,28 @@ export default function NodePalette() {
                         fontSize: 11,
                         fontWeight: 500,
                         color: "#334155",
+                        flex: 1,
                       }}
                     >
                       {meta.label}
                     </span>
+
+                    {/* "NEW" badge on AI Agent */}
+                    {isAiAgent && (
+                      <span
+                        style={{
+                          fontSize: 8,
+                          fontWeight: 800,
+                          background: meta.color,
+                          color: "#fff",
+                          borderRadius: 3,
+                          padding: "1px 4px",
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        AI
+                      </span>
+                    )}
                   </div>
                 );
               })}
