@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -383,7 +383,6 @@ function AppContent() {
             }
           />
           <Route
-<<<<<<< HEAD
             path="/agents"
             element={
               <PrivateSubscribedRoute>
@@ -412,12 +411,14 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <TestAgent />
-=======
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
             path="/api-keys"
             element={
               <PrivateSubscribedRoute>
                 <ApiKeysPage />
->>>>>>> 4d01805e776f723c68dbbbad1095249422b6e539
               </PrivateSubscribedRoute>
             }
           />
