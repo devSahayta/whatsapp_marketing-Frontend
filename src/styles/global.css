@@ -54,24 +54,20 @@ body,
 
 .content.with-navbar {
   position: relative;
-  z-index: 1; /* Above background */
-  /* padding-top: var(--navbar-height); */
+  /* no z-index: keeps this out of the stacking context so fixed modals
+     inside can reach the root stacking context and beat the navbar */
   min-height: calc(100vh - var(--navbar-height));
 }
 
 .content.no-navbar {
   position: relative;
-  z-index: 1;
   padding-top: 0;
   min-height: 100vh;
 }
 
-/* Ensure navbar and sidebar are above background */
+/* Ensure navbar is above page content */
 nav.navbar {
-  position: relative;
-  z-index: 60;
-  background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
-  backdrop-filter: blur(10px);
+  z-index: 10;
 }
 
 .sidebar {

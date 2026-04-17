@@ -86,7 +86,7 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   };
 
   return (
-    <nav className="navbar ">
+    <nav className={`navbar${isAuthenticated ? " navbar--fixed" : ""}`}>
       <div className="nav-left">
         {/* Show hamburger only when authenticated */}
         {isAuthenticated && (

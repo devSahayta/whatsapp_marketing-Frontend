@@ -2,11 +2,7 @@
 
 .navbar {
   height: var(--navbar-height);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 60;
+  z-index: 10;
 
   display: flex;
   align-items: center;
@@ -22,6 +18,14 @@
   -webkit-backdrop-filter: blur(16px) saturate(160%);
 
   border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Applied only for authenticated users */
+.navbar--fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .navbar::after {

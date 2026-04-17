@@ -55,6 +55,7 @@ import CreateAgent from "./pages/CreateAgent";
 import TestAgent from "./pages/TestAgent";
 import WooCommercePage from "./pages/WooCommercePage";
 import WooCommerceTemplateGuide from "./pages/WooCommerceTemplateGuide";
+import ApiKeysPage from "./pages/ApiKeysPage";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -168,8 +169,10 @@ function AppContent() {
       )}
 
       {/* Main content area */}
+      {/* Add conditional margin-top for authenticated users to prevent content from being hidden behind the fixed navbar. Also conditionally apply classes based on whether the navbar is hidden or not. */}
       <main
-        className={hideNavBar ? "content no-navbar" : "content with-navbar"}
+        // className={hideNavBar ? "content no-navbar" : "content with-navbar"}
+        className={` ${isAuthenticated ? "mt-14" : ""} ${hideNavBar ? "content no-navbar" : "content with-navbar"}`}
       >
         <Routes>
           <Route
@@ -380,6 +383,7 @@ function AppContent() {
             }
           />
           <Route
+<<<<<<< HEAD
             path="/agents"
             element={
               <PrivateSubscribedRoute>
@@ -408,6 +412,12 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <TestAgent />
+=======
+            path="/api-keys"
+            element={
+              <PrivateSubscribedRoute>
+                <ApiKeysPage />
+>>>>>>> 4d01805e776f723c68dbbbad1095249422b6e539
               </PrivateSubscribedRoute>
             }
           />

@@ -19,7 +19,10 @@
 
 .sidebar-overlay {
   position: fixed;
-  inset: 0;
+  top: var(--navbar-height); /* don't cover the navbar */
+  left: 0;
+  right: 0;
+  bottom: 0;
 
   background: rgba(0, 0, 0, 0.25); /* lighter black */
   backdrop-filter: blur(9px) saturate(120%);
