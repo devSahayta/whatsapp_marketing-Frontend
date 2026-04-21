@@ -509,73 +509,6 @@ export default function CreateTemplate() {
   //   await handleUploadBinary(file, sessionId);
   // };
 
-  // const onHeaderFileSelected = async (ev) => {
-  //   const file = ev.target.files?.[0];
-  //   setHeaderUploadFile(null);
-  //   if (!file) return;
-
-  //   setUploadError(null);
-
-  //   const sizeMB = file.size / (1024 * 1024);
-  //   const type = file.type;
-
-  //   // IMAGE VALIDATION
-  //   if (headerType === "IMAGE") {
-  //     if (!["image/jpeg", "image/png"].includes(type)) {
-  //       setUploadError("Only JPG and PNG images are allowed.");
-  //       return;
-  //     }
-  //     if (sizeMB > 5) {
-  //       setUploadError("Image must be less than 5 MB.");
-  //       return;
-  //     }
-  //   }
-
-  //   // VIDEO VALIDATION
-  //   if (headerType === "VIDEO") {
-  //     if (!["video/mp4", "video/3gpp"].includes(type)) {
-  //       setUploadError("Only MP4 and 3GP videos are allowed.");
-  //       return;
-  //     }
-  //     if (sizeMB > 16) {
-  //       setUploadError("Video must be less than 16 MB.");
-  //       return;
-  //     }
-  //   }
-
-  //   // DOCUMENT VALIDATION
-  //   if (headerType === "DOCUMENT") {
-  //     const allowedDocs = [
-  //       "application/pdf",
-  //       "application/msword",
-  //       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  //       "application/vnd.ms-excel",
-  //       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  //       "application/vnd.ms-powerpoint",
-  //       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  //       "text/plain",
-  //     ];
-
-  //     if (!allowedDocs.includes(type)) {
-  //       setUploadError("Unsupported document type.");
-  //       return;
-  //     }
-
-  //     if (sizeMB > 100) {
-  //       setUploadError("Document must be less than 100 MB.");
-  //       return;
-  //     }
-  //   }
-
-  //   setHeaderUploadFile(file);
-
-  //   // ✅ Proceed only if valid
-  //   const sessionId = await handleCreateUploadSession(file);
-  //   if (!sessionId) return;
-
-  //   await handleUploadBinary(file, sessionId);
-  // };
-
   const onHeaderFileSelected = async (ev) => {
     const file = ev.target.files?.[0];
     setHeaderUploadFile(null);
@@ -583,7 +516,6 @@ export default function CreateTemplate() {
 
     setUploadError(null);
 
-    // ... media validation (size, mime type checks) according to meta requirements before proceeding with upload
     const sizeMB = file.size / (1024 * 1024);
     const type = file.type;
 
@@ -629,78 +561,146 @@ export default function CreateTemplate() {
         return;
       }
 
-      if (sizeMB > 40) {
-        setUploadError("Document must be less than 40 MB.");
+      if (sizeMB > 100) {
+        setUploadError("Document must be less than 100 MB.");
         return;
       }
     }
 
     setHeaderUploadFile(file);
 
-    try {
-      setUploadingHeader(true);
+    // ✅ Proceed only if valid
+    const sessionId = await handleCreateUploadSession(file);
+    if (!sessionId) return;
 
-      // Step 1: Get signed upload URL from your backend (tiny request)
-      const urlResp = await getSupabaseUploadUrl({
-        user_id: userId,
-        file_name: file.name,
-        file_type: file.type,
-      });
-      const { signed_url, storage_path } = urlResp.data;
-
-      // Step 2: Upload DIRECTLY to Supabase — bypasses Vercel completely
-      const uploadResp = await fetch(signed_url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file, // raw file, no FormData needed
-      });
-
-      if (!uploadResp.ok) {
-        throw new Error(
-          "Direct upload to storage failed: " + uploadResp.statusText,
-        );
-      }
-
-      // Step 3: Tell backend "file is ready in Supabase, forward to Meta"
-      // Also do createUploadSession first (unchanged)
-      const sessionResp = await createUploadSession({
-        user_id: userId,
-        file_name: file.name,
-        file_type: file.type || "application/octet-stream",
-      });
-      const sessionId = sessionResp?.data?.id || sessionResp?.id;
-      if (!sessionId) throw new Error("Failed to create upload session");
-      setHeaderSessionId(sessionId);
-
-      // Step 4: Backend downloads from Supabase → forwards to Meta
-      const binaryResp = await uploadBinaryFromStorage({
-        user_id: userId,
-        session_id: sessionId,
-        storage_path,
-      });
-
-      const h = binaryResp?.data?.h || binaryResp?.h;
-      if (!h) throw new Error("Upload response missing header handle");
-
-      setHeaderHandle(h);
-
-      // Preview
-      if (headerFilePreviewUrl) URL.revokeObjectURL(headerFilePreviewUrl);
-      setHeaderFilePreviewUrl(URL.createObjectURL(file));
-
-      setComponents((prev) =>
-        prev.map((c) =>
-          c.type === "HEADER"
-            ? { ...c, format: headerType, example: { header_handle: [h] } }
-            : c,
-        ),
-      );
-    } catch (err) {
-      setUploadError(err?.response?.data || err.message || "Upload failed");
-    } finally {
-      setUploadingHeader(false);
-    }
+    await handleUploadBinary(file, sessionId);
   };
+
+  // const onHeaderFileSelected = async (ev) => {
+  //   const file = ev.target.files?.[0];
+  //   setHeaderUploadFile(null);
+  //   if (!file) return;
+
+  //   setUploadError(null);
+
+  //   // ... media validation (size, mime type checks) according to meta requirements before proceeding with upload
+  //   const sizeMB = file.size / (1024 * 1024);
+  //   const type = file.type;
+
+  //   // IMAGE VALIDATION
+  //   if (headerType === "IMAGE") {
+  //     if (!["image/jpeg", "image/png"].includes(type)) {
+  //       setUploadError("Only JPG and PNG images are allowed.");
+  //       return;
+  //     }
+  //     if (sizeMB > 5) {
+  //       setUploadError("Image must be less than 5 MB.");
+  //       return;
+  //     }
+  //   }
+
+  //   // VIDEO VALIDATION
+  //   if (headerType === "VIDEO") {
+  //     if (!["video/mp4", "video/3gpp"].includes(type)) {
+  //       setUploadError("Only MP4 and 3GP videos are allowed.");
+  //       return;
+  //     }
+  //     if (sizeMB > 16) {
+  //       setUploadError("Video must be less than 16 MB.");
+  //       return;
+  //     }
+  //   }
+
+  //   // DOCUMENT VALIDATION
+  //   if (headerType === "DOCUMENT") {
+  //     const allowedDocs = [
+  //       "application/pdf",
+  //       "application/msword",
+  //       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  //       "application/vnd.ms-excel",
+  //       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  //       "application/vnd.ms-powerpoint",
+  //       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  //       "text/plain",
+  //     ];
+
+  //     if (!allowedDocs.includes(type)) {
+  //       setUploadError("Unsupported document type.");
+  //       return;
+  //     }
+
+  //     if (sizeMB > 40) {
+  //       setUploadError("Document must be less than 40 MB.");
+  //       return;
+  //     }
+  //   }
+
+  //   setHeaderUploadFile(file);
+
+  //   try {
+  //     setUploadingHeader(true);
+
+  //     // Step 1: Get signed upload URL from your backend (tiny request)
+  //     const urlResp = await getSupabaseUploadUrl({
+  //       user_id: userId,
+  //       file_name: file.name,
+  //       file_type: file.type,
+  //     });
+  //     const { signed_url, storage_path } = urlResp.data;
+
+  //     // Step 2: Upload DIRECTLY to Supabase — bypasses Vercel completely
+  //     const uploadResp = await fetch(signed_url, {
+  //       method: "PUT",
+  //       headers: { "Content-Type": file.type },
+  //       body: file, // raw file, no FormData needed
+  //     });
+
+  //     if (!uploadResp.ok) {
+  //       throw new Error(
+  //         "Direct upload to storage failed: " + uploadResp.statusText,
+  //       );
+  //     }
+
+  //     // Step 3: Tell backend "file is ready in Supabase, forward to Meta"
+  //     // Also do createUploadSession first (unchanged)
+  //     const sessionResp = await createUploadSession({
+  //       user_id: userId,
+  //       file_name: file.name,
+  //       file_type: file.type || "application/octet-stream",
+  //     });
+  //     const sessionId = sessionResp?.data?.id || sessionResp?.id;
+  //     if (!sessionId) throw new Error("Failed to create upload session");
+  //     setHeaderSessionId(sessionId);
+
+  //     // Step 4: Backend downloads from Supabase → forwards to Meta
+  //     const binaryResp = await uploadBinaryFromStorage({
+  //       user_id: userId,
+  //       session_id: sessionId,
+  //       storage_path,
+  //     });
+
+  //     const h = binaryResp?.data?.h || binaryResp?.h;
+  //     if (!h) throw new Error("Upload response missing header handle");
+
+  //     setHeaderHandle(h);
+
+  //     // Preview
+  //     if (headerFilePreviewUrl) URL.revokeObjectURL(headerFilePreviewUrl);
+  //     setHeaderFilePreviewUrl(URL.createObjectURL(file));
+
+  //     setComponents((prev) =>
+  //       prev.map((c) =>
+  //         c.type === "HEADER"
+  //           ? { ...c, format: headerType, example: { header_handle: [h] } }
+  //           : c,
+  //       ),
+  //     );
+  //   } catch (err) {
+  //     setUploadError(err?.response?.data || err.message || "Upload failed");
+  //   } finally {
+  //     setUploadingHeader(false);
+  //   }
+  // };
 
   const onHeaderTypeChange = (newType) => {
     setHeaderType(newType);
