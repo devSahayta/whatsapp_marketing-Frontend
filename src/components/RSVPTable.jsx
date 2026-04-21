@@ -1,18 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, Phone, Calendar, Search, Trash2, MessageCircle, Plus, X, MoreVertical } from "lucide-react";
+import {
+  Users,
+  Phone,
+  Calendar,
+  Search,
+  Trash2,
+  MessageCircle,
+  Plus,
+  X,
+  MoreVertical,
+  RefreshCw,
+} from "lucide-react";
 import "../styles/table.css";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { fetchGroups } from "../api/groups";
+import { syncContactsFromGoogleSheet } from "../api/googleSheets";
+import useAuthUser from "../hooks/useAuthUser";
 
 const RSVPTable = ({ eventId: propEventId }) => {
   const { eventId: paramEventId } = useParams();
   const eventId = propEventId || paramEventId;
   const navigate = useNavigate();
+  const { userId } = useAuthUser();
 
   const [contacts, setContacts] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [groupDetails, setGroupDetails] = useState(null);
   
   // Checkbox selection
   const [selected, setSelected] = useState([]);
@@ -41,6 +58,11 @@ const RSVPTable = ({ eventId: propEventId }) => {
     if (!eventId) return;
     fetchContacts();
   }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId || !userId) return;
+    fetchCurrentGroup();
+  }, [eventId, userId]);
 
   useEffect(() => {
     filterData();
@@ -88,6 +110,52 @@ const RSVPTable = ({ eventId: propEventId }) => {
       setContacts([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCurrentGroup = async () => {
+    try {
+      const response = await fetchGroups(userId);
+      const groups = Array.isArray(response?.data) ? response.data : [];
+      setGroupDetails(
+        groups.find((group) => group.group_id === eventId) || null,
+      );
+    } catch (err) {
+      console.error("Error fetching group details:", err);
+      setGroupDetails(null);
+    }
+  };
+
+  const handleSyncContacts = async () => {
+    try {
+      setIsSyncing(true);
+      const response = await syncContactsFromGoogleSheet({ group_id: eventId });
+      const syncData = response?.data || {};
+      const importedCount =
+        syncData.importedCount ?? syncData.count ?? syncData.imported ?? 0;
+      const skippedCount =
+        syncData.skippedCount ?? syncData.skippedRows?.length ?? 0;
+
+      if (importedCount > 0) {
+        toast.success(
+          `Synced ${importedCount} new contact${importedCount > 1 ? "s" : ""}${
+            skippedCount ? ` and skipped ${skippedCount}` : ""
+          }`,
+        );
+      } else {
+        toast.success(syncData.message || "Google Sheet sync completed");
+      }
+
+      await fetchContacts();
+    } catch (err) {
+      console.error("Error syncing contacts:", err);
+      toast.error(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to sync contacts from Google Sheet",
+      );
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -261,7 +329,7 @@ const RSVPTable = ({ eventId: propEventId }) => {
   // Date Formatter
   // ===============================
   const formatDate = (timestamp) => {
-    if (!timestamp) return "—";
+    if (!timestamp) return "-";
     return new Date(timestamp).toLocaleString("en-IN", {
       year: "numeric",
       month: "short",
@@ -287,6 +355,8 @@ const RSVPTable = ({ eventId: propEventId }) => {
   // ===============================
   // UI
   // ===============================
+  const hasGoogleSheet = Boolean(groupDetails?.google_sheet_id);
+
   return (
     <div className="table-container">
       {/* Header */}
@@ -297,10 +367,26 @@ const RSVPTable = ({ eventId: propEventId }) => {
             Contacts ({filteredData.length})
           </h2>
         </div>
-        <button className="add-contact-btn" onClick={() => setShowAddModal(true)}>
-          <Plus size={20} />
-          Add Contact
-        </button>
+        <div className="header-actions">
+          {hasGoogleSheet && (
+            <button
+              type="button"
+              className="sync-contacts-btn"
+              onClick={handleSyncContacts}
+              disabled={isSyncing}
+            >
+              <RefreshCw size={18} className={isSyncing ? "spin-icon" : ""} />
+              {isSyncing ? "Syncing..." : "Sync Google Sheet"}
+            </button>
+          )}
+          <button
+            className="add-contact-btn"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={20} />
+            Add Contact
+          </button>
+        </div>
       </div>
 
       {/* Search & Bulk Actions */}
