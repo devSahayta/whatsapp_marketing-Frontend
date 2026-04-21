@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -50,6 +50,9 @@ import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
 import Integrations from "./pages/Integrations";
 import ChatbotFlows from "./pages/ChatbotFlows";
 import ChatbotBuilder from "./pages/ChatbotBuilder";
+import AgentsPage from "./pages/AgentsPage";
+import CreateAgent from "./pages/CreateAgent";
+import TestAgent from "./pages/TestAgent";
 import WooCommercePage from "./pages/WooCommercePage";
 import WooCommerceTemplateGuide from "./pages/WooCommerceTemplateGuide";
 import ApiKeysPage from "./pages/ApiKeysPage";
@@ -376,6 +379,38 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <ChatbotBuilder />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/agents"
+            element={
+              <PrivateSubscribedRoute>
+                <AgentsPage />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/agents/create"
+            element={
+              <PrivateSubscribedRoute>
+                <CreateAgent />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/agents/:agent_id/edit"
+            element={
+              <PrivateSubscribedRoute>
+                <CreateAgent />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/agents/:agent_id/test"
+            element={
+              <PrivateSubscribedRoute>
+                <TestAgent />
               </PrivateSubscribedRoute>
             }
           />

@@ -16,9 +16,10 @@ import {
   UserCheck,
   XCircle,
   Megaphone,
+  Sparkles,
 } from "lucide-react";
 
-const NODE_META = {
+export const NODE_META = {
   keyword_trigger: {
     label: "Keyword Trigger",
     icon: Hash,
@@ -75,6 +76,13 @@ const NODE_META = {
     bg: "#f1f5f9",
     category: "logic",
   },
+  ai_agent: {
+    label: "AI Agent",
+    icon: Sparkles,
+    color: "#7c3aed",
+    bg: "#ede9fe",
+    category: "action",
+  },
   ai_fallback: {
     label: "AI Fallback",
     icon: Bot,
@@ -110,7 +118,10 @@ function getSummary(type, config) {
   switch (type) {
     case "keyword_trigger":
       return config.keywords?.length
-        ? `Matches: ${config.keywords.slice(0, 3).map(k => `"${k}"`).join(", ")}`
+        ? `Matches: ${config.keywords
+            .slice(0, 3)
+            .map((k) => `"${k}"`)
+            .join(", ")}`
         : null;
     case "send_message":
       return config.text
@@ -126,7 +137,9 @@ function getSummary(type, config) {
         : null;
     case "http_request":
       return config.url
-        ? `${config.method || "GET"} ${config.url.length > 30 ? "..." + config.url.slice(-25) : config.url}`
+        ? `${config.method || "GET"} ${
+            config.url.length > 30 ? "..." + config.url.slice(-25) : config.url
+          }`
         : null;
     case "delay":
       return config.seconds ? `Wait ${config.seconds}s` : null;
@@ -137,6 +150,10 @@ function getSummary(type, config) {
         ? `${config.template_name} · ${varCount} var${varCount > 1 ? "s" : ""}`
         : config.template_name;
     }
+    case "ai_agent":
+      return config.agent_name
+        ? `Agent: ${config.agent_name}`
+        : "No agent selected";
     case "ai_fallback":
       return config.fallback_message
         ? config.fallback_message.length > 50
@@ -161,14 +178,13 @@ const ChatbotNode = memo(({ data, selected, type }) => {
   const isTrigger = meta.category === "trigger";
   const isEnd = type === "end_flow";
   const isCondition = type === "condition";
+  const isAiAgent = type === "ai_agent";
   const summary = getSummary(type, data);
 
   return (
     <div
       style={{
-        border: selected
-          ? `2px solid ${meta.color}`
-          : "1.5px solid #e2e8f0",
+        border: selected ? `2px solid ${meta.color}` : "1.5px solid #e2e8f0",
         borderRadius: 10,
         background: "#ffffff",
         minWidth: 200,
@@ -228,6 +244,21 @@ const ChatbotNode = memo(({ data, selected, type }) => {
             START
           </span>
         )}
+        {isAiAgent && (
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              background: meta.color,
+              color: "#fff",
+              borderRadius: 3,
+              padding: "2px 5px",
+            }}
+          >
+            AI
+          </span>
+        )}
       </div>
 
       {/* Body */}
@@ -237,9 +268,10 @@ const ChatbotNode = memo(({ data, selected, type }) => {
             style={{
               margin: 0,
               fontSize: 11,
-              color: "#64748b",
+              color: isAiAgent && !data.agent_name ? "#f97316" : "#64748b",
               lineHeight: 1.5,
               wordBreak: "break-word",
+              fontStyle: isAiAgent && !data.agent_name ? "italic" : "normal",
             }}
           >
             {summary}
@@ -247,7 +279,7 @@ const ChatbotNode = memo(({ data, selected, type }) => {
         </div>
       )}
 
-      {/* Condition YES/NO labels below body */}
+      {/* Condition YES/NO labels */}
       {isCondition && (
         <div
           style={{
@@ -292,7 +324,7 @@ const ChatbotNode = memo(({ data, selected, type }) => {
         />
       )}
 
-      {/* Condition node — two named output handles */}
+      {/* Condition — two named output handles */}
       {isCondition && (
         <>
           <Handle
@@ -325,5 +357,4 @@ const ChatbotNode = memo(({ data, selected, type }) => {
   );
 });
 
-export { NODE_META };
 export default ChatbotNode;

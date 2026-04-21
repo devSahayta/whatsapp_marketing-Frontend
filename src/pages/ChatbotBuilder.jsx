@@ -19,12 +19,14 @@ import { Save, ArrowLeft, Play, Pause, Loader2, Zap } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
 import { showSuccess, showError } from "../utils/toast";
 import { getFlowById, updateFlow, saveFlow } from "../api/chatbot";
-import { fetchMetaTemplates, fetchTemplatesForBuilder } from "../api/templates";
+import { fetchTemplatesForBuilder } from "../api/templates";
+import { getAgents } from "../api/agents";
+import { fetchWhatsappAccount } from "../api/waccount";
 import ChatbotNode, { NODE_META } from "../components/chatbot/ChatbotNode";
 import NodePalette from "../components/chatbot/NodePalette";
 import NodeProperties from "../components/chatbot/NodeProperties";
 
-// Register custom node types
+// ── Register all custom node types ────────────────────────────────────────────
 const nodeTypes = Object.fromEntries(
   [
     "keyword_trigger",
@@ -35,6 +37,7 @@ const nodeTypes = Object.fromEntries(
     "condition",
     "http_request",
     "delay",
+    "ai_agent", // ← NEW
     "ai_fallback",
     "handoff_to_agent",
     "end_flow",
@@ -42,7 +45,7 @@ const nodeTypes = Object.fromEntries(
   ].map((t) => [t, ChatbotNode]),
 );
 
-// Default config for each node type
+// ── Default config for each node type ─────────────────────────────────────────
 const DEFAULT_CONFIG = {
   keyword_trigger: { keywords: [], match_type: "contains" },
   api_trigger: {},
@@ -52,13 +55,14 @@ const DEFAULT_CONFIG = {
   condition: { variable: "", operator: "==", value: "" },
   http_request: { method: "GET", url: "", save_as: "" },
   delay: { seconds: 5 },
-  ai_fallback: { system_prompt: "" },
+  ai_agent: { agent_id: "", agent_name: "", save_response_as: "" }, // ← NEW
+  ai_fallback: { fallback_message: "" },
   handoff_to_agent: { message: "" },
   end_flow: { message: "" },
   trigger_campaign: { campaign_id: "" },
 };
 
-// Convert backend node to ReactFlow node
+// ── Backend ↔ ReactFlow converters ────────────────────────────────────────────
 function backendToRF(n) {
   return {
     id: n.node_id,
@@ -68,7 +72,6 @@ function backendToRF(n) {
   };
 }
 
-// Convert backend edge to ReactFlow edge
 function backendEdgeToRF(e) {
   return {
     id: e.edge_id,
@@ -86,6 +89,7 @@ function backendEdgeToRF(e) {
   };
 }
 
+// ── Canvas ────────────────────────────────────────────────────────────────────
 function BuilderCanvas({ flowId }) {
   const navigate = useNavigate();
   const { user } = useAuthUser();
@@ -97,65 +101,61 @@ function BuilderCanvas({ flowId }) {
 
   const [flow, setFlow] = useState(null);
   const [templates, setTemplates] = useState([]);
+  const [agents, setAgents] = useState([]); // ← NEW
+  const [agentsLoading, setAgentsLoading] = useState(false); // ← NEW
   const [selectedNode, setSelectedNode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
 
-  // Load flow data
+  // ── Load flow + templates + agents ──────────────────────────────────────────
   useEffect(() => {
-    if (!flowId) return;
+    if (!flowId || !user?.id) return;
+
     const load = async () => {
       setLoading(true);
       try {
+        // 1. Load flow data
         const res = await getFlowById(flowId);
         const { flow: f, nodes: ns, edges: es } = res.data;
         setFlow(f);
         setNodes((ns || []).map(backendToRF));
-        setEdges(
-          (es || []).map((e) => ({
-            ...backendEdgeToRF(e),
-          })),
-        );
+        setEdges((es || []).map(backendEdgeToRF));
 
-        // Load templates: merge Meta live list (for variable info) with DB records (for wt_id)
+        // 2. Load templates
         if (f?.account_id) {
           try {
-            // const metaRes = await fetchMetaTemplates(user.id);
-            // const metaTemplates = metaRes.data?.templates || [];
             const metaRes = await fetchTemplatesForBuilder(user.id);
-            const metaTemplates = metaRes.data || [];
-
-            console.log("Meta templates:", metaTemplates);
-
-            // // Only APPROVED templates
-            // const merged = metaTemplates.filter((t) => t.status === "APPROVED");
-            // setTemplates(merged);
-
-            const merged = metaTemplates
+            const merged = (metaRes.data || [])
               .filter((t) => {
-                // only approved
                 if (t.status !== "APPROVED") return false;
-
-                // no header → allowed
                 if (!t.header_format) return true;
-
-                const isMediaHeader = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
+                const isMedia = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
                   t.header_format,
                 );
-
-                if (!isMediaHeader) return true;
-
-                // allow only if media_id exists
-                return !!t.media_id;
+                return !isMedia || !!t.media_id;
               })
               .map((t) => t.preview);
-
             setTemplates(merged);
-
-            console.log("Merged templates:", merged);
           } catch {
-            // templates are optional
+            // templates are optional — don't block the builder
+          }
+
+          // 3. Load agents for this account ← NEW
+          try {
+            setAgentsLoading(true);
+            const accRes = await fetchWhatsappAccount(user.id);
+            const accId = accRes?.data?.data?.wa_id;
+            const agentRes = await getAgents(user.id, accId);
+            setAgents(
+              (agentRes.data?.agents || []).filter(
+                (a) => a.status === "active",
+              ),
+            );
+          } catch {
+            // agents are optional — don't block the builder
+          } finally {
+            setAgentsLoading(false);
           }
         }
       } catch (err) {
@@ -164,9 +164,11 @@ function BuilderCanvas({ flowId }) {
         setLoading(false);
       }
     };
-    load();
-  }, [flowId]);
 
+    load();
+  }, [flowId, user?.id]);
+
+  // ── Edge connect ─────────────────────────────────────────────────────────────
   const onConnect = useCallback(
     (params) => {
       setEdges((eds) =>
@@ -184,7 +186,7 @@ function BuilderCanvas({ flowId }) {
     [setEdges],
   );
 
-  // Drop new node from palette onto canvas
+  // ── Drop node from palette ────────────────────────────────────────────────────
   const onDrop = useCallback(
     (e) => {
       e.preventDefault();
@@ -214,17 +216,16 @@ function BuilderCanvas({ flowId }) {
     e.dataTransfer.dropEffect = "move";
   }, []);
 
-  // Node click → show properties panel
+  // ── Node / pane click ─────────────────────────────────────────────────────────
   const onNodeClick = useCallback((_, node) => {
     setSelectedNode(node);
   }, []);
 
-  // Pane click → deselect
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, []);
 
-  // Update node config from properties panel
+  // ── Update node config from properties panel ──────────────────────────────────
   const handleNodeConfigChange = useCallback(
     (nodeId, newConfig) => {
       setNodes((nds) =>
@@ -239,7 +240,7 @@ function BuilderCanvas({ flowId }) {
     [setNodes],
   );
 
-  // Save canvas to backend
+  // ── Save ──────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!rfInstance) return;
     setSaving(true);
@@ -263,14 +264,14 @@ function BuilderCanvas({ flowId }) {
 
       await saveFlow(flowId, backendNodes, backendEdges);
       showSuccess("Flow saved!");
-    } catch (err) {
+    } catch {
       showError("Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
-  // Toggle active/inactive
+  // ── Toggle active/inactive ────────────────────────────────────────────────────
   const handleToggleStatus = async () => {
     if (!flow) return;
     setToggling(true);
@@ -281,13 +282,14 @@ function BuilderCanvas({ flowId }) {
       showSuccess(
         newStatus === "active" ? "Flow is now active!" : "Flow deactivated.",
       );
-    } catch (err) {
+    } catch {
       showError("Failed to update status");
     } finally {
       setToggling(false);
     }
   };
 
+  // ── Loading screen ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div
@@ -320,7 +322,7 @@ function BuilderCanvas({ flowId }) {
         background: "#f8fafc",
       }}
     >
-      {/* Top bar */}
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div
         style={{
           display: "flex",
@@ -352,13 +354,7 @@ function BuilderCanvas({ flowId }) {
           <ArrowLeft size={14} /> Back
         </button>
 
-        <div
-          style={{
-            width: 1,
-            height: 20,
-            background: "#334155",
-          }}
-        />
+        <div style={{ width: 1, height: 20, background: "#334155" }} />
 
         <div style={{ flex: 1 }}>
           <p
@@ -467,7 +463,7 @@ function BuilderCanvas({ flowId }) {
         </button>
       </div>
 
-      {/* Main area: palette | canvas | properties */}
+      {/* ── Main area: palette | canvas | properties ─────────────────────────── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <NodePalette />
 
@@ -516,6 +512,8 @@ function BuilderCanvas({ flowId }) {
             onChange={handleNodeConfigChange}
             onClose={() => setSelectedNode(null)}
             templates={templates}
+            agents={agents}
+            agentsLoading={agentsLoading}
           />
         )}
       </div>
@@ -549,6 +547,8 @@ function BuilderCanvas({ flowId }) {
           </p>
         </div>
       )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

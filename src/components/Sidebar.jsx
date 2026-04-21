@@ -68,6 +68,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: <PlugZap size={18} />,
     },
     {
+      name: "Agents",
+      path: "/agents",
+      icon: <Bot size={18} />,
+    },
+    {
       name: "API Keys",
       path: "/api-keys",
       icon: <Key size={18} />,
