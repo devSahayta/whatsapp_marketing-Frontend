@@ -36,3 +36,6 @@ export const getSupabaseUploadUrl = (payload) =>
 
 export const uploadBinaryFromStorage = (payload) =>
   api.post("/api/watemplates/media/upload-binary-from-storage", payload);
+
+export const uploadMediaFromStorage = (payload) =>
+  api.post("/api/watemplates/media/upload-media-from-storage", payload);
