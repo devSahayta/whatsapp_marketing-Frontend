@@ -29,3 +29,13 @@ export const listMedia = (userId) =>
 
 export const deleteMedia = (wmu_id) =>
   api.delete(`/api/watemplates/media/${wmu_id}`);
+
+// For direct S3 uploads
+export const getSupabaseUploadUrl = (payload) =>
+  api.post("/api/watemplates/media/upload-url", payload);
+
+export const uploadBinaryFromStorage = (payload) =>
+  api.post("/api/watemplates/media/upload-binary-from-storage", payload);
+
+export const uploadMediaFromStorage = (payload) =>
+  api.post("/api/watemplates/media/upload-media-from-storage", payload);

@@ -10,3 +10,6 @@ export const importFromGoogleSheet = (payload) =>
 
 export const exportCampaignToGoogleSheet = (payload) =>
   api.post("/api/integrations/google/export-campaign", payload);
+
+export const syncContactsFromGoogleSheet = (payload) =>
+  api.post("/api/integrations/google/sync-contacts", payload);

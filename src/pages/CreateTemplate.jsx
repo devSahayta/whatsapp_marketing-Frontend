@@ -5,8 +5,9 @@ import useAuthUser from "../hooks/useAuthUser";
 import { createTemplate as apiCreateTemplate } from "../api/templates";
 import {
   createUploadSession,
-  uploadBinary,
-  uploadMedia,
+  getSupabaseUploadUrl,
+  uploadBinaryFromStorage,
+  uploadMediaFromStorage,
 } from "../api/media";
 import {
   dismissToast,
@@ -149,12 +150,9 @@ export default function CreateTemplate() {
   // Header upload state
   const [headerType, setHeaderType] = useState("NONE"); // NONE | TEXT | IMAGE | VIDEO | DOCUMENT
   const [headerText, setHeaderText] = useState("");
-  const [headerSessionId, setHeaderSessionId] = useState(null);
-  const [headerHandle, setHeaderHandle] = useState(null); // header_handle returned (h)
   const [headerFilePreviewUrl, setHeaderFilePreviewUrl] = useState(null);
   const [headerUploadFile, setHeaderUploadFile] = useState(null);
   const headerFileRef = useRef(null);
-  const [uploadingHeader, setUploadingHeader] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
   // Buttons state: we keep one "BUTTONS" component object when user adds buttons
@@ -283,8 +281,6 @@ export default function CreateTemplate() {
     if (removed?.type === "HEADER") {
       setHeaderType("NONE");
       setHeaderText("");
-      setHeaderSessionId(null);
-      setHeaderHandle(null);
       setHeaderUploadFile(null);
       if (headerFilePreviewUrl) {
         URL.revokeObjectURL(headerFilePreviewUrl);
@@ -402,122 +398,16 @@ export default function CreateTemplate() {
     );
   };
 
-  // ---------- Header upload workflow ----------
-  // Step 1: create upload session
-  const handleCreateUploadSession = async (file) => {
-    if (!userId) {
-      setUploadError("User not authenticated");
-      return null;
-    }
-    if (!file) {
-      setUploadError("No file chosen");
-      return null;
-    }
-    setUploadError(null);
-    try {
-      setUploadingHeader(true);
-      const payload = {
-        user_id: userId,
-        file_name: file.name,
-        file_type: file.type || "application/octet-stream",
-      };
-      const resp = await createUploadSession(payload);
-      // Expect resp.data.id or resp.data?.id
-      const sessionId = resp?.data?.id || resp?.id;
-      setHeaderSessionId(sessionId);
-      return sessionId;
-    } catch (err) {
-      console.error("Create session failed", err);
-      setUploadError(
-        err?.response?.data || err.message || "Session creation failed",
-      );
-      return null;
-    } finally {
-      setUploadingHeader(false);
-    }
-  };
-
-  // Step 2: upload binary (multipart)
-  const handleUploadBinary = async (file, sessionId) => {
-    if (!userId) {
-      setUploadError("User not authenticated");
-      return null;
-    }
-    if (!file || !sessionId) {
-      setUploadError("file and session_id required");
-      return null;
-    }
-
-    const formData = new FormData();
-    formData.append("user_id", userId);
-    formData.append("session_id", sessionId);
-    // key name 'file' expected by backend
-    formData.append("file", file);
-
-    try {
-      setUploadingHeader(true);
-      setUploadError(null);
-      const resp = await uploadBinary(formData);
-      // backend returns { h: header_handle }
-      const h = resp?.data?.h || resp?.h;
-      if (!h) {
-        setUploadError("Upload response missing header handle");
-        return null;
-      }
-      setHeaderHandle(h);
-
-      // preview: show local object url
-      if (headerFilePreviewUrl) {
-        URL.revokeObjectURL(headerFilePreviewUrl);
-      }
-      const objUrl = URL.createObjectURL(file);
-      setHeaderFilePreviewUrl(objUrl);
-
-      // update components: ensure header component contains example.header_handle
-      setComponents((prev) =>
-        prev.map((c) =>
-          c.type === "HEADER"
-            ? {
-                ...c,
-                format: headerType === "TEXT" ? "TEXT" : headerType,
-                example: { header_handle: [h] },
-              }
-            : c,
-        ),
-      );
-
-      return h;
-    } catch (err) {
-      console.error("Binary upload failed", err);
-      setUploadError(
-        err?.response?.data || err.message || "Binary upload failed",
-      );
-      return null;
-    } finally {
-      setUploadingHeader(false);
-    }
-  };
-
-  // const onHeaderFileSelected = async (ev) => {
-  //   const file = ev.target.files?.[0];
-  //   if (!file) return;
-  //   // create upload session -> upload binary
-  //   const sessionId = await handleCreateUploadSession(file);
-  //   if (!sessionId) return;
-  //   await handleUploadBinary(file, sessionId);
-  // };
-
-  const onHeaderFileSelected = async (ev) => {
+  // ---------- Header file selection — validate only, no upload yet ----------
+  const onHeaderFileSelected = (ev) => {
     const file = ev.target.files?.[0];
     setHeaderUploadFile(null);
     if (!file) return;
 
     setUploadError(null);
-
     const sizeMB = file.size / (1024 * 1024);
     const type = file.type;
 
-    // IMAGE VALIDATION
     if (headerType === "IMAGE") {
       if (!["image/jpeg", "image/png"].includes(type)) {
         setUploadError("Only JPG and PNG images are allowed.");
@@ -529,7 +419,6 @@ export default function CreateTemplate() {
       }
     }
 
-    // VIDEO VALIDATION
     if (headerType === "VIDEO") {
       if (!["video/mp4", "video/3gpp"].includes(type)) {
         setUploadError("Only MP4 and 3GP videos are allowed.");
@@ -541,7 +430,6 @@ export default function CreateTemplate() {
       }
     }
 
-    // DOCUMENT VALIDATION
     if (headerType === "DOCUMENT") {
       const allowedDocs = [
         "application/pdf",
@@ -553,32 +441,26 @@ export default function CreateTemplate() {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "text/plain",
       ];
-
       if (!allowedDocs.includes(type)) {
         setUploadError("Unsupported document type.");
         return;
       }
-
-      if (sizeMB > 100) {
-        setUploadError("Document must be less than 100 MB.");
+      if (sizeMB > 40) {
+        setUploadError("Document must be less than 40 MB.");
         return;
       }
     }
 
     setHeaderUploadFile(file);
 
-    // ✅ Proceed only if valid
-    const sessionId = await handleCreateUploadSession(file);
-    if (!sessionId) return;
-
-    await handleUploadBinary(file, sessionId);
+    // Local preview only — actual upload happens on submit
+    if (headerFilePreviewUrl) URL.revokeObjectURL(headerFilePreviewUrl);
+    setHeaderFilePreviewUrl(URL.createObjectURL(file));
   };
 
   const onHeaderTypeChange = (newType) => {
     setHeaderType(newType);
     setHeaderUploadFile(null);
-    setHeaderSessionId(null);
-    setHeaderHandle(null);
     setUploadError(null);
     if (headerFileRef.current) {
       headerFileRef.current.value = "";
@@ -620,35 +502,6 @@ export default function CreateTemplate() {
     }
   };
 
-  const uploadHeaderMediaBeforeTemplateCreate = async () => {
-    if (!userId) return null;
-    if (!["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType)) return null;
-    if (!headerUploadFile) return null;
-
-    const formData = new FormData();
-    formData.append("user_id", userId);
-    formData.append(
-      "type",
-      headerUploadFile.type || "application/octet-stream",
-    );
-    formData.append("file", headerUploadFile);
-
-    const uploadResponse = await uploadMedia(formData);
-    const mediaId =
-      uploadResponse?.data?.media?.id ||
-      uploadResponse?.data?.saved?.media_id ||
-      uploadResponse?.data?.id ||
-      uploadResponse?.media?.id ||
-      uploadResponse?.saved?.media_id ||
-      uploadResponse?.id ||
-      null;
-
-    if (!mediaId) {
-      throw new Error("Media upload succeeded but no media id was returned");
-    }
-
-    return mediaId;
-  };
 
   // ---------- Name slug and validate ----------
   useEffect(() => {
@@ -745,16 +598,14 @@ export default function CreateTemplate() {
       }
     }
 
-    // If header type is IMAGE/VIDEO/DOCUMENT then headerHandle must exist
+    // If header type is IMAGE/VIDEO/DOCUMENT then a file must be selected
     const headerComp = components.find((c) => c.type === "HEADER");
     if (
       headerComp &&
       ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format)
     ) {
-      // require headerHandle (we stored in headerHandle state)
-      if (!headerHandle) {
-        errors.header =
-          "Upload a file for header (create session + upload binary)";
+      if (!headerUploadFile) {
+        errors.header = "Please select a file for the header";
       }
     }
     // Buttons validation (if url button present, url must be valid-ish)
@@ -779,9 +630,8 @@ export default function CreateTemplate() {
   };
 
   // ---------- Build final components for payload ----------
-  const buildFinalComponents = () => {
+  const buildFinalComponents = (headerHandleOverride = null) => {
     const final = [];
-    // preserve component order in components state
     for (const comp of components) {
       if (comp.type === "HEADER") {
         if (comp.format === "TEXT") {
@@ -791,16 +641,12 @@ export default function CreateTemplate() {
             text: headerText || comp.text || "",
           });
         } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(comp.format)) {
-          // use headerHandle (h) that we got from uploadBinary
-          if (headerHandle) {
+          if (headerHandleOverride) {
             final.push({
               type: "HEADER",
               format: comp.format,
-              example: { header_handle: [headerHandle] },
+              example: { header_handle: [headerHandleOverride] },
             });
-          } else {
-            // shouldn't reach here if validated
-            // push nothing
           }
         }
       } else if (comp.type === "BODY") {
@@ -852,14 +698,77 @@ export default function CreateTemplate() {
       return;
     }
 
-    const comps = buildFinalComponents();
-
     const toastId = showLoading("Creating template...");
 
     try {
       setSubmitting(true);
       setLoading(true);
-      const mediaId = await uploadHeaderMediaBeforeTemplateCreate();
+
+      // Upload header file now (on submit), not on file selection
+      let currentHeaderHandle = null;
+      let uploadedStoragePath = null;
+
+      if (["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && headerUploadFile) {
+        // 1. Get a signed upload URL from backend (tiny JSON request, no file)
+        const urlResp = await getSupabaseUploadUrl({
+          user_id: userId,
+          file_name: headerUploadFile.name,
+          file_type: headerUploadFile.type,
+        });
+        const { signed_url, storage_path } = urlResp.data;
+        uploadedStoragePath = storage_path;
+
+        // 2. PUT file directly to Supabase — never touches Vercel
+        const putResp = await fetch(signed_url, {
+          method: "PUT",
+          headers: { "Content-Type": headerUploadFile.type },
+          body: headerUploadFile,
+        });
+        if (!putResp.ok) {
+          throw new Error("Upload to storage failed: " + putResp.statusText);
+        }
+
+        // 3. Create Meta upload session
+        const sessionResp = await createUploadSession({
+          user_id: userId,
+          file_name: headerUploadFile.name,
+          file_type: headerUploadFile.type || "application/octet-stream",
+        });
+        const sessionId = sessionResp?.data?.id || sessionResp?.id;
+        if (!sessionId) throw new Error("Failed to create upload session");
+
+        // 4. Backend downloads from Supabase → forwards to Meta → returns header handle
+        const binaryResp = await uploadBinaryFromStorage({
+          user_id: userId,
+          session_id: sessionId,
+          storage_path,
+        });
+        currentHeaderHandle = binaryResp?.data?.h || binaryResp?.h;
+        if (!currentHeaderHandle) throw new Error("Upload response missing header handle");
+      }
+
+      // 5. Upload media record — backend reuses same Supabase file, then cleans it up
+      let mediaId = null;
+      if (uploadedStoragePath && headerUploadFile) {
+        const mediaResp = await uploadMediaFromStorage({
+          user_id: userId,
+          type: headerUploadFile.type || "application/octet-stream",
+          storage_path: uploadedStoragePath,
+          file_name: headerUploadFile.name,
+          file_size: headerUploadFile.size,
+        });
+        mediaId =
+          mediaResp?.data?.media?.id ||
+          mediaResp?.data?.saved?.media_id ||
+          mediaResp?.data?.id ||
+          mediaResp?.media?.id ||
+          mediaResp?.saved?.media_id ||
+          mediaResp?.id ||
+          null;
+        if (!mediaId) throw new Error("Media upload succeeded but no media id was returned");
+      }
+
+      const comps = buildFinalComponents(currentHeaderHandle);
 
       const payload = {
         user_id: userId,
@@ -870,7 +779,7 @@ export default function CreateTemplate() {
         components: comps,
         media_id: mediaId,
         header_format: headerType !== "NONE" ? headerType : null,
-        header_handle: headerHandle || null,
+        header_handle: currentHeaderHandle || null,
       };
 
       const resp = await apiCreateTemplate(payload);
@@ -1408,19 +1317,12 @@ export default function CreateTemplate() {
                               <div className="space-y-3">
                                 <label
                                   className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 cursor-pointer transition-all group ${
-                                    uploadingHeader
-                                      ? "border-purple-300 bg-purple-50"
-                                      : headerHandle
-                                        ? "border-emerald-300 bg-emerald-50"
-                                        : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/40"
+                                    headerUploadFile
+                                      ? "border-emerald-300 bg-emerald-50"
+                                      : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/40"
                                   }`}
                                 >
-                                  {uploadingHeader ? (
-                                    <Loader2
-                                      size={24}
-                                      className="text-purple-500 animate-spin mb-2"
-                                    />
-                                  ) : headerHandle ? (
+                                  {headerUploadFile ? (
                                     <CheckCircle2
                                       size={24}
                                       className="text-emerald-500 mb-2"
@@ -1432,11 +1334,9 @@ export default function CreateTemplate() {
                                     />
                                   )}
                                   <span className="text-sm font-medium text-gray-600 group-hover:text-purple-700 transition-colors">
-                                    {uploadingHeader
-                                      ? "Uploading..."
-                                      : headerHandle
-                                        ? "File uploaded successfully"
-                                        : `Click to upload ${headerType.toLowerCase()}`}
+                                    {headerUploadFile
+                                      ? headerUploadFile.name
+                                      : `Click to upload ${headerType.toLowerCase()}`}
                                   </span>
                                   <span className="text-xs text-gray-400 mt-1">
                                     {headerType === "IMAGE" &&
@@ -1444,7 +1344,7 @@ export default function CreateTemplate() {
                                     {headerType === "VIDEO" &&
                                       "MP4, 3GP • Max 16 MB"}
                                     {headerType === "DOCUMENT" &&
-                                      "PDF, DOC, XLS, PPT, TXT • Max 100 MB"}
+                                      "PDF, DOC, XLS, PPT, TXT • Max 40 MB"}
                                   </span>
                                   <input
                                     ref={headerFileRef}
@@ -1469,10 +1369,10 @@ export default function CreateTemplate() {
                                     {uploadError?.toString()}
                                   </div>
                                 )}
-                                {headerHandle && (
+                                {headerUploadFile && !uploadError && (
                                   <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
                                     <CheckCircle2 size={12} />
-                                    Header handle ready
+                                    File ready — will upload when you create the template
                                   </div>
                                 )}
                               </div>
@@ -1693,8 +1593,6 @@ export default function CreateTemplate() {
                     ]);
                     setHeaderType("NONE");
                     setHeaderText("");
-                    setHeaderSessionId(null);
-                    setHeaderHandle(null);
                     setHeaderFilePreviewUrl(null);
                     setHeaderUploadFile(null);
                     if (headerFileRef.current) {

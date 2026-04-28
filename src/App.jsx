@@ -135,7 +135,7 @@ function AppContent() {
       getToken()
         .then((token) => {
           setAuthToken(token);
-          console.log("Kinde Bearer Token:", token);
+          // console.log("Kinde Bearer Token:", token);
         })
         .catch((err) => {
           console.error("getToken failed:", err);

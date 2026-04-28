@@ -6,6 +6,7 @@ import {
   Calendar,
   FileSpreadsheet,
   FolderPlus,
+  Link2,
   MoreVertical,
   ShieldCheck,
   Trash2,
@@ -27,6 +28,30 @@ const formatCreatedDate = (dateString) =>
     month: "short",
     year: "numeric",
   });
+
+const getImportSource = (group) => {
+  if (group.google_sheet_id) {
+    return {
+      label: "Google Sheet",
+      detail: "Connected",
+      icon: Link2,
+    };
+  }
+
+  if (group.uploaded_csv) {
+    return {
+      label: "CSV File",
+      detail: "Uploaded",
+      icon: FileSpreadsheet,
+    };
+  }
+
+  return {
+    label: "Import Source",
+    detail: "Not available",
+    icon: FileSpreadsheet,
+  };
+};
 
 const getStatusTone = (status) => {
   if (status === "active") {
@@ -116,7 +141,7 @@ const GroupsPage = () => {
   const stats = useMemo(() => {
     const total = groups.length;
     const active = groups.filter((group) => group.status === "active").length;
-    const withCsv = groups.filter((group) => group.uploaded_csv).length;
+    const googleLinked = groups.filter((group) => group.google_sheet_id).length;
     const latest =
       total > 0
         ? [...groups].sort(
@@ -124,7 +149,7 @@ const GroupsPage = () => {
           )[0]
         : null;
 
-    return { total, active, withCsv, latest };
+    return { total, active, googleLinked, latest };
   }, [groups]);
 
   if (authLoading || isLoading) {
@@ -163,7 +188,7 @@ const GroupsPage = () => {
                   Organize your contact groups with a cleaner working view.
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                  See every group, check upload readiness, and jump straight into
+                  See every group, check how contacts were imported, and jump straight into
                   the dashboard from one page.
                 </p>
               </div>
@@ -200,9 +225,9 @@ const GroupsPage = () => {
                 accent="from-emerald-500/15 to-lime-500/10"
               />
               <MetricCard
-                icon={FileSpreadsheet}
-                label="CSV Uploaded"
-                value={stats.withCsv}
+                icon={Link2}
+                label="Google Linked"
+                value={stats.googleLinked}
                 accent="from-violet-500/15 to-fuchsia-500/10"
                 helper={
                   stats.latest
@@ -257,6 +282,12 @@ const GroupsPage = () => {
                   key={group.group_id}
                   className="group relative overflow-hidden rounded-[26px] border border-white/70 bg-white/80 p-6 shadow-[0_18px_55px_rgba(15,23,42,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_65px_rgba(15,23,42,0.12)]"
                 >
+                  {(() => {
+                    const importSource = getImportSource(group);
+                    const ImportSourceIcon = importSource.icon;
+
+                    return (
+                      <>
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-pink-500" />
 
                   <div className="flex items-start justify-between gap-4">
@@ -318,9 +349,9 @@ const GroupsPage = () => {
                         value={formatCreatedDate(group.created_at)}
                       />
                       <InfoPill
-                        icon={FileSpreadsheet}
-                        label="CSV File"
-                        value={group.uploaded_csv ? "Uploaded" : "Missing"}
+                        icon={ImportSourceIcon}
+                        label={importSource.label}
+                        value={importSource.detail}
                       />
                     </div>
 
@@ -336,6 +367,9 @@ const GroupsPage = () => {
                       <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
                     </div>
                   </div>
+                      </>
+                    );
+                  })()}
                 </article>
               ))}
             </div>
