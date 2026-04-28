@@ -1,3 +1,5 @@
+//components/ChatList.jsx
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 
 const PAGE_SIZE = 100;
