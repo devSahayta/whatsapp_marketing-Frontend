@@ -42,6 +42,7 @@ const nodeTypes = Object.fromEntries(
     "handoff_to_agent",
     "end_flow",
     "trigger_campaign",
+    "schedule_message",
   ].map((t) => [t, ChatbotNode]),
 );
 
@@ -50,7 +51,14 @@ const DEFAULT_CONFIG = {
   keyword_trigger: { keywords: [], match_type: "contains" },
   api_trigger: {},
   send_message: { text: "" },
-  send_template: { template_id: "", template_name: "" },
+  send_template: {
+    template_id: "",
+    template_name: "",
+    template_variable_map: {},
+    header_format: "",
+    media_id: "",
+    media_name: "",
+  },
   wait_for_input: { prompt: "", save_as: "" },
   condition: { variable: "", operator: "==", value: "" },
   http_request: { method: "GET", url: "", save_as: "" },
@@ -60,6 +68,16 @@ const DEFAULT_CONFIG = {
   handoff_to_agent: { message: "" },
   end_flow: { message: "" },
   trigger_campaign: { campaign_id: "" },
+  schedule_message: {
+    template_name: "",
+    template_id: "",
+    template_variable_map: {},
+    header_format: "",
+    media_id: "",
+    media_name: "",
+    delay_minutes: 60,
+    timezone: "Asia/Kolkata",
+  },
 };
 
 // ── Backend ↔ ReactFlow converters ────────────────────────────────────────────
@@ -103,6 +121,7 @@ function BuilderCanvas({ flowId }) {
   const [templates, setTemplates] = useState([]);
   const [agents, setAgents] = useState([]); // ← NEW
   const [agentsLoading, setAgentsLoading] = useState(false); // ← NEW
+  const [waAccount, setWaAccount] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -126,15 +145,19 @@ function BuilderCanvas({ flowId }) {
         if (f?.account_id) {
           try {
             const metaRes = await fetchTemplatesForBuilder(user.id);
+            // const merged = (metaRes.data || [])
+            //   .filter((t) => {
+            //     if (t.status !== "APPROVED") return false;
+            //     if (!t.header_format) return true;
+            //     const isMedia = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
+            //       t.header_format,
+            //     );
+            //     return !isMedia || !!t.media_id;
+            //   })
+            //   .map((t) => t.preview);
+
             const merged = (metaRes.data || [])
-              .filter((t) => {
-                if (t.status !== "APPROVED") return false;
-                if (!t.header_format) return true;
-                const isMedia = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
-                  t.header_format,
-                );
-                return !isMedia || !!t.media_id;
-              })
+              .filter((t) => t.status === "APPROVED")
               .map((t) => t.preview);
             setTemplates(merged);
           } catch {
@@ -146,6 +169,7 @@ function BuilderCanvas({ flowId }) {
             setAgentsLoading(true);
             const accRes = await fetchWhatsappAccount(user.id);
             const accId = accRes?.data?.data?.wa_id;
+            setWaAccount(accRes?.data?.data || null);
             const agentRes = await getAgents(user.id, accId);
             setAgents(
               (agentRes.data?.agents || []).filter(
@@ -514,6 +538,8 @@ function BuilderCanvas({ flowId }) {
             templates={templates}
             agents={agents}
             agentsLoading={agentsLoading}
+            userId={user?.id}
+            accountId={waAccount?.wa_id || flow?.account_id}
           />
         )}
       </div>

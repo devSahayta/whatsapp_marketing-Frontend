@@ -11,7 +11,7 @@ const PALETTE_GROUPS = [
   },
   {
     label: "MESSAGES",
-    types: ["send_message", "send_template"],
+    types: ["send_message", "send_template", "schedule_message"],
   },
   {
     label: "LOGIC",
