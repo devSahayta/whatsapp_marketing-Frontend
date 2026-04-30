@@ -17,6 +17,7 @@ import {
   XCircle,
   Megaphone,
   Sparkles,
+  CalendarClock,
 } from "lucide-react";
 
 export const NODE_META = {
@@ -111,6 +112,13 @@ export const NODE_META = {
     bg: "#e0f2fe",
     category: "action",
   },
+  schedule_message: {
+    label: "Schedule Message",
+    icon: CalendarClock,
+    color: "#d97706",
+    bg: "#fef3c7",
+    category: "message",
+  },
 };
 
 function getSummary(type, config) {
@@ -149,6 +157,17 @@ function getSummary(type, config) {
       return varCount > 0
         ? `${config.template_name} · ${varCount} var${varCount > 1 ? "s" : ""}`
         : config.template_name;
+    }
+    case "schedule_message": {
+      if (!config.template_name) return null;
+      const mins = config.delay_minutes || 60;
+      const label =
+        mins < 60
+          ? `${mins}m`
+          : mins < 1440
+            ? `${mins / 60}h`
+            : `${mins / 1440}d`;
+      return `${config.template_name} · in ${label}`;
     }
     case "ai_agent":
       return config.agent_name
