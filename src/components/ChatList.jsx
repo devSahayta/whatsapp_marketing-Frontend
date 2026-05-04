@@ -32,6 +32,7 @@ export default function ChatList({ userId, onSelectChat }) {
   const [selectedId, setSelectedId] = useState(null);
   const loaderRef = useRef(null);
   const pollingRef = useRef(null);
+  const listRef = useRef(null); // add this with your other refs
 
   const fetchChats = useCallback(
     async (offset = 0, replace = false) => {
@@ -64,23 +65,27 @@ export default function ChatList({ userId, onSelectChat }) {
             return [...prev, ...newChats];
           });
         } else {
-          // Polling — smart merge: update existing + prepend new ones, NEVER reset list
+          // Polling — save scroll position BEFORE state update
+          const scrollEl = listRef.current;
+          const savedScrollTop = scrollEl?.scrollTop || 0;
+
           setChats((prev) => {
             const incoming = data.chats;
             const incomingMap = new Map(incoming.map((c) => [c.chat_id, c]));
-
-            // Update existing chats in place (last_message, mode etc.)
             const updated = prev.map((c) => incomingMap.get(c.chat_id) || c);
-
-            // Find truly new chats not in current list
             const existingIds = new Set(prev.map((c) => c.chat_id));
             const brandNew = incoming.filter(
               (c) => !existingIds.has(c.chat_id),
             );
-
-            // Prepend new chats, keep existing order (no scroll jump)
             return [...brandNew, ...updated];
           });
+
+          // Restore scroll position after React re-renders
+          if (scrollEl && savedScrollTop > 0) {
+            requestAnimationFrame(() => {
+              scrollEl.scrollTop = savedScrollTop;
+            });
+          }
         }
       } catch (e) {
         console.error("fetch chats:", e);
@@ -100,7 +105,7 @@ export default function ChatList({ userId, onSelectChat }) {
 
   useEffect(() => {
     if (!userId) return;
-    pollingRef.current = setInterval(() => fetchChats(0, true), 7000);
+    pollingRef.current = setInterval(() => fetchChats(0, false), 7000);
     return () => clearInterval(pollingRef.current);
   }, [userId, fetchChats]);
 
@@ -161,7 +166,7 @@ export default function ChatList({ userId, onSelectChat }) {
       </div>
 
       {/* List */}
-      <div className="wa-chatlist-items">
+      <div className="wa-chatlist-items" ref={listRef}>
         {filtered.length === 0 ? (
           <p className="wa-empty-search">No conversations found</p>
         ) : (
