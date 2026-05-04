@@ -36,15 +36,51 @@ export default function ChatList({ userId, onSelectChat }) {
   const fetchChats = useCallback(
     async (offset = 0, replace = false) => {
       if (!userId) return;
-      offset === 0 ? setLoading(true) : setLoadingMore(true);
+      offset === 0 && replace
+        ? setLoading(true)
+        : offset > 0
+          ? setLoadingMore(true)
+          : null;
+
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/chats?user_id=${userId}&limit=${PAGE_SIZE}&offset=${offset}`,
         );
         const data = await res.json();
-        if (data.ok) {
-          setTotal(data.total || 0);
-          setChats((prev) => (replace ? data.chats : [...prev, ...data.chats]));
+        if (!data.ok) return;
+
+        setTotal(data.total || 0);
+
+        if (replace) {
+          // Called on initial load — full replace is fine, user is at top
+          setChats(data.chats);
+        } else if (offset > 0) {
+          // Infinite scroll — append new page
+          setChats((prev) => {
+            const existingIds = new Set(prev.map((c) => c.chat_id));
+            const newChats = data.chats.filter(
+              (c) => !existingIds.has(c.chat_id),
+            );
+            return [...prev, ...newChats];
+          });
+        } else {
+          // Polling — smart merge: update existing + prepend new ones, NEVER reset list
+          setChats((prev) => {
+            const incoming = data.chats;
+            const incomingMap = new Map(incoming.map((c) => [c.chat_id, c]));
+
+            // Update existing chats in place (last_message, mode etc.)
+            const updated = prev.map((c) => incomingMap.get(c.chat_id) || c);
+
+            // Find truly new chats not in current list
+            const existingIds = new Set(prev.map((c) => c.chat_id));
+            const brandNew = incoming.filter(
+              (c) => !existingIds.has(c.chat_id),
+            );
+
+            // Prepend new chats, keep existing order (no scroll jump)
+            return [...brandNew, ...updated];
+          });
         }
       } catch (e) {
         console.error("fetch chats:", e);
