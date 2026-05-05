@@ -9,7 +9,6 @@ const fmtTime = (ts) => {
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-
   if (d.toDateString() === now.toDateString())
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
@@ -23,6 +22,100 @@ const modeBadge = (mode) => {
   return { label: "AI", cls: "ai" };
 };
 
+const FILTERS = [
+  { key: "all", label: "All", icon: "💬" },
+  { key: "incoming", label: "Incoming", icon: "📥" },
+  { key: "outgoing", label: "Outgoing", icon: "📤" },
+  { key: "bot", label: "Bot Active", icon: "🤖" },
+];
+
+/* ── Info content ─────────────────────────────────────────────── */
+const FILTER_INFO = [
+  {
+    label: "All",
+    desc: "Shows every conversation from all your contacts — no filter applied. This is your default view.",
+  },
+  {
+    label: "Incoming",
+    desc: "Shows only chats where the customer sent the last message. These are conversations waiting for your reply.",
+  },
+  {
+    label: "Outgoing",
+    desc: "Shows only chats where you or the bot sent the last message. The customer hasn't replied yet.",
+  },
+  {
+    label: "Bot Active",
+    desc: "Shows only chats currently being handled by the chatbot or AI agent. No human has taken over yet.",
+  },
+];
+
+const MODE_INFO = [
+  {
+    label: "AI Mode",
+    cls: "ai",
+    desc: "The AI agent is handling this conversation. It reads the customer's message and replies automatically using AI models.",
+  },
+  {
+    label: "BOT Mode",
+    cls: "bot",
+    desc: "A rule-based chatbot flow is active. It follows a fixed script — keyword triggers, menus, and automated replies.",
+  },
+  {
+    label: "Live Support",
+    cls: "manual",
+    desc: "A human agent has taken over this chat. The bot is paused and all replies must be sent manually by your team.",
+  },
+];
+
+/* ── Reusable Info Popover ────────────────────────────────────── */
+function InfoPopover({ items, title, onClose }) {
+  const ref = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="wa-info-overlay" onClick={onClose}>
+      <div
+        className="wa-info-popover"
+        ref={ref}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="wa-info-popover-header">
+          <span className="wa-info-popover-title">{title}</span>
+          <button className="wa-info-popover-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="wa-info-popover-body">
+          {items.map((item, i) => (
+            <div key={i} className="wa-info-popover-item">
+              <div className="wa-info-popover-item-top">
+                <span className="wa-info-popover-item-icon">{item.icon}</span>
+                <span className={`wa-info-label-badge ${item.cls || ""}`}>
+                  {item.label}
+                </span>
+              </div>
+              <p className="wa-info-popover-item-desc">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ───────────────────────────────────────────── */
 export default function ChatList({ userId, onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [total, setTotal] = useState(0);
@@ -30,60 +123,64 @@ export default function ChatList({ userId, onSelectChat }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [showFilterInfo, setShowFilterInfo] = useState(false);
+  const [showModeInfo, setShowModeInfo] = useState(false);
+
   const loaderRef = useRef(null);
   const pollingRef = useRef(null);
-  const listRef = useRef(null); // add this with your other refs
+  const listRef = useRef(null);
 
+  /* ── Fetch ──────────────────────────────────────────────────── */
   const fetchChats = useCallback(
-    async (offset = 0, replace = false) => {
+    async (offset = 0, replace = false, filter) => {
       if (!userId) return;
-      offset === 0 && replace
-        ? setLoading(true)
-        : offset > 0
-          ? setLoadingMore(true)
-          : null;
+      const currentFilter = filter ?? activeFilter;
+
+      if (offset === 0 && replace) setLoading(true);
+      else if (offset > 0) setLoadingMore(true);
 
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/chats?user_id=${userId}&limit=${PAGE_SIZE}&offset=${offset}`,
-        );
+        const url = new URL(`${import.meta.env.VITE_BACKEND_URL}/api/chats`);
+        url.searchParams.set("user_id", userId);
+        url.searchParams.set("limit", PAGE_SIZE);
+        url.searchParams.set("offset", offset);
+        url.searchParams.set("filter", currentFilter);
+
+        const res = await fetch(url.toString());
         const data = await res.json();
         if (!data.ok) return;
 
         setTotal(data.total || 0);
 
         if (replace) {
-          // Called on initial load — full replace is fine, user is at top
           setChats(data.chats);
         } else if (offset > 0) {
-          // Infinite scroll — append new page
           setChats((prev) => {
             const existingIds = new Set(prev.map((c) => c.chat_id));
-            const newChats = data.chats.filter(
-              (c) => !existingIds.has(c.chat_id),
-            );
-            return [...prev, ...newChats];
+            return [
+              ...prev,
+              ...data.chats.filter((c) => !existingIds.has(c.chat_id)),
+            ];
           });
         } else {
-          // Polling — save scroll position BEFORE state update
+          // Silent polling — save and restore scroll
           const scrollEl = listRef.current;
-          const savedScrollTop = scrollEl?.scrollTop || 0;
+          const savedTop = scrollEl?.scrollTop || 0;
 
           setChats((prev) => {
-            const incoming = data.chats;
-            const incomingMap = new Map(incoming.map((c) => [c.chat_id, c]));
+            const incomingMap = new Map(data.chats.map((c) => [c.chat_id, c]));
             const updated = prev.map((c) => incomingMap.get(c.chat_id) || c);
             const existingIds = new Set(prev.map((c) => c.chat_id));
-            const brandNew = incoming.filter(
+            const brandNew = data.chats.filter(
               (c) => !existingIds.has(c.chat_id),
             );
             return [...brandNew, ...updated];
           });
 
-          // Restore scroll position after React re-renders
-          if (scrollEl && savedScrollTop > 0) {
+          if (scrollEl && savedTop > 0) {
             requestAnimationFrame(() => {
-              scrollEl.scrollTop = savedScrollTop;
+              scrollEl.scrollTop = savedTop;
             });
           }
         }
@@ -94,32 +191,41 @@ export default function ChatList({ userId, onSelectChat }) {
         setLoadingMore(false);
       }
     },
-    [userId],
+    [userId, activeFilter],
   );
 
   useEffect(() => {
     if (!userId) return;
     setChats([]);
-    fetchChats(0, true);
-  }, [userId, fetchChats]);
+    setTotal(0);
+    fetchChats(0, true, activeFilter);
+  }, [userId, activeFilter]); // eslint-disable-line
 
   useEffect(() => {
     if (!userId) return;
-    pollingRef.current = setInterval(() => fetchChats(0, false), 7000);
+    pollingRef.current = setInterval(
+      () => fetchChats(0, false, activeFilter),
+      7000,
+    );
     return () => clearInterval(pollingRef.current);
-  }, [userId, fetchChats]);
+  }, [userId, activeFilter, fetchChats]);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && chats.length < total && !loadingMore)
-          fetchChats(chats.length, false);
+          fetchChats(chats.length, false, activeFilter);
       },
       { threshold: 0.1 },
     );
     if (loaderRef.current) obs.observe(loaderRef.current);
     return () => obs.disconnect();
-  }, [chats.length, total, loadingMore, fetchChats]);
+  }, [chats.length, total, loadingMore, activeFilter, fetchChats]);
+
+  const handleFilterChange = (key) => {
+    if (key === activeFilter) return;
+    setActiveFilter(key);
+  };
 
   const filtered = search.trim()
     ? chats.filter((c) => {
@@ -132,26 +238,50 @@ export default function ChatList({ userId, onSelectChat }) {
       })
     : chats;
 
-  if (loading) {
-    return (
-      <div className="wa-chatlist-loading">
-        <div className="wa-loading-spinner" />
-        <p style={{ fontSize: 13 }}>Loading conversations…</p>
-      </div>
-    );
-  }
-
+  /* ── Render ─────────────────────────────────────────────────── */
   return (
     <div className="wa-chatlist-inner">
       {/* Header */}
       <div className="wa-chatlist-header">
         <span className="wa-chatlist-title">Messages</span>
-        <span className="wa-chatlist-count">{total.toLocaleString()}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="wa-chatlist-count">{total.toLocaleString()}</span>
+          {/* Mode info icon */}
+          <button
+            className="wa-info-btn"
+            onClick={() => setShowModeInfo(true)}
+            title="What do the mode labels mean?"
+          >
+            <span>i</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter tabs row */}
+      <div className="wa-filter-row">
+        <div className="wa-filter-tabs">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              className={`wa-filter-tab ${activeFilter === f.key ? "active" : ""}`}
+              onClick={() => handleFilterChange(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {/* Filter info icon */}
+        <button
+          className="wa-info-btn"
+          onClick={() => setShowFilterInfo(true)}
+          title="What do these filters mean?"
+        >
+          <span>i</span>
+        </button>
       </div>
 
       {/* Search */}
       <div className="wa-search-box">
-        {/* <span className="wa-search-icon"></span> */}
         <input
           type="text"
           placeholder="Search conversations…"
@@ -165,10 +295,26 @@ export default function ChatList({ userId, onSelectChat }) {
         )}
       </div>
 
-      {/* List */}
+      {/* Chat list */}
       <div className="wa-chatlist-items" ref={listRef}>
-        {filtered.length === 0 ? (
-          <p className="wa-empty-search">No conversations found</p>
+        {loading ? (
+          <div className="wa-list-center">
+            <div className="wa-loading-spinner" />
+            <p style={{ fontSize: 13, color: "var(--t-muted)" }}>Loading…</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="wa-list-center">
+            <div style={{ fontSize: 36, marginBottom: 8 }}>
+              {FILTERS.find((f) => f.key === activeFilter)?.icon}
+            </div>
+            <p
+              style={{ fontSize: 13, color: "var(--t-muted)", fontWeight: 500 }}
+            >
+              {activeFilter === "all"
+                ? "No conversations yet"
+                : `No ${FILTERS.find((f) => f.key === activeFilter)?.label.toLowerCase()} messages`}
+            </p>
+          </div>
         ) : (
           filtered.map((c) => {
             const badge = modeBadge(c.mode);
@@ -176,6 +322,7 @@ export default function ChatList({ userId, onSelectChat }) {
               .charAt(0)
               .toUpperCase();
             const preview = c.last_message || "No messages yet";
+            const isIncoming = c.last_sender_type === "user";
 
             return (
               <div
@@ -198,6 +345,17 @@ export default function ChatList({ userId, onSelectChat }) {
                     </span>
                   </div>
                   <div className="wa-chat-bottom">
+                    <span
+                      className="wa-dir-arrow"
+                      style={{ color: isIncoming ? "#10b981" : "#7c3aed" }}
+                      title={
+                        isIncoming
+                          ? "Customer sent last message"
+                          : "You/Bot sent last message"
+                      }
+                    >
+                      {isIncoming ? "↙" : "↗"}
+                    </span>
                     <span className="wa-chat-message">{preview}</span>
                     <span className={`wa-mode-badge ${badge.cls}`}>
                       {badge.label}
@@ -209,14 +367,32 @@ export default function ChatList({ userId, onSelectChat }) {
           })
         )}
 
-        {!search && chats.length < total && (
+        {!search && !loading && chats.length < total && (
           <div ref={loaderRef} className="wa-load-more">
             {loadingMore
-              ? "Loading…"
-              : `Showing ${chats.length} of ${total.toLocaleString()}`}
+              ? "Loading more…"
+              : `${chats.length} of ${total.toLocaleString()} loaded`}
           </div>
         )}
       </div>
+
+      {/* Filter info popover */}
+      {showFilterInfo && (
+        <InfoPopover
+          title="What do these filters mean?"
+          items={FILTER_INFO}
+          onClose={() => setShowFilterInfo(false)}
+        />
+      )}
+
+      {/* Mode info popover */}
+      {showModeInfo && (
+        <InfoPopover
+          title="What do the mode labels mean?"
+          items={MODE_INFO}
+          onClose={() => setShowModeInfo(false)}
+        />
+      )}
     </div>
   );
 }

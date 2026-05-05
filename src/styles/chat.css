@@ -982,3 +982,314 @@
     padding: 10px;
   }
 }
+
+/* ================================================================
+   FILTER TABS
+   ================================================================ */
+.wa-filter-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--sl-border);
+  flex-shrink: 0;
+  background: var(--sl-bg);
+}
+
+.wa-filter-tab {
+  flex: 1;
+  padding: 5px 4px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r6);
+  background: transparent;
+  color: var(--t-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--ease);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.wa-filter-tab:hover {
+  background: var(--sl-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.wa-filter-tab.active {
+  background: var(--accent-pale);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ================================================================
+   FILTER TABS
+   ================================================================ */
+.wa-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 8px 10px;
+  border-bottom: 1px solid var(--sl-border);
+  flex-shrink: 0;
+}
+
+.wa-filter-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wa-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wa-filter-tab {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r6);
+  background: transparent;
+  color: var(--t-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--ease);
+  white-space: nowrap;
+}
+.wa-filter-tab:hover {
+  background: var(--sl-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.wa-filter-tab.active {
+  background: var(--accent-pale);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* direction arrow */
+.wa-dir-arrow {
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* list center helper */
+.wa-list-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  gap: 10px;
+}
+
+/* ================================================================
+   INFO BUTTON  (the "i" icon)
+   ================================================================ */
+.wa-info-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--canvas-bg);
+  color: var(--t-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--ease);
+  line-height: 1;
+}
+.wa-info-btn:hover {
+  background: var(--accent-pale);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ================================================================
+   INFO POPOVER  (click-to-open, mobile friendly)
+   ================================================================ */
+.wa-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end; /* slides up from bottom on mobile */
+  justify-content: center;
+  padding: 0;
+  animation: overlayIn 0.18s ease;
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wa-info-popover {
+  background: var(--bg-white);
+  border-radius: var(--r16) var(--r16) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.14);
+  animation: popoverUp 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+@keyframes popoverUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.wa-info-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-white);
+  z-index: 1;
+}
+
+.wa-info-popover-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--t-primary);
+  letter-spacing: -0.02em;
+}
+
+.wa-info-popover-close {
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--t-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--ease);
+  font-family: var(--font);
+}
+.wa-info-popover-close:hover {
+  background: var(--accent-pale);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.wa-info-popover-body {
+  padding: 12px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wa-info-popover-item {
+  padding: 12px 14px;
+  background: var(--canvas-bg);
+  border-radius: var(--r8);
+  border: 1px solid var(--border-light);
+}
+
+.wa-info-popover-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.wa-info-popover-item-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Reuse mode badge styles inside popover */
+.wa-info-label-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: var(--r4);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.wa-info-label-badge.bot {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.wa-info-label-badge.manual {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+.wa-info-label-badge.ai {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+/* Filter labels use neutral style */
+.wa-info-label-badge:not(.bot):not(.manual):not(.ai) {
+  background: var(--accent-pale);
+  color: var(--accent);
+  border-color: #c4b5fd;
+}
+
+.wa-info-popover-item-desc {
+  font-size: 13px;
+  color: var(--t-secondary);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Desktop — center the popover instead of bottom sheet */
+@media (min-width: 769px) {
+  .wa-info-overlay {
+    align-items: center;
+    padding: 20px;
+  }
+
+  .wa-info-popover {
+    border-radius: var(--r16);
+    max-height: 70vh;
+    animation: popoverScale 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes popoverScale {
+    from {
+      transform: scale(0.96);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
