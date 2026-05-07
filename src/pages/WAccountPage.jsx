@@ -100,6 +100,29 @@ const WAccountPage = () => {
         setMode("update");
         setExistingData(data.data);
         setIsEditingAccount(false);
+
+        // Auto-sync tier & quality from Meta every time page loads
+        try {
+          const syncRes = await fetch(
+            `${backendURL}/api/waccount/sync-meta-info?user_id=${uid}`,
+            { method: "POST" },
+          );
+          const syncData = await syncRes.json();
+
+          if (syncData.success) {
+            // Re-fetch to get the updated tier & quality values
+            const updatedRes = await fetch(
+              `${backendURL}/api/waccount/get-waccount?user_id=${uid}`,
+            );
+            const updatedData = await updatedRes.json();
+            if (updatedData.success && updatedData.data) {
+              setExistingData(updatedData.data);
+            }
+          }
+        } catch (syncErr) {
+          // Sync failure shouldn't break the page
+          console.warn("Tier sync failed silently:", syncErr);
+        }
       } else {
         setMode("create");
         setExistingData(null);

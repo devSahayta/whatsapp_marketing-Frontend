@@ -13,6 +13,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import useSubscription from "../hooks/useSubscription";
 import "../styles/navbar.css";
+import NotificationBell from "./NotificationBell";
+import "../styles/notification.css";
 
 const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
@@ -122,6 +124,9 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
             </span>
           </div>
         )}
+
+        {/* ── Add this block ── */}
+        {isAuthenticated && <NotificationBell userId={userId} />}
 
         {isAuthenticated ? (
           <div className="profile-wrapper" ref={dropdownRef}>
