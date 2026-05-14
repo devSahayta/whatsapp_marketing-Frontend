@@ -502,7 +502,6 @@ export default function CreateTemplate() {
     }
   };
 
-
   // ---------- Name slug and validate ----------
   useEffect(() => {
     const slug = slugifyForMeta(templateNameRaw);
@@ -708,7 +707,10 @@ export default function CreateTemplate() {
       let currentHeaderHandle = null;
       let uploadedStoragePath = null;
 
-      if (["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && headerUploadFile) {
+      if (
+        ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) &&
+        headerUploadFile
+      ) {
         // 1. Get a signed upload URL from backend (tiny JSON request, no file)
         const urlResp = await getSupabaseUploadUrl({
           user_id: userId,
@@ -744,7 +746,8 @@ export default function CreateTemplate() {
           storage_path,
         });
         currentHeaderHandle = binaryResp?.data?.h || binaryResp?.h;
-        if (!currentHeaderHandle) throw new Error("Upload response missing header handle");
+        if (!currentHeaderHandle)
+          throw new Error("Upload response missing header handle");
       }
 
       // 5. Upload media record — backend reuses same Supabase file, then cleans it up
@@ -765,7 +768,10 @@ export default function CreateTemplate() {
           mediaResp?.saved?.media_id ||
           mediaResp?.id ||
           null;
-        if (!mediaId) throw new Error("Media upload succeeded but no media id was returned");
+        if (!mediaId)
+          throw new Error(
+            "Media upload succeeded but no media id was returned",
+          );
       }
 
       const comps = buildFinalComponents(currentHeaderHandle);
@@ -812,6 +818,8 @@ export default function CreateTemplate() {
     } catch (err) {
       console.error("Create template error", err);
       const msg =
+        err?.response?.data?.error?.error_user_msg ||
+        err?.response?.data?.error?.message ||
         err?.response?.data?.error ||
         err?.response?.data ||
         err?.message ||
@@ -1372,7 +1380,8 @@ export default function CreateTemplate() {
                                 {headerUploadFile && !uploadError && (
                                   <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
                                     <CheckCircle2 size={12} />
-                                    File ready — will upload when you create the template
+                                    File ready — will upload when you create the
+                                    template
                                   </div>
                                 )}
                               </div>
@@ -1751,6 +1760,8 @@ export default function CreateTemplate() {
                     "Example values required for each variable",
                     "Media headers require a file upload",
                     "URL buttons must start with https://",
+                    "Variables can't be at the start or end of the template",
+                    "Emoji are not allowed in footer text",
                   ].map((rule, i) => (
                     <li
                       key={i}
