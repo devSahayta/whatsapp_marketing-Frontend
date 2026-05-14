@@ -21,3 +21,10 @@ export const deleteAgent = (agentId) =>
 
 export const testAgent = (agentId, message, history = []) =>
   apiClient.post(`api/agents/${agentId}/test`, { message, history });
+
+// ── Samvaadik AI Assistant ─────────────────────────────────────────────────
+// Sends the full conversation history to the agentic campaign loop.
+// messages: [{ role: "user" | "assistant", content: string }]
+
+export const samvaadikChat = (userId, messages) =>
+  apiClient.post("api/agents/samvaadik/chat", { user_id: userId, messages });

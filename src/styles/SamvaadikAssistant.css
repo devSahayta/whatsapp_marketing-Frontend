@@ -1,0 +1,796 @@
+/* SamvaadikAssistant.css */
+/* Place at: src/components/SamvaadikAssistant.css */
+
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap");
+
+/* ── FAB ──────────────────────────────────────────────────────── */
+
+.sai-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px 0 16px;
+  height: 46px;
+  background: #0a6b5c;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(10, 107, 92, 0.3);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+.sai-fab:hover {
+  background: #085f50;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(10, 107, 92, 0.38);
+}
+
+.sai-fab:active {
+  transform: scale(0.97);
+}
+
+.sai-fab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.sai-fab-icon--open {
+  transform: rotate(90deg);
+}
+
+.sai-fab-label {
+  letter-spacing: -0.01em;
+}
+
+/* ── Backdrop (mobile only) ──────────────────────────────────── */
+
+.sai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9991;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.28s ease;
+  pointer-events: none;
+}
+
+.sai-backdrop--visible {
+  background: rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .sai-backdrop {
+    display: none;
+  }
+}
+
+/* ── Panel ───────────────────────────────────────────────────── */
+
+.sai-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9992;
+  width: 420px;
+  max-width: 100vw;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    -6px 0 32px rgba(0, 0, 0, 0.09),
+    -1px 0 0 #e5e7eb;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: "DM Sans", sans-serif;
+  overflow: hidden;
+}
+
+.sai-panel--visible {
+  transform: translateX(0);
+}
+
+@media (max-width: 767px) {
+  .sai-panel {
+    width: 100vw;
+  }
+}
+
+@media (min-width: 1400px) {
+  .sai-panel {
+    width: 440px;
+  }
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+.sai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.sai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.sai-header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #0a6b5c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sai-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.sai-header-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.sai-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+}
+
+.sai-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.sai-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+
+.sai-icon-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ── Message area ────────────────────────────────────────────── */
+
+.sai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #f9fafb;
+  scroll-behavior: smooth;
+}
+
+.sai-messages::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sai-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sai-messages::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+/* ── Message rows ────────────────────────────────────────────── */
+
+.sai-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 5px;
+  width: 100%;
+  min-width: 0;
+  animation: saiMsgIn 0.2s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes saiMsgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sai-msg--user {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.sai-msg-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #0a6b5c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.sai-msg-avatar--pulse {
+  animation: saiAvatarPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes saiAvatarPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(10, 107, 92, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(10, 107, 92, 0);
+  }
+}
+
+/* ── Bubbles ─────────────────────────────────────────────────── */
+
+.sai-bubble {
+  max-width: 78%;
+  width: fit-content;
+  min-width: 0;
+  flex-shrink: 1;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.sai-bubble--user {
+  background: #0a6b5c;
+  color: #ffffff;
+  border-bottom-right-radius: 3px;
+  align-self: flex-end;
+}
+
+.sai-bubble--ai {
+  background: #ffffff;
+  color: #1f2937;
+  border-bottom-left-radius: 3px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sai-bubble p,
+.sai-bubble span {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.65;
+  display: block;
+  width: 100%;
+}
+
+.sai-bubble p + p {
+  margin-top: 6px;
+}
+
+/* ── Summary card (inside AI bubble) ────────────────────────── */
+
+.sai-summary-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sai-summary-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #166534;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #bbf7d0;
+  letter-spacing: -0.01em;
+}
+
+.sai-summary-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  align-items: baseline;
+}
+
+.sai-summary-label {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.sai-summary-value {
+  color: #111827;
+  font-weight: 600;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ── Loading card ────────────────────────────────────────────── */
+
+.sai-loading-card {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  border-bottom-left-radius: 3px;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 185px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sai-loading-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.sai-loading-spinner {
+  width: 13px;
+  height: 13px;
+  border: 1.8px solid #e5e7eb;
+  border-top-color: #0a6b5c;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: saiSpin 0.65s linear infinite;
+}
+
+@keyframes saiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sai-loading-label {
+  animation: saiLabelIn 0.25s ease both;
+}
+
+@keyframes saiLabelIn {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sai-loading-steps {
+  display: flex;
+  gap: 4px;
+  padding-left: 22px;
+}
+
+.sai-loading-step-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  transition: background 0.25s;
+}
+
+.sai-loading-step-dot--active {
+  background: #0a6b5c;
+}
+
+/* ── Error ───────────────────────────────────────────────────── */
+
+.sai-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #991b1b;
+  animation: saiMsgIn 0.2s ease both;
+}
+
+.sai-error-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #991b1b;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+
+.sai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 16px 16px;
+}
+
+.sai-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #0a6b5c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.sai-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 7px;
+  letter-spacing: -0.025em;
+}
+
+.sai-empty-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 22px;
+  line-height: 1.6;
+  max-width: 270px;
+}
+
+.sai-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.sai-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  font-family: "DM Sans", sans-serif;
+  transition:
+    border-color 0.14s,
+    background 0.14s,
+    transform 0.14s;
+}
+
+.sai-suggestion:hover {
+  border-color: #0a6b5c;
+  background: #f0fdf4;
+  color: #0a6b5c;
+  transform: translateX(2px);
+}
+
+.sai-suggestion-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #6b7280;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+
+.sai-suggestion:hover .sai-suggestion-icon {
+  background: #d1fae5;
+  color: #0a6b5c;
+}
+
+.sai-suggestion-arrow {
+  margin-left: auto;
+  color: #d1d5db;
+  flex-shrink: 0;
+}
+
+/* ── Input area ──────────────────────────────────────────────── */
+
+.sai-input-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  padding: 11px 13px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sai-textarea {
+  flex: 1;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 13px;
+  font-size: 13.5px;
+  font-family: "DM Sans", sans-serif;
+  color: #111827;
+  background: #f9fafb;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  min-height: 42px;
+  max-height: 120px;
+  overflow-y: auto;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.sai-textarea:focus {
+  border-color: #0a6b5c;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.sai-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.sai-textarea:disabled {
+  opacity: 0.55;
+}
+
+.sai-send-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: none;
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background 0.14s,
+    color 0.14s,
+    transform 0.14s;
+}
+
+.sai-send-btn--active {
+  background: #0a6b5c;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(10, 107, 92, 0.25);
+}
+
+.sai-send-btn--active:hover {
+  background: #085f50;
+  transform: scale(1.05);
+}
+
+.sai-send-btn--active:active {
+  transform: scale(0.96);
+}
+
+/* ── Plus button ─────────────────────────────────────────────── */
+
+.sai-plus-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sai-plus-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.14s,
+    color 0.14s,
+    background 0.14s,
+    transform 0.2s;
+}
+
+.sai-plus-btn:hover {
+  border-color: #0a6b5c;
+  color: #0a6b5c;
+  background: #f0fdf4;
+}
+
+.sai-plus-btn--open {
+  border-color: #0a6b5c;
+  color: #0a6b5c;
+  background: #f0fdf4;
+  transform: rotate(45deg);
+}
+
+.sai-plus-menu {
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 7px;
+  width: 215px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: saiMenuIn 0.17s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  z-index: 10;
+}
+
+@keyframes saiMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sai-plus-menu-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 4px 8px 8px;
+}
+
+.sai-plus-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-family: "DM Sans", sans-serif;
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sai-plus-item-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.sai-plus-item-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+}
+
+.sai-plus-item-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: left;
+}
+
+.sai-plus-soon {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+/* ── Hint bar ────────────────────────────────────────────────── */
+
+.sai-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #9ca3af;
+  padding: 5px 14px 9px;
+  background: #fff;
+  font-family: "DM Sans", sans-serif;
+  flex-shrink: 0;
+}
+
+.sai-hint kbd {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: inherit;
+  font-size: 10.5px;
+  color: #4b5563;
+}
