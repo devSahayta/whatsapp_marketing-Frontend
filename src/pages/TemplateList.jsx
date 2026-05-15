@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Eye,
+  FileText,
   Image as ImageIcon,
   Languages,
   LayoutTemplate,
@@ -105,7 +106,17 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
           }}
         >
           <div className="ml-auto max-w-[92%] overflow-hidden rounded-[1.4rem] rounded-tr-md bg-white shadow-lg">
-            {mediaUrl && (
+            {mediaType === "document" ? (
+              <div className="flex min-h-40 flex-col items-center justify-center gap-2 bg-slate-50 px-6 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-200">
+                  <FileText className="h-5 w-5 text-slate-500" />
+                </div>
+                <p className="text-xs font-medium text-slate-600">Document</p>
+                <p className="text-[11px] text-slate-400">
+                  Sent as an attachment
+                </p>
+              </div>
+            ) : mediaUrl ? (
               <div
                 className={`relative ${isMediaLoading ? "min-h-40" : ""} bg-slate-100`}
               >
@@ -114,7 +125,6 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
                     Loading media...
                   </div>
                 )}
-
                 {mediaError ? (
                   <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
                     Media preview unavailable
@@ -130,7 +140,7 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
                       setMediaError(true);
                     }}
                   />
-                ) : mediaType === "video" ? (
+                ) : (
                   <video
                     src={mediaUrl}
                     controls
@@ -141,13 +151,9 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
                       setMediaError(true);
                     }}
                   />
-                ) : (
-                  <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
-                    {header?.format || "Media"} header attached
-                  </div>
                 )}
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-3 px-4 py-4 text-[15px] leading-6 text-slate-800">
               {headerText && (
@@ -195,17 +201,59 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
   );
 }
 
-const MEDIA_ACCEPT = {
-  IMAGE: "image/*",
-  VIDEO: "video/*",
-  DOCUMENT: "application/pdf,.doc,.docx",
+const MEDIA_CONSTRAINTS = {
+  IMAGE: {
+    accept: "image/jpeg,image/png",
+    allowedTypes: ["image/jpeg", "image/png"],
+    maxMB: 5,
+    hint: "JPG or PNG · max 5 MB",
+  },
+  VIDEO: {
+    accept: "video/mp4,video/3gpp",
+    allowedTypes: ["video/mp4", "video/3gpp"],
+    maxMB: 16,
+    hint: "MP4 or 3GP · max 16 MB",
+  },
+  DOCUMENT: {
+    accept: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ].join(","),
+    allowedTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ],
+    maxMB: 40,
+    hint: "PDF, DOC, XLS, PPT, TXT · max 40 MB",
+  },
+};
+
+const validateMediaFile = (file, format) => {
+  const c = MEDIA_CONSTRAINTS[format];
+  if (!c) return null;
+  if (!c.allowedTypes.includes(file.type))
+    return `Invalid file type. Allowed: ${c.hint.split(" · ")[0]}`;
+  if (file.size / (1024 * 1024) > c.maxMB)
+    return `File too large. Max allowed size is ${c.maxMB} MB`;
+  return null;
 };
 
 function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
-  const [isMediaPreviewLoading, setIsMediaPreviewLoading] = useState(true);
-  const [mediaPreviewError, setMediaPreviewError] = useState(false);
+  const [fileError, setFileError] = useState(null);
   // tracks freshly uploaded media_id so preview updates immediately without waiting for parent reload
   const [localMediaId, setLocalMediaId] = useState(null);
   const fileInputRef = useRef(null);
@@ -226,11 +274,11 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
     };
   }, [onClose]);
 
-  // Reset preview state and local media ID when template changes
+  // Reset local state when template changes
   useEffect(() => {
-    setIsMediaPreviewLoading(true);
-    setMediaPreviewError(false);
     setLocalMediaId(null);
+    setUploadFile(null);
+    setFileError(null);
   }, [template?.wt_id]);
 
   const buttons = getButtons(template);
@@ -243,11 +291,6 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
 
   // localMediaId takes precedence so preview refreshes immediately after upload
   const effectiveMediaId = localMediaId ?? template.media_id;
-
-  const mediaProxyUrl =
-    effectiveMediaId && userId
-      ? `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy/${effectiveMediaId}?user_id=${userId}`
-      : null;
 
   const handleMediaUpload = async () => {
     if (!uploadFile || !template.wt_id) return;
@@ -270,9 +313,8 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
 
       showSuccess("Media uploaded successfully");
       setUploadFile(null);
+      setFileError(null);
       setLocalMediaId(mediaId);
-      setIsMediaPreviewLoading(true);
-      setMediaPreviewError(false);
       onMediaUpload?.();
     } catch {
       showError("Failed to upload media");
@@ -393,7 +435,7 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
             {hasMediaHeader && (
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Media Preview
+                  Header Media
                 </h3>
 
                 {/* Expired / missing media warning */}
@@ -404,48 +446,6 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                       No media uploaded. WhatsApp media expires after 25 days —
                       upload fresh media before sending this template.
                     </p>
-                  </div>
-                )}
-
-                {/* Media preview via media-proxy/:media_id (same as SendTemplate) */}
-                {mediaProxyUrl && (
-                  <div className="relative mt-3 overflow-hidden rounded-2xl bg-slate-100">
-                    {isMediaPreviewLoading && !mediaPreviewError && (
-                      <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">
-                        Loading preview...
-                      </div>
-                    )}
-                    {mediaPreviewError ? (
-                      <div className="flex min-h-24 items-center justify-center text-xs text-slate-400">
-                        Preview unavailable
-                      </div>
-                    ) : template.header_format === "IMAGE" ? (
-                      <img
-                        src={mediaProxyUrl}
-                        alt="Template header"
-                        className="max-h-48 w-full object-contain"
-                        onLoad={() => setIsMediaPreviewLoading(false)}
-                        onError={() => {
-                          setIsMediaPreviewLoading(false);
-                          setMediaPreviewError(true);
-                        }}
-                      />
-                    ) : template.header_format === "VIDEO" ? (
-                      <video
-                        src={mediaProxyUrl}
-                        controls
-                        className="max-h-48 w-full"
-                        onLoadedData={() => setIsMediaPreviewLoading(false)}
-                        onError={() => {
-                          setIsMediaPreviewLoading(false);
-                          setMediaPreviewError(true);
-                        }}
-                      />
-                    ) : (
-                      <div className="flex min-h-24 items-center justify-center text-xs text-slate-500">
-                        {template.header_format} attached
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -461,28 +461,46 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept={MEDIA_ACCEPT[template.header_format]}
+                    accept={MEDIA_CONSTRAINTS[template.header_format]?.accept}
                     className="hidden"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setUploadFile(file);
+                      setFileError(
+                        file
+                          ? validateMediaFile(file, template.header_format)
+                          : null,
+                      );
+                      e.target.value = "";
+                    }}
                   />
                   {uploadFile ? (
                     <div className="space-y-2">
                       <p className="truncate text-xs text-slate-600">
                         {uploadFile.name}
                       </p>
+                      {fileError && (
+                        <div className="flex items-start gap-1.5 rounded-xl bg-rose-50 px-3 py-2">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                          <p className="text-xs text-rose-700">{fileError}</p>
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={handleMediaUpload}
-                          disabled={isUploading}
-                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+                          disabled={isUploading || !!fileError}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Upload className="h-4 w-4" />
                           {isUploading ? "Uploading..." : "Upload"}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setUploadFile(null)}
+                          onClick={() => {
+                            setUploadFile(null);
+                            setFileError(null);
+                          }}
                           className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"
                         >
                           Cancel
@@ -490,14 +508,19 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                       </div>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {effectiveMediaId ? "Replace Media" : "Upload Media"}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {effectiveMediaId ? "Replace Media" : "Upload Media"}
+                      </button>
+                      <p className="text-center text-xs text-slate-400">
+                        {MEDIA_CONSTRAINTS[template.header_format]?.hint}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -822,9 +845,10 @@ export default function TemplateList() {
                   <button
                     type="button"
                     onClick={loadTemplates}
-                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    disabled={loading}
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                   >
-                    Refresh List
+                    {loading ? "Refreshing..." : "Refresh List"}
                   </button>
                 </div>
               </div>
