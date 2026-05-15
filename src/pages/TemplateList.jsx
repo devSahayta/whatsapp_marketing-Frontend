@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Eye,
@@ -12,11 +13,17 @@ import {
   Plus,
   Send,
   Trash2,
+  Upload,
   Video,
   X,
 } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
-import { deleteMetaTemplate, fetchMetaTemplates } from "../api/templates";
+import {
+  deleteMetaTemplate,
+  fetchTemplatesComplete,
+  uploadTemplateMedia,
+} from "../api/templates";
+import { uploadMedia } from "../api/media";
 import {
   dismissToast,
   showError,
@@ -41,15 +48,9 @@ const getHeaderComponent = (template) => getComponent(template, "HEADER");
 const getButtons = (template) =>
   getComponent(template, "BUTTONS")?.buttons || [];
 
-const getHeaderMediaUrl = (template, userId) => {
-  const header = getHeaderComponent(template);
-  const mediaSource = header?.example?.header_handle?.[0];
-
-  if (!mediaSource || !userId) return null;
-
-  return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-    mediaSource,
-  )}&user_id=${userId}`;
+const getHeaderMediaUrl = (mediaId, userId) => {
+  if (!mediaId || !userId) return null;
+  return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy/${mediaId}?user_id=${userId}`;
 };
 
 const formatTemplateText = (text = "", values = []) => {
@@ -62,7 +63,7 @@ const formatTemplateText = (text = "", values = []) => {
   });
 };
 
-function TemplatePhonePreview({ template, userId }) {
+function TemplatePhonePreview({ template, userId, mediaId }) {
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
   const footer = getComponent(template, "FOOTER");
@@ -71,7 +72,8 @@ function TemplatePhonePreview({ template, userId }) {
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
 
-  const mediaUrl = getHeaderMediaUrl(template, userId);
+  const effectiveMediaId = mediaId ?? template?.media_id;
+  const mediaUrl = getHeaderMediaUrl(effectiveMediaId, userId);
   const mediaType = header?.format?.toLowerCase();
   const headerText = header?.text;
   const bodyText = formatTemplateText(
@@ -82,10 +84,10 @@ function TemplatePhonePreview({ template, userId }) {
   useEffect(() => {
     setIsMediaLoading(true);
     setMediaError(false);
-  }, [template?.id]);
+  }, [template?.wt_id ?? template?.template_id, mediaId]);
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
+    <div className="self-start rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
       <div className="overflow-hidden rounded-[1.6rem] bg-[#e8f5e9]">
         <div className="flex items-center justify-between bg-[#103529] px-4 py-3 text-white">
           <div>
@@ -104,7 +106,9 @@ function TemplatePhonePreview({ template, userId }) {
         >
           <div className="ml-auto max-w-[92%] overflow-hidden rounded-[1.4rem] rounded-tr-md bg-white shadow-lg">
             {mediaUrl && (
-              <div className="relative min-h-40 bg-slate-100">
+              <div
+                className={`relative ${isMediaLoading ? "min-h-40" : ""} bg-slate-100`}
+              >
                 {isMediaLoading && !mediaError && (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
                     Loading media...
@@ -191,7 +195,21 @@ function TemplatePhonePreview({ template, userId }) {
   );
 }
 
-function PreviewDrawer({ template, userId, onClose, onSend }) {
+const MEDIA_ACCEPT = {
+  IMAGE: "image/*",
+  VIDEO: "video/*",
+  DOCUMENT: "application/pdf,.doc,.docx",
+};
+
+function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isMediaPreviewLoading, setIsMediaPreviewLoading] = useState(true);
+  const [mediaPreviewError, setMediaPreviewError] = useState(false);
+  // tracks freshly uploaded media_id so preview updates immediately without waiting for parent reload
+  const [localMediaId, setLocalMediaId] = useState(null);
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
@@ -208,9 +226,60 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
     };
   }, [onClose]);
 
+  // Reset preview state and local media ID when template changes
+  useEffect(() => {
+    setIsMediaPreviewLoading(true);
+    setMediaPreviewError(false);
+    setLocalMediaId(null);
+  }, [template?.wt_id]);
+
   const buttons = getButtons(template);
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
+
+  const hasMediaHeader = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
+    template.header_format,
+  );
+
+  // localMediaId takes precedence so preview refreshes immediately after upload
+  const effectiveMediaId = localMediaId ?? template.media_id;
+
+  const mediaProxyUrl =
+    effectiveMediaId && userId
+      ? `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy/${effectiveMediaId}?user_id=${userId}`
+      : null;
+
+  const handleMediaUpload = async () => {
+    if (!uploadFile || !template.wt_id) return;
+    setIsUploading(true);
+    try {
+      // Step 1: upload media via backend → get WhatsApp media_id
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("user_id", userId);
+      const uploadRes = await uploadMedia(formData);
+      const mediaId =
+        uploadRes.data?.saved?.media_id || uploadRes.data?.media?.id;
+      if (!mediaId) throw new Error("No media ID returned");
+
+      // Step 2: persist media_id to the template DB record
+      await uploadTemplateMedia(template.wt_id, {
+        user_id: userId,
+        media_id: mediaId,
+      });
+
+      showSuccess("Media uploaded successfully");
+      setUploadFile(null);
+      setLocalMediaId(mediaId);
+      setIsMediaPreviewLoading(true);
+      setMediaPreviewError(false);
+      onMediaUpload?.();
+    } catch {
+      showError("Failed to upload media");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50">
@@ -261,7 +330,11 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
         </div>
 
         <div className="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
-          <TemplatePhonePreview template={template} userId={userId} />
+          <TemplatePhonePreview
+            template={template}
+            userId={userId}
+            mediaId={effectiveMediaId}
+          />
 
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -317,6 +390,119 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
               </p>
             </div>
 
+            {hasMediaHeader && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Media Preview
+                </h3>
+
+                {/* Expired / missing media warning */}
+                {!effectiveMediaId && (
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <p className="text-xs leading-5 text-amber-800">
+                      No media uploaded. WhatsApp media expires after 25 days —
+                      upload fresh media before sending this template.
+                    </p>
+                  </div>
+                )}
+
+                {/* Media preview via media-proxy/:media_id (same as SendTemplate) */}
+                {mediaProxyUrl && (
+                  <div className="relative mt-3 overflow-hidden rounded-2xl bg-slate-100">
+                    {isMediaPreviewLoading && !mediaPreviewError && (
+                      <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">
+                        Loading preview...
+                      </div>
+                    )}
+                    {mediaPreviewError ? (
+                      <div className="flex min-h-24 items-center justify-center text-xs text-slate-400">
+                        Preview unavailable
+                      </div>
+                    ) : template.header_format === "IMAGE" ? (
+                      <img
+                        src={mediaProxyUrl}
+                        alt="Template header"
+                        className="max-h-48 w-full object-contain"
+                        onLoad={() => setIsMediaPreviewLoading(false)}
+                        onError={() => {
+                          setIsMediaPreviewLoading(false);
+                          setMediaPreviewError(true);
+                        }}
+                      />
+                    ) : template.header_format === "VIDEO" ? (
+                      <video
+                        src={mediaProxyUrl}
+                        controls
+                        className="max-h-48 w-full"
+                        onLoadedData={() => setIsMediaPreviewLoading(false)}
+                        onError={() => {
+                          setIsMediaPreviewLoading(false);
+                          setMediaPreviewError(true);
+                        }}
+                      />
+                    ) : (
+                      <div className="flex min-h-24 items-center justify-center text-xs text-slate-500">
+                        {template.header_format} attached
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Uploaded media ID indicator */}
+                {effectiveMediaId && (
+                  <p className="mt-3 truncate text-xs text-slate-500">
+                    Uploaded media ID: {effectiveMediaId}
+                  </p>
+                )}
+
+                {/* Upload / Replace control */}
+                <div className="mt-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={MEDIA_ACCEPT[template.header_format]}
+                    className="hidden"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  />
+                  {uploadFile ? (
+                    <div className="space-y-2">
+                      <p className="truncate text-xs text-slate-600">
+                        {uploadFile.name}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleMediaUpload}
+                          disabled={isUploading}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {isUploading ? "Uploading..." : "Upload"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUploadFile(null)}
+                          className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {effectiveMediaId ? "Replace Media" : "Upload Media"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Quick Actions
@@ -325,7 +511,7 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
                 {template.status === "APPROVED" && (
                   <button
                     type="button"
-                    onClick={() => onSend(template.id)}
+                    onClick={() => onSend(template.template_id)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
                   >
                     <Send className="h-4 w-4" />
@@ -491,7 +677,7 @@ function TemplateCard({
         {template.status === "APPROVED" && (
           <button
             type="button"
-            onClick={() => onSend(template.id)}
+            onClick={() => onSend(template.template_id)}
             className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
           >
             <Send className="h-4 w-4" />
@@ -528,8 +714,8 @@ export default function TemplateList() {
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const res = await fetchMetaTemplates(userId);
-      setTemplates(res?.data?.templates || []);
+      const res = await fetchTemplatesComplete(userId);
+      setTemplates(res?.data || []);
     } catch (error) {
       console.error(error);
       showError("Failed to load templates");
@@ -566,11 +752,11 @@ export default function TemplateList() {
     const toastId = showLoading("Deleting template...");
 
     try {
-      await deleteMetaTemplate(template.id, template.name, userId);
+      await deleteMetaTemplate(template.template_id, template.name, userId);
       dismissToast(toastId);
       showSuccess("Template deleted");
 
-      if (selectedTemplate?.id === template.id) {
+      if (selectedTemplate?.wt_id === template.wt_id) {
         setSelectedTemplate(null);
       }
 
@@ -735,13 +921,13 @@ export default function TemplateList() {
             <section className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               {filteredTemplates.map((template) => (
                 <TemplateCard
-                  key={template.id}
+                  key={template.wt_id}
                   template={template}
-                  isMenuOpen={openMenuId === template.id}
+                  isMenuOpen={openMenuId === template.wt_id}
                   attachMenuRef={menuRef}
                   onMenuToggle={() =>
                     setOpenMenuId((current) =>
-                      current === template.id ? null : template.id,
+                      current === template.wt_id ? null : template.wt_id,
                     )
                   }
                   onPreview={() => {
@@ -766,6 +952,7 @@ export default function TemplateList() {
           userId={userId}
           onClose={() => setSelectedTemplate(null)}
           onSend={(templateId) => navigate(`/templates/send/${templateId}`)}
+          onMediaUpload={loadTemplates}
         />
       )}
     </>
