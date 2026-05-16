@@ -26,5 +26,9 @@ export const testAgent = (agentId, message, history = []) =>
 // Sends the full conversation history to the agentic campaign loop.
 // messages: [{ role: "user" | "assistant", content: string }]
 
-export const samvaadikChat = (userId, messages) =>
-  apiClient.post("api/agents/samvaadik/chat", { user_id: userId, messages });
+export const samvaadikChat = (userId, messages, mediaAttachment = null) =>
+  apiClient.post("api/agents/samvaadik/chat", {
+    user_id: userId,
+    messages,
+    ...(mediaAttachment && { media_attachment: mediaAttachment }),
+  });

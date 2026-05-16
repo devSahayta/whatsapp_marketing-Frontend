@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { samvaadikChat } from "../api/agents";
+import { prepareMediaHeader } from "../api/media";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -14,14 +15,14 @@ const SUGGESTIONS = [
     icon: <IconCampaign />,
   },
   {
+    label: "Create a template",
+    prompt: "I want to create a new WhatsApp message template",
+    icon: <IconTemplate />,
+  },
+  {
     label: "Show my contact groups",
     prompt: "Show me all my contact groups",
     icon: <IconGroups />,
-  },
-  {
-    label: "Browse templates",
-    prompt: "What templates do I have?",
-    icon: <IconTemplate />,
   },
   {
     label: "Schedule a campaign for later",
@@ -42,6 +43,9 @@ function detectLoadingSteps(message) {
   }
   if (m.includes("template")) {
     steps.push({ id: "templates", label: "Fetching templates" });
+  }
+  if (m.includes("media") || m.includes("image") || m.includes("video")) {
+    steps.push({ id: "media", label: "Processing media" });
   }
   if (
     m.includes("campaign") ||
@@ -149,9 +153,12 @@ export default function SamvaadikAssistant({ userId }) {
   const [activeStep, setActiveStep] = useState(0);
   const [plusOpen, setPlusOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [pendingAttachment, setPendingAttachment] = useState(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const stepTimerRef = useRef(null);
   const idRef = useRef(0);
 
@@ -183,22 +190,64 @@ export default function SamvaadikAssistant({ userId }) {
     return () => clearInterval(stepTimerRef.current);
   }, [loading, loadingSteps]);
 
+  // Upload file directly; backend handles Supabase, Meta upload, DB save, and cleanup.
+  const handleFileSelect = useCallback(
+    async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      e.target.value = "";
+      setUploadingMedia(true);
+      setError(null);
+
+      try {
+        const formData = new FormData();
+        formData.append("user_id", userId);
+        formData.append("file", file);
+
+        const { data: headerData } = await prepareMediaHeader(formData);
+
+        setPendingAttachment({
+          header_handle: headerData.header_handle,
+          header_format: headerData.header_format,
+          media_id: headerData.media_id,
+          file_name: file.name,
+        });
+      } catch (err) {
+        setError(
+          err?.response?.data?.error ||
+            "Failed to process media. Please try again.",
+        );
+      } finally {
+        setUploadingMedia(false);
+      }
+    },
+    [userId],
+  );
+
   // Send a message
   const sendMessage = useCallback(
     async (text) => {
       const userText = (text || input).trim();
       if (!userText || loading) return;
 
+      const attachment = pendingAttachment;
+
       setInput("");
       setError(null);
       setPlusOpen(false);
+      setPendingAttachment(null);
 
       // Reset textarea height
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
       }
 
-      const userMsg = { id: nextId(), role: "user", content: userText };
+      const userMsg = {
+        id: nextId(),
+        role: "user",
+        content: userText,
+        attachment: attachment || undefined,
+      };
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
       setLoading(true);
@@ -209,6 +258,7 @@ export default function SamvaadikAssistant({ userId }) {
         const { data } = await samvaadikChat(
           userId,
           updatedMessages.map(({ role, content }) => ({ role, content })),
+          attachment,
         );
 
         setMessages((prev) => [
@@ -225,7 +275,7 @@ export default function SamvaadikAssistant({ userId }) {
         setLoadingSteps([]);
       }
     },
-    [input, messages, loading, userId],
+    [input, messages, loading, userId, pendingAttachment],
   );
 
   const handleKeyDown = (e) => {
@@ -388,75 +438,132 @@ export default function SamvaadikAssistant({ userId }) {
 
           {/* Input */}
           <div className="sai-input-wrap">
-            {/* Plus menu */}
-            <div className="sai-plus-wrap">
-              <button
-                className={`sai-plus-btn ${plusOpen ? "sai-plus-btn--open" : ""}`}
-                onClick={togglePlus}
-                title="Attach file"
-              >
-                <IconPlus size={17} />
-              </button>
+            {/* Attachment chip */}
+            {(pendingAttachment || uploadingMedia) && (
+              <div className="sai-attachment-chip">
+                {uploadingMedia ? (
+                  <>
+                    <span className="sai-loading-spinner" style={{ width: 11, height: 11 }} />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    {pendingAttachment.header_format === "IMAGE" ? (
+                      <IconImage size={12} />
+                    ) : pendingAttachment.header_format === "VIDEO" ? (
+                      <IconVideo size={12} />
+                    ) : (
+                      <IconDoc size={12} />
+                    )}
+                    <span>{pendingAttachment.file_name}</span>
+                    <button
+                      className="sai-attachment-remove"
+                      onClick={() => setPendingAttachment(null)}
+                      title="Remove"
+                    >
+                      <IconClose size={10} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
-              {plusOpen && (
-                <div className="sai-plus-menu">
-                  <div className="sai-plus-menu-title">Attach</div>
-                  {[
-                    {
-                      label: "Image",
-                      sub: "JPG, PNG, WebP",
-                      icon: <IconImage size={15} />,
-                    },
-                    {
-                      label: "Video",
-                      sub: "MP4, MOV",
-                      icon: <IconVideo size={15} />,
-                    },
-                    {
-                      label: "Document",
-                      sub: "PDF, DOCX",
-                      icon: <IconDoc size={15} />,
-                    },
-                    {
-                      label: "Spreadsheet",
-                      sub: "CSV, XLSX",
-                      icon: <IconSheet size={15} />,
-                    },
-                  ].map((item) => (
-                    <div key={item.label} className="sai-plus-item">
-                      <div className="sai-plus-item-icon">{item.icon}</div>
-                      <div>
-                        <div className="sai-plus-item-label">{item.label}</div>
-                        <div className="sai-plus-item-sub">{item.sub}</div>
+            {/* Input row */}
+            <div className="sai-input-row">
+              {/* Plus menu */}
+              <div className="sai-plus-wrap">
+                <button
+                  className={`sai-plus-btn ${plusOpen ? "sai-plus-btn--open" : ""}`}
+                  onClick={togglePlus}
+                  title="Attach file"
+                  disabled={uploadingMedia}
+                >
+                  <IconPlus size={17} />
+                </button>
+
+                {plusOpen && (
+                  <div className="sai-plus-menu">
+                    <div className="sai-plus-menu-title">Attach</div>
+                    {[
+                      {
+                        label: "Image",
+                        sub: "JPG, PNG, WebP",
+                        icon: <IconImage size={15} />,
+                        accept: "image/jpeg,image/png,image/webp",
+                      },
+                      {
+                        label: "Video",
+                        sub: "MP4, MOV",
+                        icon: <IconVideo size={15} />,
+                        accept: "video/mp4,video/quicktime",
+                      },
+                      {
+                        label: "Document",
+                        sub: "PDF",
+                        icon: <IconDoc size={15} />,
+                        accept: "application/pdf",
+                      },
+                      {
+                        label: "Spreadsheet",
+                        sub: "CSV, XLSX",
+                        icon: <IconSheet size={15} />,
+                        accept: null,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className={`sai-plus-item ${item.accept ? "sai-plus-item--active" : ""}`}
+                        onClick={() => {
+                          if (!item.accept) return;
+                          setPlusOpen(false);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.accept = item.accept;
+                            fileInputRef.current.click();
+                          }
+                        }}
+                      >
+                        <div className="sai-plus-item-icon">{item.icon}</div>
+                        <div>
+                          <div className="sai-plus-item-label">{item.label}</div>
+                          <div className="sai-plus-item-sub">{item.sub}</div>
+                        </div>
+                        {!item.accept && <span className="sai-plus-soon">Soon</span>}
                       </div>
-                      <span className="sai-plus-soon">Soon</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <textarea
+                ref={inputRef}
+                className="sai-textarea"
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask me to create a campaign..."
+                disabled={loading}
+                rows={1}
+              />
+
+              <button
+                className={`sai-send-btn ${
+                  input.trim() && !loading ? "sai-send-btn--active" : ""
+                }`}
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || loading}
+                title="Send"
+              >
+                <IconSend size={16} />
+              </button>
             </div>
 
-            <textarea
-              ref={inputRef}
-              className="sai-textarea"
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask me to create a campaign..."
-              disabled={loading}
-              rows={1}
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={handleFileSelect}
             />
-
-            <button
-              className={`sai-send-btn ${
-                input.trim() && !loading ? "sai-send-btn--active" : ""
-              }`}
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
-              title="Send"
-            >
-              <IconSend size={16} />
-            </button>
           </div>
 
           <div className="sai-hint">
@@ -519,17 +626,31 @@ function MessageBubble({ message }) {
         style={hasSummary ? { maxWidth: "100%", width: "100%" } : undefined}
       >
         {isUser ? (
-          <span
-            style={{
-              display: "block",
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              lineHeight: 1.65,
-              color: "#ffffff",
-            }}
-          >
-            {message.content}
-          </span>
+          <>
+            {message.attachment && (
+              <div className="sai-bubble-attachment">
+                {message.attachment.header_format === "IMAGE" ? (
+                  <IconImage size={12} />
+                ) : message.attachment.header_format === "VIDEO" ? (
+                  <IconVideo size={12} />
+                ) : (
+                  <IconDoc size={12} />
+                )}
+                <span>{message.attachment.file_name}</span>
+              </div>
+            )}
+            <span
+              style={{
+                display: "block",
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                lineHeight: 1.65,
+                color: "#ffffff",
+              }}
+            >
+              {message.content}
+            </span>
+          </>
         ) : (
           <FormattedMessage content={message.content} />
         )}

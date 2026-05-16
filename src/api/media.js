@@ -39,3 +39,7 @@ export const uploadBinaryFromStorage = (payload) =>
 
 export const uploadMediaFromStorage = (payload) =>
   api.post("/api/watemplates/media/upload-media-from-storage", payload);
+
+// AI chat: prepare a media header — send file directly, backend handles full pipeline
+export const prepareMediaHeader = (formData) =>
+  api.post("/api/watemplates/prepare-media-header", formData);
