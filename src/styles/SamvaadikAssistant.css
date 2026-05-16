@@ -794,3 +794,64 @@
   font-size: 10.5px;
   color: #4b5563;
 }
+
+/* ── Attached file pill ──────────────────────────────────────────────────── */
+
+.sai-file-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #166534;
+  margin: 0 13px 0;
+  flex-shrink: 0;
+}
+
+.sai-file-pill-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sai-file-pill-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.sai-file-pill-remove:hover {
+  opacity: 1;
+}
+
+/* ── Enabled plus menu item ──────────────────────────────────────────────── */
+
+.sai-plus-item--enabled {
+  cursor: pointer !important;
+  opacity: 1 !important;
+  transition: background 0.13s;
+  border: none;
+  text-align: left;
+}
+
+.sai-plus-item--enabled:hover {
+  background: #f0fdf4;
+}
+
+.sai-plus-item--enabled:hover .sai-plus-item-icon {
+  background: #d1fae5;
+  color: #0a6b5c;
+}
