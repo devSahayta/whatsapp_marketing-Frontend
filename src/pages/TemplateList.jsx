@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Eye,
+  FileText,
   Image as ImageIcon,
   Languages,
   LayoutTemplate,
@@ -12,11 +14,17 @@ import {
   Plus,
   Send,
   Trash2,
+  Upload,
   Video,
   X,
 } from "lucide-react";
 import useAuthUser from "../hooks/useAuthUser";
-import { deleteMetaTemplate, fetchMetaTemplates } from "../api/templates";
+import {
+  deleteMetaTemplate,
+  fetchTemplatesComplete,
+  uploadTemplateMedia,
+} from "../api/templates";
+import { uploadMedia } from "../api/media";
 import {
   dismissToast,
   showError,
@@ -41,15 +49,9 @@ const getHeaderComponent = (template) => getComponent(template, "HEADER");
 const getButtons = (template) =>
   getComponent(template, "BUTTONS")?.buttons || [];
 
-const getHeaderMediaUrl = (template, userId) => {
-  const header = getHeaderComponent(template);
-  const mediaSource = header?.example?.header_handle?.[0];
-
-  if (!mediaSource || !userId) return null;
-
-  return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(
-    mediaSource,
-  )}&user_id=${userId}`;
+const getHeaderMediaUrl = (mediaId, userId) => {
+  if (!mediaId || !userId) return null;
+  return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy/${mediaId}?user_id=${userId}`;
 };
 
 const formatTemplateText = (text = "", values = []) => {
@@ -62,7 +64,7 @@ const formatTemplateText = (text = "", values = []) => {
   });
 };
 
-function TemplatePhonePreview({ template, userId }) {
+function TemplatePhonePreview({ template, userId, mediaId }) {
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
   const footer = getComponent(template, "FOOTER");
@@ -71,7 +73,8 @@ function TemplatePhonePreview({ template, userId }) {
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
 
-  const mediaUrl = getHeaderMediaUrl(template, userId);
+  const effectiveMediaId = mediaId ?? template?.media_id;
+  const mediaUrl = getHeaderMediaUrl(effectiveMediaId, userId);
   const mediaType = header?.format?.toLowerCase();
   const headerText = header?.text;
   const bodyText = formatTemplateText(
@@ -82,10 +85,10 @@ function TemplatePhonePreview({ template, userId }) {
   useEffect(() => {
     setIsMediaLoading(true);
     setMediaError(false);
-  }, [template?.id]);
+  }, [template?.wt_id ?? template?.template_id, mediaId]);
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
+    <div className="self-start rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
       <div className="overflow-hidden rounded-[1.6rem] bg-[#e8f5e9]">
         <div className="flex items-center justify-between bg-[#103529] px-4 py-3 text-white">
           <div>
@@ -103,14 +106,25 @@ function TemplatePhonePreview({ template, userId }) {
           }}
         >
           <div className="ml-auto max-w-[92%] overflow-hidden rounded-[1.4rem] rounded-tr-md bg-white shadow-lg">
-            {mediaUrl && (
-              <div className="relative min-h-40 bg-slate-100">
+            {mediaType === "document" ? (
+              <div className="flex min-h-40 flex-col items-center justify-center gap-2 bg-slate-50 px-6 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-200">
+                  <FileText className="h-5 w-5 text-slate-500" />
+                </div>
+                <p className="text-xs font-medium text-slate-600">Document</p>
+                <p className="text-[11px] text-slate-400">
+                  Sent as an attachment
+                </p>
+              </div>
+            ) : mediaUrl ? (
+              <div
+                className={`relative ${isMediaLoading ? "min-h-40" : ""} bg-slate-100`}
+              >
                 {isMediaLoading && !mediaError && (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
                     Loading media...
                   </div>
                 )}
-
                 {mediaError ? (
                   <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
                     Media preview unavailable
@@ -126,7 +140,7 @@ function TemplatePhonePreview({ template, userId }) {
                       setMediaError(true);
                     }}
                   />
-                ) : mediaType === "video" ? (
+                ) : (
                   <video
                     src={mediaUrl}
                     controls
@@ -137,13 +151,9 @@ function TemplatePhonePreview({ template, userId }) {
                       setMediaError(true);
                     }}
                   />
-                ) : (
-                  <div className="flex min-h-40 items-center justify-center px-6 text-center text-sm text-slate-500">
-                    {header?.format || "Media"} header attached
-                  </div>
                 )}
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-3 px-4 py-4 text-[15px] leading-6 text-slate-800">
               {headerText && (
@@ -191,7 +201,63 @@ function TemplatePhonePreview({ template, userId }) {
   );
 }
 
-function PreviewDrawer({ template, userId, onClose, onSend }) {
+const MEDIA_CONSTRAINTS = {
+  IMAGE: {
+    accept: "image/jpeg,image/png",
+    allowedTypes: ["image/jpeg", "image/png"],
+    maxMB: 5,
+    hint: "JPG or PNG · max 5 MB",
+  },
+  VIDEO: {
+    accept: "video/mp4,video/3gpp",
+    allowedTypes: ["video/mp4", "video/3gpp"],
+    maxMB: 16,
+    hint: "MP4 or 3GP · max 16 MB",
+  },
+  DOCUMENT: {
+    accept: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ].join(","),
+    allowedTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ],
+    maxMB: 40,
+    hint: "PDF, DOC, XLS, PPT, TXT · max 40 MB",
+  },
+};
+
+const validateMediaFile = (file, format) => {
+  const c = MEDIA_CONSTRAINTS[format];
+  if (!c) return null;
+  if (!c.allowedTypes.includes(file.type))
+    return `Invalid file type. Allowed: ${c.hint.split(" · ")[0]}`;
+  if (file.size / (1024 * 1024) > c.maxMB)
+    return `File too large. Max allowed size is ${c.maxMB} MB`;
+  return null;
+};
+
+function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [fileError, setFileError] = useState(null);
+  // tracks freshly uploaded media_id so preview updates immediately without waiting for parent reload
+  const [localMediaId, setLocalMediaId] = useState(null);
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
@@ -208,9 +274,54 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
     };
   }, [onClose]);
 
+  // Reset local state when template changes
+  useEffect(() => {
+    setLocalMediaId(null);
+    setUploadFile(null);
+    setFileError(null);
+  }, [template?.wt_id]);
+
   const buttons = getButtons(template);
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
+
+  const hasMediaHeader = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
+    template.header_format,
+  );
+
+  // localMediaId takes precedence so preview refreshes immediately after upload
+  const effectiveMediaId = localMediaId ?? template.media_id;
+
+  const handleMediaUpload = async () => {
+    if (!uploadFile || !template.wt_id) return;
+    setIsUploading(true);
+    try {
+      // Step 1: upload media via backend → get WhatsApp media_id
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("user_id", userId);
+      const uploadRes = await uploadMedia(formData);
+      const mediaId =
+        uploadRes.data?.saved?.media_id || uploadRes.data?.media?.id;
+      if (!mediaId) throw new Error("No media ID returned");
+
+      // Step 2: persist media_id to the template DB record
+      await uploadTemplateMedia(template.wt_id, {
+        user_id: userId,
+        media_id: mediaId,
+      });
+
+      showSuccess("Media uploaded successfully");
+      setUploadFile(null);
+      setFileError(null);
+      setLocalMediaId(mediaId);
+      onMediaUpload?.();
+    } catch {
+      showError("Failed to upload media");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50">
@@ -261,7 +372,11 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
         </div>
 
         <div className="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
-          <TemplatePhonePreview template={template} userId={userId} />
+          <TemplatePhonePreview
+            template={template}
+            userId={userId}
+            mediaId={effectiveMediaId}
+          />
 
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -317,6 +432,100 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
               </p>
             </div>
 
+            {hasMediaHeader && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Header Media
+                </h3>
+
+                {/* Expired / missing media warning */}
+                {!effectiveMediaId && (
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <p className="text-xs leading-5 text-amber-800">
+                      No media uploaded. WhatsApp media expires after 25 days —
+                      upload fresh media before sending this template.
+                    </p>
+                  </div>
+                )}
+
+                {/* Uploaded media ID indicator */}
+                {effectiveMediaId && (
+                  <p className="mt-3 truncate text-xs text-slate-500">
+                    Uploaded media ID: {effectiveMediaId}
+                  </p>
+                )}
+
+                {/* Upload / Replace control */}
+                <div className="mt-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={MEDIA_CONSTRAINTS[template.header_format]?.accept}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setUploadFile(file);
+                      setFileError(
+                        file
+                          ? validateMediaFile(file, template.header_format)
+                          : null,
+                      );
+                      e.target.value = "";
+                    }}
+                  />
+                  {uploadFile ? (
+                    <div className="space-y-2">
+                      <p className="truncate text-xs text-slate-600">
+                        {uploadFile.name}
+                      </p>
+                      {fileError && (
+                        <div className="flex items-start gap-1.5 rounded-xl bg-rose-50 px-3 py-2">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                          <p className="text-xs text-rose-700">{fileError}</p>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleMediaUpload}
+                          disabled={isUploading || !!fileError}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {isUploading ? "Uploading..." : "Upload"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadFile(null);
+                            setFileError(null);
+                          }}
+                          className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {effectiveMediaId ? "Replace Media" : "Upload Media"}
+                      </button>
+                      <p className="text-center text-xs text-slate-400">
+                        {MEDIA_CONSTRAINTS[template.header_format]?.hint}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Quick Actions
@@ -325,7 +534,7 @@ function PreviewDrawer({ template, userId, onClose, onSend }) {
                 {template.status === "APPROVED" && (
                   <button
                     type="button"
-                    onClick={() => onSend(template.id)}
+                    onClick={() => onSend(template.template_id)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
                   >
                     <Send className="h-4 w-4" />
@@ -491,7 +700,7 @@ function TemplateCard({
         {template.status === "APPROVED" && (
           <button
             type="button"
-            onClick={() => onSend(template.id)}
+            onClick={() => onSend(template.template_id)}
             className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
           >
             <Send className="h-4 w-4" />
@@ -528,8 +737,8 @@ export default function TemplateList() {
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const res = await fetchMetaTemplates(userId);
-      setTemplates(res?.data?.templates || []);
+      const res = await fetchTemplatesComplete(userId);
+      setTemplates(res?.data || []);
     } catch (error) {
       console.error(error);
       showError("Failed to load templates");
@@ -566,11 +775,11 @@ export default function TemplateList() {
     const toastId = showLoading("Deleting template...");
 
     try {
-      await deleteMetaTemplate(template.id, template.name, userId);
+      await deleteMetaTemplate(template.template_id, template.name, userId);
       dismissToast(toastId);
       showSuccess("Template deleted");
 
-      if (selectedTemplate?.id === template.id) {
+      if (selectedTemplate?.wt_id === template.wt_id) {
         setSelectedTemplate(null);
       }
 
@@ -636,9 +845,10 @@ export default function TemplateList() {
                   <button
                     type="button"
                     onClick={loadTemplates}
-                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    disabled={loading}
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                   >
-                    Refresh List
+                    {loading ? "Refreshing..." : "Refresh List"}
                   </button>
                 </div>
               </div>
@@ -735,13 +945,13 @@ export default function TemplateList() {
             <section className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               {filteredTemplates.map((template) => (
                 <TemplateCard
-                  key={template.id}
+                  key={template.wt_id}
                   template={template}
-                  isMenuOpen={openMenuId === template.id}
+                  isMenuOpen={openMenuId === template.wt_id}
                   attachMenuRef={menuRef}
                   onMenuToggle={() =>
                     setOpenMenuId((current) =>
-                      current === template.id ? null : template.id,
+                      current === template.wt_id ? null : template.wt_id,
                     )
                   }
                   onPreview={() => {
@@ -766,6 +976,7 @@ export default function TemplateList() {
           userId={userId}
           onClose={() => setSelectedTemplate(null)}
           onSend={(templateId) => navigate(`/templates/send/${templateId}`)}
+          onMediaUpload={loadTemplates}
         />
       )}
     </>

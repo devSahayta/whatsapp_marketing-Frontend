@@ -7,6 +7,9 @@ export const fetchMetaTemplates = (userId) =>
 export const fetchTemplatesForBuilder = (userId) =>
   api.get(`/api/watemplates/all?user_id=${userId}`);
 
+export const fetchTemplatesComplete = (userId) =>
+  api.get(`/api/watemplates/all?user_id=${userId}`);
+
 export const fetchMetaTemplatesById = (templateId, userId) =>
   api.get(
     `/api/watemplates/meta/template?templateId=${templateId}&user_id=${userId}`,
@@ -38,3 +41,6 @@ export const fetchTemplateBulkProgress = (userId, templateId) =>
 
 export const fetchDbTemplates = (userId) =>
   api.get(`/api/watemplates?user_id=${userId}`);
+
+export const uploadTemplateMedia = (wtId, body) =>
+  api.patch(`/api/watemplates/${wtId}/media-id`, body);
