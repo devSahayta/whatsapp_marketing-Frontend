@@ -154,6 +154,7 @@ export default function SamvaadikAssistant({ userId }) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [error, setError] = useState(null);
   const [pendingAttachment, setPendingAttachment] = useState(null);
+  const [mediaAttachment, setMediaAttachment] = useState(null); // persisted across all turns
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
   const bottomRef = useRef(null);
@@ -206,12 +207,14 @@ export default function SamvaadikAssistant({ userId }) {
 
         const { data: headerData } = await prepareMediaHeader(formData);
 
-        setPendingAttachment({
+        const attachment = {
           header_handle: headerData.header_handle,
           header_format: headerData.header_format,
           media_id: headerData.media_id,
           file_name: file.name,
-        });
+        };
+        setPendingAttachment(attachment);
+        setMediaAttachment(attachment); // persist so every subsequent turn includes it
       } catch (err) {
         setError(
           err?.response?.data?.error ||
@@ -230,7 +233,9 @@ export default function SamvaadikAssistant({ userId }) {
       const userText = (text || input).trim();
       if (!userText || loading) return;
 
-      const attachment = pendingAttachment;
+      // pendingAttachment: used only to show the chip on the user bubble
+      // mediaAttachment: sent on every turn until the chat is cleared
+      const chipAttachment = pendingAttachment;
 
       setInput("");
       setError(null);
@@ -246,7 +251,7 @@ export default function SamvaadikAssistant({ userId }) {
         id: nextId(),
         role: "user",
         content: userText,
-        attachment: attachment || undefined,
+        attachment: chipAttachment || undefined,
       };
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
@@ -258,7 +263,7 @@ export default function SamvaadikAssistant({ userId }) {
         const { data } = await samvaadikChat(
           userId,
           updatedMessages.map(({ role, content }) => ({ role, content })),
-          attachment,
+          mediaAttachment, // always include until chat is cleared
         );
 
         setMessages((prev) => [
@@ -275,7 +280,7 @@ export default function SamvaadikAssistant({ userId }) {
         setLoadingSteps([]);
       }
     },
-    [input, messages, loading, userId, pendingAttachment],
+    [input, messages, loading, userId, pendingAttachment, mediaAttachment],
   );
 
   const handleKeyDown = (e) => {
@@ -299,6 +304,8 @@ export default function SamvaadikAssistant({ userId }) {
   const clearChat = () => {
     setMessages([]);
     setError(null);
+    setMediaAttachment(null);
+    setPendingAttachment(null);
   };
 
   const togglePlus = () => setPlusOpen((o) => !o);
@@ -443,7 +450,10 @@ export default function SamvaadikAssistant({ userId }) {
               <div className="sai-attachment-chip">
                 {uploadingMedia ? (
                   <>
-                    <span className="sai-loading-spinner" style={{ width: 11, height: 11 }} />
+                    <span
+                      className="sai-loading-spinner"
+                      style={{ width: 11, height: 11 }}
+                    />
                     <span>Uploading...</span>
                   </>
                 ) : (
@@ -524,10 +534,14 @@ export default function SamvaadikAssistant({ userId }) {
                       >
                         <div className="sai-plus-item-icon">{item.icon}</div>
                         <div>
-                          <div className="sai-plus-item-label">{item.label}</div>
+                          <div className="sai-plus-item-label">
+                            {item.label}
+                          </div>
                           <div className="sai-plus-item-sub">{item.sub}</div>
                         </div>
-                        {!item.accept && <span className="sai-plus-soon">Soon</span>}
+                        {!item.accept && (
+                          <span className="sai-plus-soon">Soon</span>
+                        )}
                       </div>
                     ))}
                   </div>
