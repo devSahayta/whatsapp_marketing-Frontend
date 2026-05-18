@@ -1,8 +1,12 @@
 // src/components/SamvaadikAssistant.jsx
-// Place at: src/components/SamvaadikAssistant.jsx
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { samvaadikChat } from "../api/agents";
+import { useNavigate } from "react-router-dom";
+import {
+  samvaadikChat,
+  previewGroupFromCsv,
+  createGroupFromCsv,
+} from "../api/agents";
 import { prepareMediaHeader } from "../api/media";
 import "../styles/SamvaadikAssistant.css";
 
@@ -15,14 +19,14 @@ const SUGGESTIONS = [
     icon: <IconCampaign />,
   },
   {
+    label: "Create a contact group",
+    prompt: "I want to create a new contact group",
+    icon: <IconGroups />,
+  },
+  {
     label: "Create a template",
     prompt: "I want to create a new WhatsApp message template",
     icon: <IconTemplate />,
-  },
-  {
-    label: "Show my contact groups",
-    prompt: "Show me all my contact groups",
-    icon: <IconGroups />,
   },
   {
     label: "Schedule a campaign for later",
@@ -32,50 +36,75 @@ const SUGGESTIONS = [
 ];
 
 // ── Loading step detector ─────────────────────────────────────────────────────
-// Infers likely tool calls from user message to animate while waiting
 
 function detectLoadingSteps(message) {
   if (!message) return [{ id: "think", label: "Processing request" }];
   const m = message.toLowerCase();
   const steps = [];
-  if (m.includes("group") || m.includes("contact")) {
+  if (m.includes("group") || m.includes("contact"))
     steps.push({ id: "groups", label: "Searching contact groups" });
-  }
-  if (m.includes("template")) {
+  if (m.includes("template"))
     steps.push({ id: "templates", label: "Fetching templates" });
-  }
-  if (m.includes("media") || m.includes("image") || m.includes("video")) {
+  if (m.includes("media") || m.includes("image") || m.includes("video"))
     steps.push({ id: "media", label: "Processing media" });
-  }
   if (
     m.includes("campaign") ||
     m.includes("create") ||
     m.includes("schedule") ||
     m.includes("send")
-  ) {
+  )
     steps.push({ id: "campaign", label: "Building campaign" });
-  }
   if (
     (m.includes("show") || m.includes("list") || m.includes("what")) &&
     steps.length === 0
-  ) {
+  )
     steps.push({ id: "fetch", label: "Fetching data" });
-  }
   if (steps.length === 0)
     steps.push({ id: "think", label: "Processing request" });
   return steps;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isConfirmation(text) {
+  return /^(yes|yeah|yep|confirm|go ahead|sure|ok|okay|proceed|do it|create it|create group)$/i.test(
+    text.trim(),
+  );
+}
+
 // ── Message content renderer ──────────────────────────────────────────────────
-// Handles bold (**text**) and the campaign summary block (─── ... ───)
 
-function FormattedMessage({ content }) {
-  const hasSummary = content.includes("───────");
+function FormattedMessage({ content, onNavigateToTemplates }) {
+  const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
 
-  if (!hasSummary) return <InlineText text={content} />;
+  const cleanContent = content
+    .replace(/^REDIRECT_TO_TEMPLATES:\s*/m, "")
+    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "");
 
-  const parts = content.split(/(─{3,}[\s\S]*?─{3,})/);
-  return (
+  const hasSummary = cleanContent.includes("───────");
+
+  const renderWithRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button className="sai-redirect-btn" onClick={onNavigateToTemplates}>
+        <IconTemplate size={14} />
+        <span>Open Templates Page</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        After uploading your media, come back here and say "I uploaded the
+        media" to continue.
+      </p>
+    </div>
+  );
+
+  if (!hasSummary) {
+    const body = <InlineText text={cleanContent} />;
+    return hasRedirect ? renderWithRedirect(body) : body;
+  }
+
+  const parts = cleanContent.split(/(─{3,}[\s\S]*?─{3,})/);
+  const rendered = (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {parts.map((part, i) => {
         if (part.match(/^─{3,}/)) {
@@ -87,10 +116,14 @@ function FormattedMessage({ content }) {
           return (
             <div key={i} className="sai-summary-card">
               {lines.map((line, j) => {
-                if (line.trim().startsWith("Campaign Summary")) {
+                if (
+                  line.trim() === "Campaign Summary" ||
+                  line.trim() === "Group Summary" ||
+                  line.trim() === "Template Preview"
+                ) {
                   return (
                     <div key={j} className="sai-summary-title">
-                      Campaign Summary
+                      {line.trim()}
                     </div>
                   );
                 }
@@ -121,6 +154,8 @@ function FormattedMessage({ content }) {
       })}
     </div>
   );
+
+  return hasRedirect ? renderWithRedirect(rendered) : rendered;
 }
 
 function InlineText({ text }) {
@@ -144,18 +179,27 @@ function InlineText({ text }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SamvaadikAssistant({ userId }) {
+  const navigate = useNavigate();
+
   const [isOpen, setIsOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
-  const [messages, setMessages] = useState([]); // { id, role, content }[]
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSteps, setLoadingSteps] = useState([]);
   const [activeStep, setActiveStep] = useState(0);
   const [plusOpen, setPlusOpen] = useState(false);
   const [error, setError] = useState(null);
+
+  // Media attachment state
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [mediaAttachment, setMediaAttachment] = useState(null); // persisted across all turns
   const [uploadingMedia, setUploadingMedia] = useState(false);
+
+  // Group creation state
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [pendingGroupName, setPendingGroupName] = useState("");
+  const [pendingGroup, setPendingGroup] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -165,7 +209,11 @@ export default function SamvaadikAssistant({ userId }) {
 
   const nextId = () => `msg_${++idRef.current}`;
 
-  // Panel open/close animation
+  const handleNavigateToTemplates = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/templates"), 300);
+  }, [navigate]);
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => setPanelVisible(true), 10);
@@ -175,12 +223,10 @@ export default function SamvaadikAssistant({ userId }) {
     }
   }, [isOpen]);
 
-  // Scroll to bottom on new content
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Cycle loading steps while waiting for API
   useEffect(() => {
     clearInterval(stepTimerRef.current);
     if (!loading || loadingSteps.length <= 1) return;
@@ -191,20 +237,29 @@ export default function SamvaadikAssistant({ userId }) {
     return () => clearInterval(stepTimerRef.current);
   }, [loading, loadingSteps]);
 
-  // Upload file directly; backend handles Supabase, Meta upload, DB save, and cleanup.
+  // Routes CSV/Excel → group creation flow; image/video/doc → media attachment flow
   const handleFileSelect = useCallback(
     async (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
+
+      const isSpreadsheet =
+        /\.(csv|xlsx|xls)$/i.test(file.name) || file.type === "text/csv";
+
+      if (isSpreadsheet) {
+        setAttachedFile({ file, name: file.name });
+        setTimeout(() => inputRef.current?.focus(), 100);
+        return;
+      }
+
+      // Media flow
       setUploadingMedia(true);
       setError(null);
-
       try {
         const formData = new FormData();
         formData.append("user_id", userId);
         formData.append("file", file);
-
         const { data: headerData } = await prepareMediaHeader(formData);
 
         const attachment = {
@@ -227,11 +282,101 @@ export default function SamvaadikAssistant({ userId }) {
     [userId],
   );
 
-  // Send a message
+  // Step 1 of group creation: parse CSV and show preview
+  const runPreview = useCallback(
+    async (file, groupName) => {
+      setLoading(true);
+      setLoadingSteps([
+        { id: "read", label: "Reading your file" },
+        { id: "parse", label: "Parsing contacts" },
+      ]);
+      setActiveStep(0);
+
+      try {
+        const { data } = await previewGroupFromCsv(userId, groupName, file);
+
+        const skippedNote =
+          data.skipped > 0
+            ? ` (${data.skipped} rows skipped — missing phone)`
+            : "";
+        const sampleLines = data.sample
+          .map((c) => `• ${c.full_name || "No name"} — ${c.phone_number}`)
+          .join("\n");
+
+        const summaryMsg =
+          `Here is a preview of your group:\n\n` +
+          `───────────────────────\n` +
+          `Group Summary\n` +
+          `Name: ${data.group_name}\n` +
+          `Contacts: ${data.contact_count}${skippedNote}\n` +
+          `───────────────────────\n` +
+          `Sample contacts:\n${sampleLines}\n\n` +
+          `Shall I go ahead and create this group?`;
+
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "assistant", content: summaryMsg },
+        ]);
+        setPendingGroup({
+          groupName: data.group_name,
+          contacts: data.contacts,
+          contactCount: data.contact_count,
+        });
+      } catch (err) {
+        setError(
+          err?.response?.data?.error ||
+            "Failed to read the file. Please check the format.",
+        );
+      } finally {
+        setLoading(false);
+        setLoadingSteps([]);
+        setAttachedFile(null);
+        setPendingGroupName("");
+      }
+    },
+    [userId],
+  );
+
+  // Step 2 of group creation: create the group after confirmation
+  const confirmGroupCreation = useCallback(async () => {
+    if (!pendingGroup) return;
+    const { groupName, contacts } = pendingGroup;
+
+    setLoading(true);
+    setLoadingSteps([
+      { id: "create", label: "Creating group" },
+      { id: "contacts", label: "Importing contacts" },
+    ]);
+    setActiveStep(0);
+
+    try {
+      const { data } = await createGroupFromCsv(
+        userId,
+        groupName,
+        "",
+        contacts,
+      );
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: "assistant", content: data.message },
+      ]);
+      setPendingGroup(null);
+      setPendingGroupName("");
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          "Failed to create group. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+      setLoadingSteps([]);
+    }
+  }, [pendingGroup, userId]);
+
   const sendMessage = useCallback(
     async (text) => {
       const userText = (text || input).trim();
-      if (!userText || loading) return;
+      if ((!userText && !attachedFile) || loading) return;
 
       // pendingAttachment: used only to show the chip on the user bubble
       // mediaAttachment: sent on every turn until the chat is cleared
@@ -240,13 +385,66 @@ export default function SamvaadikAssistant({ userId }) {
       setInput("");
       setError(null);
       setPlusOpen(false);
+      if (inputRef.current) inputRef.current.style.height = "auto";
       setPendingAttachment(null);
 
-      // Reset textarea height
-      if (inputRef.current) {
-        inputRef.current.style.height = "auto";
+      // CASE 1: CSV file attached → run group preview
+      if (attachedFile) {
+        const fileToUpload = attachedFile.file;
+        const fileName = attachedFile.name;
+        setAttachedFile(null);
+        const gName =
+          userText ||
+          pendingGroupName ||
+          fileName
+            .replace(/\.(csv|xlsx|xls)$/i, "")
+            .replace(/[-_]/g, " ")
+            .trim();
+        const displayContent = userText || `Uploading file: ${fileName}`;
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "user", content: displayContent },
+        ]);
+        await runPreview(fileToUpload, gName);
+        return;
       }
 
+      // CASE 2: Pending group — user confirms
+      if (pendingGroup && isConfirmation(userText)) {
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "user", content: userText },
+        ]);
+        await confirmGroupCreation();
+        return;
+      }
+
+      // CASE 3: Pending group — user cancels
+      if (
+        pendingGroup &&
+        /^(no|cancel|stop|abort|never mind)$/i.test(userText.trim())
+      ) {
+        setPendingGroup(null);
+        setPendingGroupName("");
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "user", content: userText },
+          {
+            id: nextId(),
+            role: "assistant",
+            content: "No problem, the group creation has been cancelled.",
+          },
+        ]);
+        return;
+      }
+
+      // CASE 4: Extract group name from message for later use
+      const groupMatch = userText.match(
+        /(?:create|make|add|new)\s+(?:a\s+)?group\s+(?:called|named?|:)?\s*["']?([^"'\n,]{2,40})["']?/i,
+      );
+      if (groupMatch) setPendingGroupName(groupMatch[1].trim());
+
+      // CASE 5: Regular AI chat (with optional media attachment)
       const userMsg = {
         id: nextId(),
         role: "user",
@@ -265,7 +463,6 @@ export default function SamvaadikAssistant({ userId }) {
           updatedMessages.map(({ role, content }) => ({ role, content })),
           mediaAttachment, // always include until chat is cleared
         );
-
         setMessages((prev) => [
           ...prev,
           { id: nextId(), role: "assistant", content: data.content },
@@ -280,7 +477,19 @@ export default function SamvaadikAssistant({ userId }) {
         setLoadingSteps([]);
       }
     },
-    [input, messages, loading, userId, pendingAttachment, mediaAttachment],
+    [
+      input,
+      messages,
+      loading,
+      userId,
+      pendingAttachment,
+      mediaAttachment,
+      attachedFile,
+      pendingGroupName,
+      pendingGroup,
+      runPreview,
+      confirmGroupCreation,
+    ],
   );
 
   const handleKeyDown = (e) => {
@@ -305,12 +514,14 @@ export default function SamvaadikAssistant({ userId }) {
     setMessages([]);
     setError(null);
     setMediaAttachment(null);
+    setAttachedFile(null);
+    setPendingGroup(null);
+    setPendingGroupName("");
     setPendingAttachment(null);
   };
 
   const togglePlus = () => setPlusOpen((o) => !o);
 
-  // Close plus menu on outside click
   useEffect(() => {
     if (!plusOpen) return;
     const handler = (e) => {
@@ -321,6 +532,14 @@ export default function SamvaadikAssistant({ userId }) {
   }, [plusOpen]);
 
   const currentStep = loadingSteps[activeStep] || loadingSteps[0];
+  const canSend =
+    (input.trim() || attachedFile || pendingAttachment) && !loading;
+
+  const placeholder = attachedFile
+    ? `Type group name and hit Enter (or just hit Enter to use filename)...`
+    : pendingGroup
+      ? `Type "yes" to confirm or "cancel" to abort...`
+      : "Ask me to create a campaign or group...";
 
   return (
     <>
@@ -338,7 +557,7 @@ export default function SamvaadikAssistant({ userId }) {
         </span>
       </button>
 
-      {/* Backdrop (mobile) */}
+      {/* Backdrop */}
       {isOpen && (
         <div
           className={`sai-backdrop ${panelVisible ? "sai-backdrop--visible" : ""}`}
@@ -391,11 +610,14 @@ export default function SamvaadikAssistant({ userId }) {
               <EmptyState onSuggest={sendMessage} />
             ) : (
               messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onNavigateToTemplates={handleNavigateToTemplates}
+                />
               ))
             )}
 
-            {/* Loading indicator */}
             {loading && currentStep && (
               <div className="sai-msg">
                 <div className="sai-msg-avatar sai-msg-avatar--pulse">
@@ -413,11 +635,7 @@ export default function SamvaadikAssistant({ userId }) {
                       {loadingSteps.map((s, i) => (
                         <span
                           key={s.id}
-                          className={`sai-loading-step-dot ${
-                            i === activeStep
-                              ? "sai-loading-step-dot--active"
-                              : ""
-                          }`}
+                          className={`sai-loading-step-dot ${i === activeStep ? "sai-loading-step-dot--active" : ""}`}
                         />
                       ))}
                     </div>
@@ -426,7 +644,6 @@ export default function SamvaadikAssistant({ userId }) {
               </div>
             )}
 
-            {/* Error */}
             {error && (
               <div className="sai-error">
                 <IconError size={14} />
@@ -443,9 +660,24 @@ export default function SamvaadikAssistant({ userId }) {
             <div ref={bottomRef} style={{ height: 4 }} />
           </div>
 
-          {/* Input */}
+          {/* CSV file pill (group creation) */}
+          {attachedFile && (
+            <div className="sai-file-pill">
+              <IconSheet size={13} />
+              <span className="sai-file-pill-name">{attachedFile.name}</span>
+              <button
+                className="sai-file-pill-remove"
+                onClick={() => setAttachedFile(null)}
+                title="Remove"
+              >
+                <IconClose size={11} />
+              </button>
+            </div>
+          )}
+
+          {/* Input area */}
           <div className="sai-input-wrap">
-            {/* Attachment chip */}
+            {/* Media attachment chip */}
             {(pendingAttachment || uploadingMedia) && (
               <div className="sai-attachment-chip">
                 {uploadingMedia ? (
@@ -493,7 +725,43 @@ export default function SamvaadikAssistant({ userId }) {
 
                 {plusOpen && (
                   <div className="sai-plus-menu">
-                    <div className="sai-plus-menu-title">Attach</div>
+                    <div className="sai-plus-menu-title">Import contacts</div>
+                    {[
+                      {
+                        label: "CSV File",
+                        sub: "Import contacts",
+                        icon: <IconSheet size={15} />,
+                        accept: ".csv,text/csv",
+                      },
+                      {
+                        label: "Excel File",
+                        sub: "XLSX, XLS",
+                        icon: <IconSheet size={15} />,
+                        accept: ".xlsx,.xls",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="sai-plus-item sai-plus-item--active"
+                        onClick={() => {
+                          setPlusOpen(false);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.accept = item.accept;
+                            fileInputRef.current.click();
+                          }
+                        }}
+                      >
+                        <div className="sai-plus-item-icon">{item.icon}</div>
+                        <div>
+                          <div className="sai-plus-item-label">
+                            {item.label}
+                          </div>
+                          <div className="sai-plus-item-sub">{item.sub}</div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="sai-plus-menu-title">Media</div>
                     {[
                       {
                         label: "Image",
@@ -513,18 +781,11 @@ export default function SamvaadikAssistant({ userId }) {
                         icon: <IconDoc size={15} />,
                         accept: "application/pdf",
                       },
-                      {
-                        label: "Spreadsheet",
-                        sub: "CSV, XLSX",
-                        icon: <IconSheet size={15} />,
-                        accept: null,
-                      },
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className={`sai-plus-item ${item.accept ? "sai-plus-item--active" : ""}`}
+                        className="sai-plus-item sai-plus-item--active"
                         onClick={() => {
-                          if (!item.accept) return;
                           setPlusOpen(false);
                           if (fileInputRef.current) {
                             fileInputRef.current.accept = item.accept;
@@ -554,17 +815,15 @@ export default function SamvaadikAssistant({ userId }) {
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me to create a campaign..."
+                placeholder={placeholder}
                 disabled={loading}
                 rows={1}
               />
 
               <button
-                className={`sai-send-btn ${
-                  input.trim() && !loading ? "sai-send-btn--active" : ""
-                }`}
+                className={`sai-send-btn ${canSend ? "sai-send-btn--active" : ""}`}
                 onClick={() => sendMessage()}
-                disabled={!input.trim() || loading}
+                disabled={!canSend}
                 title="Send"
               >
                 <IconSend size={16} />
@@ -600,8 +859,8 @@ function EmptyState({ onSuggest }) {
       </div>
       <h3 className="sai-empty-title">How can I help?</h3>
       <p className="sai-empty-sub">
-        Create campaigns, browse groups and templates, schedule messages — all
-        through conversation.
+        Create campaigns, manage contact groups, browse templates — all through
+        conversation.
       </p>
       <div className="sai-suggestions">
         {SUGGESTIONS.map((s) => (
@@ -622,12 +881,11 @@ function EmptyState({ onSuggest }) {
   );
 }
 
-function MessageBubble({ message }) {
+function MessageBubble({ message, onNavigateToTemplates }) {
   const isUser = message.role === "user";
-  // When the AI reply contains a summary card, render it full width
-  // so the label/value columns have enough space to lay out properly.
   const hasSummary = !isUser && message.content.includes("───────");
-
+  const hasRedirect =
+    !isUser && message.content.includes("REDIRECT_TO_TEMPLATES");
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -637,7 +895,11 @@ function MessageBubble({ message }) {
       )}
       <div
         className={`sai-bubble ${isUser ? "sai-bubble--user" : "sai-bubble--ai"}`}
-        style={hasSummary ? { maxWidth: "100%", width: "100%" } : undefined}
+        style={
+          hasSummary || hasRedirect
+            ? { maxWidth: "100%", width: "100%" }
+            : undefined
+        }
       >
         {isUser ? (
           <>
@@ -666,14 +928,17 @@ function MessageBubble({ message }) {
             </span>
           </>
         ) : (
-          <FormattedMessage content={message.content} />
+          <FormattedMessage
+            content={message.content}
+            onNavigateToTemplates={onNavigateToTemplates}
+          />
         )}
       </div>
     </div>
   );
 }
 
-// ── SVG Icons (no emojis) ─────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function IconAI({ size = 18 }) {
   return (
@@ -785,7 +1050,6 @@ function IconAI({ size = 18 }) {
     </svg>
   );
 }
-
 function IconClose({ size = 16 }) {
   return (
     <svg
@@ -801,7 +1065,6 @@ function IconClose({ size = 16 }) {
     </svg>
   );
 }
-
 function IconRefresh({ size = 15 }) {
   return (
     <svg
@@ -821,7 +1084,6 @@ function IconRefresh({ size = 15 }) {
     </svg>
   );
 }
-
 function IconPlus({ size = 17 }) {
   return (
     <svg
@@ -837,7 +1099,6 @@ function IconPlus({ size = 17 }) {
     </svg>
   );
 }
-
 function IconSend({ size = 16 }) {
   return (
     <svg
@@ -855,7 +1116,6 @@ function IconSend({ size = 16 }) {
     </svg>
   );
 }
-
 function IconArrow({ size = 13 }) {
   return (
     <svg
@@ -871,7 +1131,6 @@ function IconArrow({ size = 13 }) {
     </svg>
   );
 }
-
 function IconError({ size = 14 }) {
   return (
     <svg
@@ -889,7 +1148,6 @@ function IconError({ size = 14 }) {
     </svg>
   );
 }
-
 function IconCampaign({ size = 15 }) {
   return (
     <svg
@@ -906,7 +1164,6 @@ function IconCampaign({ size = 15 }) {
     </svg>
   );
 }
-
 function IconGroups({ size = 15 }) {
   return (
     <svg
@@ -926,7 +1183,6 @@ function IconGroups({ size = 15 }) {
     </svg>
   );
 }
-
 function IconTemplate({ size = 15 }) {
   return (
     <svg
@@ -944,25 +1200,6 @@ function IconTemplate({ size = 15 }) {
     </svg>
   );
 }
-
-function IconClock({ size = 15 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
 function IconImage({ size = 15 }) {
   return (
     <svg
@@ -981,7 +1218,6 @@ function IconImage({ size = 15 }) {
     </svg>
   );
 }
-
 function IconVideo({ size = 15 }) {
   return (
     <svg
@@ -999,7 +1235,6 @@ function IconVideo({ size = 15 }) {
     </svg>
   );
 }
-
 function IconDoc({ size = 15 }) {
   return (
     <svg
@@ -1017,7 +1252,6 @@ function IconDoc({ size = 15 }) {
     </svg>
   );
 }
-
 function IconSheet({ size = 15 }) {
   return (
     <svg
@@ -1032,6 +1266,23 @@ function IconSheet({ size = 15 }) {
     >
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M3 9h18M3 15h18M9 3v18" />
+    </svg>
+  );
+}
+function IconClock({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   );
 }
