@@ -84,11 +84,11 @@ function PrivateSubscribedRoute({ children }) {
 }
 
 // ── Samvaadik AI — dev access only ──────────────────────────
-const AI_ALLOWED_USERS = [
-  "kp_35285dbc61994bbb8d6b01d869f50c42", // your user ID
-  "kp_c7f2725ff7a74158bb7eae3060d6f1de",
-  // add more IDs here when ready
-];
+// const AI_ALLOWED_USERS = [
+//   "kp_35285dbc61994bbb8d6b01d869f50c42", // your user ID
+//   "kp_c7f2725ff7a74158bb7eae3060d6f1de",
+//   // add more IDs here when ready
+// ];
 
 function WhatsappAccountRoute({ children }) {
   const { user, isAuthenticated, isLoading } = useKindeAuth();
@@ -447,9 +447,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {isAuthenticated && AI_ALLOWED_USERS.includes(user?.id) && (
-          <SamvaadikAssistant userId={user?.id} />
-        )}
+        {isAuthenticated && <SamvaadikAssistant userId={user?.id} />}
       </main>
     </div>
   );

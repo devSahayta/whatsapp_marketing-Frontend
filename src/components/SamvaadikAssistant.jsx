@@ -1,6 +1,11 @@
 // src/components/SamvaadikAssistant.jsx
+// Changes from previous version:
+//   1. FormattedMessage now detects "REDIRECT_TO_TEMPLATES" token and renders a clickable button
+//   2. useNavigate (React Router) used for in-app navigation to /templates
+//   3. Everything else unchanged
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   samvaadikChat,
   previewGroupFromCsv,
@@ -69,13 +74,45 @@ function isConfirmation(text) {
 }
 
 // ── Message content renderer ──────────────────────────────────────────────────
+// Handles:
+//   • Summary cards (─── delimited blocks)
+//   • REDIRECT_TO_TEMPLATES token → renders a button that opens /templates
+//   • Bold (**text**) inside prose
 
-function FormattedMessage({ content }) {
-  const hasSummary = content.includes("───────");
-  if (!hasSummary) return <InlineText text={content} />;
+function FormattedMessage({ content, onNavigateToTemplates }) {
+  // ── Detect redirect signal ────────────────────────────────────────────────
+  const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
 
-  const parts = content.split(/(─{3,}[\s\S]*?─{3,})/);
-  return (
+  // Strip the token so it doesn't show as raw text
+  const cleanContent = content
+    .replace(/^REDIRECT_TO_TEMPLATES:\s*/m, "")
+    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "");
+
+  const hasSummary = cleanContent.includes("───────");
+
+  // Render redirect button + message
+  const renderWithRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button className="sai-redirect-btn" onClick={onNavigateToTemplates}>
+        <IconTemplate size={14} />
+        <span>Open Templates Page</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        After uploading your media, come back here and say "I uploaded the
+        media" to continue.
+      </p>
+    </div>
+  );
+
+  if (!hasSummary) {
+    const body = <InlineText text={cleanContent} />;
+    return hasRedirect ? renderWithRedirect(body) : body;
+  }
+
+  const parts = cleanContent.split(/(─{3,}[\s\S]*?─{3,})/);
+  const rendered = (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {parts.map((part, i) => {
         if (part.match(/^─{3,}/)) {
@@ -89,7 +126,8 @@ function FormattedMessage({ content }) {
               {lines.map((line, j) => {
                 if (
                   line.trim() === "Campaign Summary" ||
-                  line.trim() === "Group Summary"
+                  line.trim() === "Group Summary" ||
+                  line.trim() === "Template Preview"
                 ) {
                   return (
                     <div key={j} className="sai-summary-title">
@@ -124,6 +162,8 @@ function FormattedMessage({ content }) {
       })}
     </div>
   );
+
+  return hasRedirect ? renderWithRedirect(rendered) : rendered;
 }
 
 function InlineText({ text }) {
@@ -147,6 +187,8 @@ function InlineText({ text }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SamvaadikAssistant({ userId }) {
+  const navigate = useNavigate();
+
   const [isOpen, setIsOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -158,10 +200,9 @@ export default function SamvaadikAssistant({ userId }) {
   const [error, setError] = useState(null);
 
   // ── Group creation state ──────────────────────────────────────────────────
-  const [attachedFile, setAttachedFile] = useState(null); // { file, name }
-  const [pendingGroupName, setPendingGroupName] = useState(""); // extracted from chat
-  // After preview: holds parsed data until user confirms
-  const [pendingGroup, setPendingGroup] = useState(null); // { groupName, contacts, contactCount, sample }
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [pendingGroupName, setPendingGroupName] = useState("");
+  const [pendingGroup, setPendingGroup] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -170,6 +211,12 @@ export default function SamvaadikAssistant({ userId }) {
   const idRef = useRef(0);
 
   const nextId = () => `msg_${++idRef.current}`;
+
+  // Navigate to /templates — close panel first for a clean UX
+  const handleNavigateToTemplates = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/templates"), 300);
+  }, [navigate]);
 
   // Panel animation
   useEffect(() => {
@@ -198,15 +245,12 @@ export default function SamvaadikAssistant({ userId }) {
   }, [loading, loadingSteps]);
 
   // ── File selected from + menu ──────────────────────────────────────────────
-  // If we already have a group name → auto-trigger preview immediately.
-  // If not → store file and prompt user to type the group name.
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ""; // reset input so same file can be reselected
+    e.target.value = "";
 
     if (pendingGroupName) {
-      // We already know the group name — add a user message and run preview now
       const gName = pendingGroupName;
       setMessages((prev) => [
         ...prev,
@@ -218,7 +262,6 @@ export default function SamvaadikAssistant({ userId }) {
       ]);
       runPreview(file, gName);
     } else {
-      // No group name yet — show the pill and ask user to type name
       setAttachedFile({ file, name: file.name });
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -237,7 +280,6 @@ export default function SamvaadikAssistant({ userId }) {
       try {
         const { data } = await previewGroupFromCsv(userId, groupName, file);
 
-        // Build summary message
         const skippedNote =
           data.skipped > 0
             ? ` (${data.skipped} rows skipped — missing phone)`
@@ -262,7 +304,6 @@ export default function SamvaadikAssistant({ userId }) {
           { id: nextId(), role: "assistant", content: summaryMsg },
         ]);
 
-        // Store parsed data — will be sent to create-group on confirmation
         setPendingGroup({
           groupName: data.group_name,
           contacts: data.contacts,
@@ -277,7 +318,7 @@ export default function SamvaadikAssistant({ userId }) {
         setLoading(false);
         setLoadingSteps([]);
         setAttachedFile(null);
-        setPendingGroupName(""); // clear after use
+        setPendingGroupName("");
       }
     },
     [userId],
@@ -325,14 +366,11 @@ export default function SamvaadikAssistant({ userId }) {
       const userText = (text || input).trim();
       if ((!userText && !attachedFile) || loading) return;
 
-      const displayText = userText || `Uploading: ${attachedFile?.name}`;
-
       setInput("");
       setError(null);
       setPlusOpen(false);
       if (inputRef.current) inputRef.current.style.height = "auto";
 
-      // Add user message to chat
       if (userText) {
         setMessages((prev) => [
           ...prev,
@@ -345,7 +383,6 @@ export default function SamvaadikAssistant({ userId }) {
         const fileToUpload = attachedFile.file;
         setAttachedFile(null);
 
-        // Group name: typed input > pending name > filename
         const gName =
           userText ||
           pendingGroupName ||
@@ -355,7 +392,6 @@ export default function SamvaadikAssistant({ userId }) {
             .trim();
 
         if (!userText) {
-          // Add file upload as user message if no text typed
           setMessages((prev) => [
             ...prev,
             {
@@ -394,7 +430,7 @@ export default function SamvaadikAssistant({ userId }) {
         return;
       }
 
-      // ── CASE 4: Extract group name from message (store for file upload) ───
+      // ── CASE 4: Extract group name from message ───────────────────────────
       const groupMatch = userText.match(
         /(?:create|make|add|new)\s+(?:a\s+)?group\s+(?:called|named?|:)?\s*["']?([^"'\n,]{2,40})["']?/i,
       );
@@ -482,7 +518,6 @@ export default function SamvaadikAssistant({ userId }) {
   const currentStep = loadingSteps[activeStep] || loadingSteps[0];
   const canSend = (input.trim() || attachedFile) && !loading;
 
-  // Placeholder changes based on context
   const placeholder = attachedFile
     ? `Type group name and hit Enter (or just hit Enter to use filename)...`
     : pendingGroup
@@ -558,7 +593,11 @@ export default function SamvaadikAssistant({ userId }) {
               <EmptyState onSuggest={sendMessage} />
             ) : (
               messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onNavigateToTemplates={handleNavigateToTemplates}
+                />
               ))
             )}
 
@@ -634,7 +673,6 @@ export default function SamvaadikAssistant({ userId }) {
                 <div className="sai-plus-menu">
                   <div className="sai-plus-menu-title">Attach</div>
 
-                  {/* CSV / Excel — enabled */}
                   {[
                     {
                       label: "CSV File",
@@ -651,13 +689,10 @@ export default function SamvaadikAssistant({ userId }) {
                       key={item.label}
                       className="sai-plus-item sai-plus-item--enabled"
                       onClick={() => {
-                        // Close menu AFTER triggering the file picker
-                        // so the input element isn't unmounted before the dialog opens
                         if (fileInputRef.current) {
                           fileInputRef.current.accept = item.accept;
                           fileInputRef.current.click();
                         }
-                        // Delay closing so input stays mounted during file dialog
                         setTimeout(() => setPlusOpen(false), 100);
                       }}
                     >
@@ -671,7 +706,6 @@ export default function SamvaadikAssistant({ userId }) {
                     </button>
                   ))}
 
-                  {/* Coming soon */}
                   {[
                     {
                       label: "Image",
@@ -702,8 +736,6 @@ export default function SamvaadikAssistant({ userId }) {
               )}
             </div>
 
-            {/* Hidden file input — MUST be outside the conditional plus menu
-                so it stays in the DOM when the native file picker is open */}
             <input
               ref={fileInputRef}
               type="file"
@@ -774,9 +806,11 @@ function EmptyState({ onSuggest }) {
   );
 }
 
-function MessageBubble({ message }) {
+function MessageBubble({ message, onNavigateToTemplates }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
+  const hasRedirect =
+    !isUser && message.content.includes("REDIRECT_TO_TEMPLATES");
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -786,7 +820,11 @@ function MessageBubble({ message }) {
       )}
       <div
         className={`sai-bubble ${isUser ? "sai-bubble--user" : "sai-bubble--ai"}`}
-        style={hasSummary ? { maxWidth: "100%", width: "100%" } : undefined}
+        style={
+          hasSummary || hasRedirect
+            ? { maxWidth: "100%", width: "100%" }
+            : undefined
+        }
       >
         {isUser ? (
           <span
@@ -801,7 +839,10 @@ function MessageBubble({ message }) {
             {message.content}
           </span>
         ) : (
-          <FormattedMessage content={message.content} />
+          <FormattedMessage
+            content={message.content}
+            onNavigateToTemplates={onNavigateToTemplates}
+          />
         )}
       </div>
     </div>
