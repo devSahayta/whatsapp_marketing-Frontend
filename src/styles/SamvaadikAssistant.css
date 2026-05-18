@@ -573,13 +573,60 @@
 
 .sai-input-wrap {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 7px;
   padding: 11px 13px;
   background: #fff;
   border-top: 1px solid #f0f0f0;
   flex-shrink: 0;
-  position: relative;
+}
+
+.sai-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+/* ── Attachment chip ─────────────────────────────────────────── */
+
+.sai-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #166534;
+  max-width: 100%;
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.sai-attachment-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+.sai-attachment-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #4ade80;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 2px;
+  transition: color 0.12s;
+}
+
+.sai-attachment-remove:hover {
+  color: #166534;
 }
 
 .sai-textarea {
@@ -737,6 +784,21 @@
   cursor: default;
 }
 
+.sai-plus-item--active {
+  opacity: 1;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+
+.sai-plus-item--active:hover {
+  background: #f9fafb;
+}
+
+.sai-plus-item--active:hover .sai-plus-item-icon {
+  background: #d1fae5;
+  color: #0a6b5c;
+}
+
 .sai-plus-item-icon {
   width: 30px;
   height: 30px;
@@ -771,6 +833,30 @@
   padding: 2px 7px;
   border-radius: 99px;
   flex-shrink: 0;
+}
+
+/* ── Bubble attachment tag (user messages) ───────────────────── */
+
+.sai-bubble-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #d1fae5;
+  margin-bottom: 5px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.sai-bubble-attachment span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Hint bar ────────────────────────────────────────────────── */

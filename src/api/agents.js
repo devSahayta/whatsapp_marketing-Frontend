@@ -22,10 +22,6 @@ export const deleteAgent = (agentId) =>
 export const testAgent = (agentId, message, history = []) =>
   apiClient.post(`api/agents/${agentId}/test`, { message, history });
 
-// ── Samvaadik AI chat ──────────────────────────────────────────────────────
-export const samvaadikChat = (userId, messages) =>
-  apiClient.post("api/agents/samvaadik/chat", { user_id: userId, messages });
-
 // ── Group creation — Step 1: preview (parse CSV, no DB write) ──────────────
 // Returns { group_name, contact_count, sample, contacts[] }
 export const previewGroupFromCsv = (userId, groupName, file) => {
@@ -46,4 +42,14 @@ export const createGroupFromCsv = (userId, groupName, description, contacts) =>
     group_name: groupName,
     description,
     contacts,
+  });
+
+// ── Samvaadik AI Assistant ─────────────────────────────────────────────────
+// Sends the full conversation history to the agentic campaign loop.
+// messages: [{ role: "user" | "assistant", content: string }]
+export const samvaadikChat = (userId, messages, mediaAttachment = null) =>
+  apiClient.post("api/agents/samvaadik/chat", {
+    user_id: userId,
+    messages,
+    ...(mediaAttachment && { media_attachment: mediaAttachment }),
   });
