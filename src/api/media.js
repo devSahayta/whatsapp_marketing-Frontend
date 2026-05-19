@@ -27,8 +27,8 @@ export const uploadMedia = (formData) =>
 export const listMedia = (userId) =>
   api.get(`/api/watemplates/media/list?user_id=${userId}`);
 
-export const deleteMedia = (wmu_id) =>
-  api.delete(`/api/watemplates/media/${wmu_id}`);
+export const deleteMedia = (media_id, userId) =>
+  api.delete(`/api/watemplates/media/${media_id}?user_id=${userId}`);
 
 // For direct S3 uploads
 export const getSupabaseUploadUrl = (payload) =>
@@ -40,6 +40,6 @@ export const uploadBinaryFromStorage = (payload) =>
 export const uploadMediaFromStorage = (payload) =>
   api.post("/api/watemplates/media/upload-media-from-storage", payload);
 
-// AI chat: prepare a media header — send file directly, backend handles full pipeline
-export const prepareMediaHeader = (formData) =>
-  api.post("/api/watemplates/prepare-media-header", formData);
+// AI chat: prepare a media header — JSON body (file already uploaded to Supabase)
+export const prepareMediaHeader = (data) =>
+  api.post("/api/watemplates/prepare-media-header", data);
