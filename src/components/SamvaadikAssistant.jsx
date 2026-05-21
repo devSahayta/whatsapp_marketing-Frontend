@@ -7,7 +7,11 @@ import {
   previewGroupFromCsv,
   createGroupFromCsv,
 } from "../api/agents";
-import { getSupabaseUploadUrl, prepareMediaHeader, deleteMedia } from "../api/media";
+import {
+  getSupabaseUploadUrl,
+  prepareMediaHeader,
+  deleteMedia,
+} from "../api/media";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -22,6 +26,11 @@ const SUGGESTIONS = [
     label: "Create a contact group",
     prompt: "I want to create a new contact group",
     icon: <IconGroups />,
+  },
+  {
+    label: "Create group from Google Sheets",
+    prompt: "I want to create a group from Google Sheets",
+    icon: <IconSheet />,
   },
   {
     label: "Create a template",
@@ -45,6 +54,8 @@ function detectLoadingSteps(message) {
     steps.push({ id: "groups", label: "Searching contact groups" });
   if (m.includes("template"))
     steps.push({ id: "templates", label: "Fetching templates" });
+  if (m.includes("sheet") || m.includes("google"))
+    steps.push({ id: "sheets", label: "Fetching Google Sheets" });
   if (m.includes("media") || m.includes("image") || m.includes("video"))
     steps.push({ id: "media", label: "Processing media" });
   if (
@@ -74,12 +85,19 @@ function isConfirmation(text) {
 
 // ── Message content renderer ──────────────────────────────────────────────────
 
-function FormattedMessage({ content, onNavigateToTemplates }) {
+function FormattedMessage({
+  content,
+  onNavigateToTemplates,
+  onNavigateToIntegrations,
+}) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
+  const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
 
   const cleanContent = content
     .replace(/^REDIRECT_TO_TEMPLATES:\s*/m, "")
-    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "");
+    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "")
+    .replace(/^GOOGLE_NOT_CONNECTED:\s*/m, "")
+    .replace(/GOOGLE_NOT_CONNECTED:\s*/g, "");
 
   const hasSummary = cleanContent.includes("───────");
 
@@ -98,9 +116,26 @@ function FormattedMessage({ content, onNavigateToTemplates }) {
     </div>
   );
 
+  const renderWithGoogleRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button className="sai-redirect-btn" onClick={onNavigateToIntegrations}>
+        <IconSheet size={14} />
+        <span>Open Integrations Page</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        After connecting Google, come back and say "I want to create a group
+        from Google Sheets" to continue.
+      </p>
+    </div>
+  );
+
   if (!hasSummary) {
     const body = <InlineText text={cleanContent} />;
-    return hasRedirect ? renderWithRedirect(body) : body;
+    if (hasRedirect) return renderWithRedirect(body);
+    if (hasGoogleRedirect) return renderWithGoogleRedirect(body);
+    return body;
   }
 
   const parts = cleanContent.split(/(─{3,}[\s\S]*?─{3,})/);
@@ -155,7 +190,9 @@ function FormattedMessage({ content, onNavigateToTemplates }) {
     </div>
   );
 
-  return hasRedirect ? renderWithRedirect(rendered) : rendered;
+  if (hasRedirect) return renderWithRedirect(rendered);
+  if (hasGoogleRedirect) return renderWithGoogleRedirect(rendered);
+  return rendered;
 }
 
 function InlineText({ text }) {
@@ -212,6 +249,11 @@ export default function SamvaadikAssistant({ userId }) {
   const handleNavigateToTemplates = useCallback(() => {
     closePanel();
     setTimeout(() => navigate("/templates"), 300);
+  }, [navigate]);
+
+  const handleNavigateToIntegrations = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/integrations"), 300);
   }, [navigate]);
 
   useEffect(() => {
@@ -272,7 +314,8 @@ export default function SamvaadikAssistant({ userId }) {
         ) {
           if (sizeMB > 16) throw new Error("Video must be less than 16 MB.");
         } else {
-          if (sizeMB > 100) throw new Error("Document must be less than 100 MB.");
+          if (sizeMB > 100)
+            throw new Error("Document must be less than 100 MB.");
         }
 
         // Step 1: get signed Supabase upload URL (tiny JSON request, never hits Vercel limit)
@@ -666,6 +709,7 @@ export default function SamvaadikAssistant({ userId }) {
                   key={msg.id}
                   message={msg}
                   onNavigateToTemplates={handleNavigateToTemplates}
+                  onNavigateToIntegrations={handleNavigateToIntegrations}
                 />
               ))
             )}
@@ -786,20 +830,29 @@ export default function SamvaadikAssistant({ userId }) {
                         accept: ".csv,text/csv",
                       },
                       {
-                        label: "Excel File",
-                        sub: "XLSX, XLS",
+                        label: "Google Sheets",
+                        sub: "Import from spreadsheet",
                         icon: <IconSheet size={15} />,
-                        accept: ".xlsx,.xls",
+                        onClick: () => {
+                          setPlusOpen(false);
+                          sendMessage(
+                            "I want to create a group from Google Sheets",
+                          );
+                        },
                       },
                     ].map((item) => (
                       <div
                         key={item.label}
                         className="sai-plus-item sai-plus-item--active"
                         onClick={() => {
-                          setPlusOpen(false);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.accept = item.accept;
-                            fileInputRef.current.click();
+                          if (item.onClick) {
+                            item.onClick();
+                          } else {
+                            setPlusOpen(false);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.accept = item.accept;
+                              fileInputRef.current.click();
+                            }
                           }
                         }}
                       >
@@ -933,11 +986,17 @@ function EmptyState({ onSuggest }) {
   );
 }
 
-function MessageBubble({ message, onNavigateToTemplates }) {
+function MessageBubble({
+  message,
+  onNavigateToTemplates,
+  onNavigateToIntegrations,
+}) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
   const hasRedirect =
-    !isUser && message.content.includes("REDIRECT_TO_TEMPLATES");
+    !isUser &&
+    (message.content.includes("REDIRECT_TO_TEMPLATES") ||
+      message.content.includes("GOOGLE_NOT_CONNECTED"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -983,6 +1042,7 @@ function MessageBubble({ message, onNavigateToTemplates }) {
           <FormattedMessage
             content={message.content}
             onNavigateToTemplates={onNavigateToTemplates}
+            onNavigateToIntegrations={onNavigateToIntegrations}
           />
         )}
       </div>
