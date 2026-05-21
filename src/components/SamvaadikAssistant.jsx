@@ -7,7 +7,7 @@ import {
   previewGroupFromCsv,
   createGroupFromCsv,
 } from "../api/agents";
-import { prepareMediaHeader } from "../api/media";
+import { getSupabaseUploadUrl, prepareMediaHeader, deleteMedia } from "../api/media";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -360,14 +360,51 @@ export default function SamvaadikAssistant({ userId }) {
         return;
       }
 
-      // Media flow
+      // Media flow — 2-step to bypass Vercel 4.5 MB body limit:
+      // browser PUTs file straight to Supabase, backend only receives a JSON path
       setUploadingMedia(true);
       setError(null);
       try {
-        const formData = new FormData();
-        formData.append("user_id", userId);
-        formData.append("file", file);
-        const { data: headerData } = await prepareMediaHeader(formData);
+        const sizeMB = file.size / (1024 * 1024);
+        if (
+          file.type === "image/jpeg" ||
+          file.type === "image/png" ||
+          file.type === "image/webp"
+        ) {
+          if (sizeMB > 5) throw new Error("Image must be less than 5 MB.");
+        } else if (
+          file.type === "video/mp4" ||
+          file.type === "video/3gpp" ||
+          file.type === "video/quicktime"
+        ) {
+          if (sizeMB > 16) throw new Error("Video must be less than 16 MB.");
+        } else {
+          if (sizeMB > 100) throw new Error("Document must be less than 100 MB.");
+        }
+
+        // Step 1: get signed Supabase upload URL (tiny JSON request, never hits Vercel limit)
+        const { data: urlData } = await getSupabaseUploadUrl({
+          user_id: userId,
+          file_name: file.name,
+          file_type: file.type,
+        });
+
+        // Step 2: PUT file directly to Supabase — bypasses Vercel entirely
+        const putResp = await fetch(urlData.signed_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!putResp.ok)
+          throw new Error("Upload to storage failed: " + putResp.statusText);
+
+        // Step 3: backend downloads from Supabase → uploads to Meta → returns handles
+        const { data: headerData } = await prepareMediaHeader({
+          user_id: userId,
+          storage_path: urlData.storage_path,
+          file_name: file.name,
+          file_type: file.type,
+        });
 
         const attachment = {
           header_handle: headerData.header_handle,
@@ -380,6 +417,7 @@ export default function SamvaadikAssistant({ userId }) {
       } catch (err) {
         setError(
           err?.response?.data?.error ||
+            err?.message ||
             "Failed to process media. Please try again.",
         );
       } finally {
@@ -388,6 +426,20 @@ export default function SamvaadikAssistant({ userId }) {
     },
     [userId],
   );
+
+  // Delete uploaded media from DB and clear attachment state
+  const handleRemoveAttachment = useCallback(async () => {
+    const mediaId = pendingAttachment?.media_id;
+    setPendingAttachment(null);
+    setMediaAttachment(null);
+    if (mediaId) {
+      try {
+        await deleteMedia(mediaId, userId);
+      } catch {
+        // deletion failure is non-blocking — media will expire on its own
+      }
+    }
+  }, [pendingAttachment, userId]);
 
   // Step 1 of group creation: parse CSV and show preview
   const runPreview = useCallback(
@@ -809,7 +861,7 @@ export default function SamvaadikAssistant({ userId }) {
                     <span>{pendingAttachment.file_name}</span>
                     <button
                       className="sai-attachment-remove"
-                      onClick={() => setPendingAttachment(null)}
+                      onClick={handleRemoveAttachment}
                       title="Remove"
                     >
                       <IconClose size={10} />
@@ -874,21 +926,21 @@ export default function SamvaadikAssistant({ userId }) {
                     {[
                       {
                         label: "Image",
-                        sub: "JPG, PNG, WebP",
+                        sub: "JPG, PNG · Max 5 MB",
                         icon: <IconImage size={15} />,
-                        accept: "image/jpeg,image/png,image/webp",
+                        accept: "image/jpeg,image/png",
                       },
                       {
                         label: "Video",
-                        sub: "MP4, MOV",
+                        sub: "MP4, 3GP · Max 16 MB",
                         icon: <IconVideo size={15} />,
-                        accept: "video/mp4,video/quicktime",
+                        accept: "video/mp4,video/3gpp",
                       },
                       {
                         label: "Document",
-                        sub: "PDF",
+                        sub: "PDF, DOC, XLS · Max 100 MB",
                         icon: <IconDoc size={15} />,
-                        accept: "application/pdf",
+                        accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt",
                       },
                     ].map((item) => (
                       <div
