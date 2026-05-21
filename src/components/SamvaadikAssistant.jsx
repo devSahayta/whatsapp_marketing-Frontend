@@ -38,6 +38,11 @@ const SUGGESTIONS = [
     icon: <IconTemplate />,
   },
   {
+    label: "Create an AI agent",
+    prompt: "I want to create a new AI chatbot agent",
+    icon: <IconGroups />,
+  },
+  {
     label: "Schedule a campaign for later",
     prompt: "Help me schedule a campaign for later today",
     icon: <IconClock />,
@@ -46,33 +51,81 @@ const SUGGESTIONS = [
 
 // ── Loading step detector ─────────────────────────────────────────────────────
 
-function detectLoadingSteps(message) {
-  if (!message) return [{ id: "think", label: "Processing request" }];
-  const m = message.toLowerCase();
-  const steps = [];
-  if (m.includes("group") || m.includes("contact"))
-    steps.push({ id: "groups", label: "Searching contact groups" });
+// Detects what loading label to show based on the user message AND
+// the last assistant message (for context when user just says "yes").
+function detectLoadingSteps(userMessage, lastAssistantMessage = "") {
+  const m = (userMessage || "").toLowerCase();
+  const prev = (lastAssistantMessage || "").toLowerCase();
+
+  // When user confirms (yes/ok/sure), infer from what the assistant just showed
+  const isShortConfirm =
+    /^(yes|yeah|yep|confirm|go ahead|sure|ok|okay|proceed|do it|create it|crct|correct|looks good)$/i.test(
+      m.trim(),
+    );
+
+  if (isShortConfirm) {
+    if (
+      prev.includes("agent preview") ||
+      prev.includes("ready to create this agent")
+    )
+      return [
+        { id: "agent1", label: "Setting up agent" },
+        { id: "agent2", label: "Saving to database" },
+      ];
+    if (
+      prev.includes("campaign summary") ||
+      prev.includes("ready to create this campaign")
+    )
+      return [
+        { id: "camp1", label: "Creating campaign" },
+        { id: "camp2", label: "Queuing messages" },
+      ];
+    if (
+      prev.includes("template preview") ||
+      prev.includes("ready to submit this template")
+    )
+      return [
+        { id: "tmpl1", label: "Submitting to Meta" },
+        { id: "tmpl2", label: "Saving template" },
+      ];
+  }
+
+  // Infer from the user's own message
+  // Agent — check first so "create an agent" doesn't also trigger campaign
+  if (m.includes("agent"))
+    return [
+      { id: "agent1", label: "Setting up agent" },
+      { id: "agent2", label: "Saving to database" },
+    ];
+
+  // Campaign
+  if (m.includes("campaign") || m.includes("schedule") || m.includes("send"))
+    return [
+      { id: "camp1", label: "Fetching groups" },
+      { id: "camp2", label: "Building campaign" },
+    ];
+
+  // Template
   if (m.includes("template"))
-    steps.push({ id: "templates", label: "Fetching templates" });
+    return [{ id: "templates", label: "Fetching templates" }];
+
+  // Google Sheets
   if (m.includes("sheet") || m.includes("google"))
-    steps.push({ id: "sheets", label: "Fetching Google Sheets" });
+    return [{ id: "sheets", label: "Fetching Google Sheets" }];
+
+  // Group / contacts
+  if (m.includes("group") || m.includes("contact"))
+    return [{ id: "groups", label: "Searching contact groups" }];
+
+  // Media
   if (m.includes("media") || m.includes("image") || m.includes("video"))
-    steps.push({ id: "media", label: "Processing media" });
-  if (
-    m.includes("campaign") ||
-    m.includes("create") ||
-    m.includes("schedule") ||
-    m.includes("send")
-  )
-    steps.push({ id: "campaign", label: "Building campaign" });
-  if (
-    (m.includes("show") || m.includes("list") || m.includes("what")) &&
-    steps.length === 0
-  )
-    steps.push({ id: "fetch", label: "Fetching data" });
-  if (steps.length === 0)
-    steps.push({ id: "think", label: "Processing request" });
-  return steps;
+    return [{ id: "media", label: "Processing media" }];
+
+  // List / show
+  if (m.includes("show") || m.includes("list") || m.includes("what"))
+    return [{ id: "fetch", label: "Fetching data" }];
+
+  return [{ id: "think", label: "Processing request" }];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -148,13 +201,23 @@ function FormattedMessage({
             .trim()
             .split("\n")
             .filter(Boolean);
+          // For Agent Preview, the system prompt can be multiple lines.
+          // Detect if we're in a "system prompt:" block and render it differently.
+          const isAgentPreview = lines.some(
+            (l) => l.trim() === "Agent Preview",
+          );
+          let inSystemPrompt = false;
+          const systemPromptLines = [];
+
           return (
             <div key={i} className="sai-summary-card">
               {lines.map((line, j) => {
+                // Title row
                 if (
                   line.trim() === "Campaign Summary" ||
                   line.trim() === "Group Summary" ||
-                  line.trim() === "Template Preview"
+                  line.trim() === "Template Preview" ||
+                  line.trim() === "Agent Preview"
                 ) {
                   return (
                     <div key={j} className="sai-summary-title">
@@ -162,7 +225,52 @@ function FormattedMessage({
                     </div>
                   );
                 }
+
+                // Detect start of multi-line system prompt block
+                if (
+                  isAgentPreview &&
+                  line.toLowerCase().startsWith("system prompt:")
+                ) {
+                  inSystemPrompt = true;
+                  const inlineValue = line
+                    .slice("system prompt:".length)
+                    .trim();
+                  return (
+                    <div key={j} style={{ marginTop: 6 }}>
+                      <div className="sai-summary-row">
+                        <span className="sai-summary-label">System prompt</span>
+                        <span className="sai-summary-value" />
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          padding: "8px 10px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 7,
+                          fontSize: 12,
+                          color: "#374151",
+                          lineHeight: 1.65,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {inlineValue}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Lines after "system prompt:" that don't have a colon key
+                // are continuation of the prompt — already handled above as inline value
+                // For subsequent lines of prompt (if split across lines):
+                if (inSystemPrompt && !line.includes(":")) {
+                  return null; // handled inline above
+                }
+
+                // Regular key: value row
                 if (line.includes(":")) {
+                  inSystemPrompt = false;
                   const colonIdx = line.indexOf(":");
                   const label = line.slice(0, colonIdx).trim();
                   const value = line.slice(colonIdx + 1).trim();
@@ -173,6 +281,7 @@ function FormattedMessage({
                     </div>
                   );
                 }
+
                 return (
                   <p
                     key={j}
@@ -230,7 +339,7 @@ export default function SamvaadikAssistant({ userId }) {
 
   // Media attachment state
   const [pendingAttachment, setPendingAttachment] = useState(null);
-  const [mediaAttachment, setMediaAttachment] = useState(null); // persisted across all turns
+  const [mediaAttachment, setMediaAttachment] = useState(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Group creation state
@@ -349,7 +458,7 @@ export default function SamvaadikAssistant({ userId }) {
           file_name: file.name,
         };
         setPendingAttachment(attachment);
-        setMediaAttachment(attachment); // persist so every subsequent turn includes it
+        setMediaAttachment(attachment);
       } catch (err) {
         setError(
           err?.response?.data?.error ||
@@ -473,8 +582,6 @@ export default function SamvaadikAssistant({ userId }) {
       const userText = (text || input).trim();
       if ((!userText && !attachedFile) || loading) return;
 
-      // pendingAttachment: used only to show the chip on the user bubble
-      // mediaAttachment: sent on every turn until the chat is cleared
       const chipAttachment = pendingAttachment;
 
       setInput("");
@@ -549,14 +656,18 @@ export default function SamvaadikAssistant({ userId }) {
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
       setLoading(true);
-      setLoadingSteps(detectLoadingSteps(userText));
+      // Pass last assistant message so loading label reflects what's actually happening
+      const lastAiMsg = [...messages]
+        .reverse()
+        .find((m) => m.role === "assistant");
+      setLoadingSteps(detectLoadingSteps(userText, lastAiMsg?.content || ""));
       setActiveStep(0);
 
       try {
         const { data } = await samvaadikChat(
           userId,
           updatedMessages.map(({ role, content }) => ({ role, content })),
-          mediaAttachment, // always include until chat is cleared
+          mediaAttachment,
         );
         setMessages((prev) => [
           ...prev,
