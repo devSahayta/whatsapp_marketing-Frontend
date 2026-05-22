@@ -28,6 +28,11 @@ const SUGGESTIONS = [
     icon: <IconGroups />,
   },
   {
+    label: "Create group from Google Sheets",
+    prompt: "I want to create a group from Google Sheets",
+    icon: <IconSheet />,
+  },
+  {
     label: "Create a template",
     prompt: "I want to create a new WhatsApp message template",
     icon: <IconTemplate />,
@@ -113,6 +118,10 @@ function detectLoadingSteps(userMessage, lastAssistantMessage = "") {
   if (m.includes("template"))
     return [{ id: "templates", label: "Fetching templates" }];
 
+  // Google Sheets
+  if (m.includes("sheet") || m.includes("google"))
+    return [{ id: "sheets", label: "Fetching Google Sheets" }];
+
   // Group / contacts
   if (m.includes("group") || m.includes("contact"))
     return [{ id: "groups", label: "Searching contact groups" }];
@@ -143,10 +152,12 @@ function FormattedMessage({
   onNavigateToTemplates,
   onNavigateToBuilder,
   onNavigateToFlows,
+  onNavigateToIntegrations,
 }) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
   const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
   const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
+  const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
 
   // Extract flow_id from REDIRECT_TO_BUILDER:<uuid>
   const builderFlowId = (() => {
@@ -159,6 +170,8 @@ function FormattedMessage({
     .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "")
     .replace(/REDIRECT_TO_BUILDER:[a-f0-9-]+\n?/gi, "")
     .replace(/REDIRECT_TO_FLOWS:\n?/g, "")
+    .replace(/^GOOGLE_NOT_CONNECTED:\s*/m, "")
+    .replace(/GOOGLE_NOT_CONNECTED:\s*/g, "")
     .trim();
 
   const hasSummary = cleanContent.includes("───────");
@@ -197,6 +210,21 @@ function FormattedMessage({
     </div>
   );
 
+  const renderWithGoogleRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button className="sai-redirect-btn" onClick={onNavigateToIntegrations}>
+        <IconSheet size={14} />
+        <span>Open Integrations Page</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        After connecting Google, come back and say "I want to create a group
+        from Google Sheets" to continue.
+      </p>
+    </div>
+  );
+
   const renderWithFlowsRedirect = (body) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {body}
@@ -216,6 +244,7 @@ function FormattedMessage({
     if (hasRedirect) return renderWithRedirect(body);
     if (hasBuilderRedirect) return renderWithBuilderRedirect(body);
     if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
+    if (hasGoogleRedirect) return renderWithGoogleRedirect(body);
     return body;
   }
 
@@ -329,6 +358,7 @@ function FormattedMessage({
   if (hasRedirect) return renderWithRedirect(rendered);
   if (hasBuilderRedirect) return renderWithBuilderRedirect(rendered);
   if (hasFlowsRedirect) return renderWithFlowsRedirect(rendered);
+  if (hasGoogleRedirect) return renderWithGoogleRedirect(rendered);
   return rendered;
 }
 
@@ -531,6 +561,11 @@ export default function SamvaadikAssistant({ userId }) {
     },
     [isOpen],
   );
+
+  const handleNavigateToIntegrations = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/integrations"), 300);
+  }, [navigate]);
 
   useEffect(() => {
     if (isOpen) {
@@ -1035,6 +1070,7 @@ export default function SamvaadikAssistant({ userId }) {
                   onNavigateToTemplates={handleNavigateToTemplates}
                   onNavigateToBuilder={handleNavigateToBuilder}
                   onNavigateToFlows={handleNavigateToFlows}
+                  onNavigateToIntegrations={handleNavigateToIntegrations}
                 />
               ))
             )}
@@ -1155,20 +1191,29 @@ export default function SamvaadikAssistant({ userId }) {
                         accept: ".csv,text/csv",
                       },
                       {
-                        label: "Excel File",
-                        sub: "XLSX, XLS",
+                        label: "Google Sheets",
+                        sub: "Import from spreadsheet",
                         icon: <IconSheet size={15} />,
-                        accept: ".xlsx,.xls",
+                        onClick: () => {
+                          setPlusOpen(false);
+                          sendMessage(
+                            "I want to create a group from Google Sheets",
+                          );
+                        },
                       },
                     ].map((item) => (
                       <div
                         key={item.label}
                         className="sai-plus-item sai-plus-item--active"
                         onClick={() => {
-                          setPlusOpen(false);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.accept = item.accept;
-                            fileInputRef.current.click();
+                          if (item.onClick) {
+                            item.onClick();
+                          } else {
+                            setPlusOpen(false);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.accept = item.accept;
+                              fileInputRef.current.click();
+                            }
                           }
                         }}
                       >
@@ -1307,6 +1352,7 @@ function MessageBubble({
   onNavigateToTemplates,
   onNavigateToBuilder,
   onNavigateToFlows,
+  onNavigateToIntegrations,
 }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
@@ -1314,7 +1360,8 @@ function MessageBubble({
     !isUser &&
     (message.content.includes("REDIRECT_TO_TEMPLATES") ||
       message.content.includes("REDIRECT_TO_BUILDER") ||
-      message.content.includes("REDIRECT_TO_FLOWS"));
+      message.content.includes("REDIRECT_TO_FLOWS") ||
+      message.content.includes("GOOGLE_NOT_CONNECTED"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -1362,6 +1409,7 @@ function MessageBubble({
             onNavigateToTemplates={onNavigateToTemplates}
             onNavigateToBuilder={onNavigateToBuilder}
             onNavigateToFlows={onNavigateToFlows}
+            onNavigateToIntegrations={onNavigateToIntegrations}
           />
         )}
       </div>
