@@ -7,7 +7,11 @@ import {
   previewGroupFromCsv,
   createGroupFromCsv,
 } from "../api/agents";
-import { getSupabaseUploadUrl, prepareMediaHeader, deleteMedia } from "../api/media";
+import {
+  getSupabaseUploadUrl,
+  prepareMediaHeader,
+  deleteMedia,
+} from "../api/media";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -32,6 +36,11 @@ const SUGGESTIONS = [
     label: "Create an AI agent",
     prompt: "I want to create a new AI chatbot agent",
     icon: <IconGroups />,
+  },
+  {
+    label: "Create a chatbot flow",
+    prompt: "I want to create a new chatbot flow",
+    icon: <IconFlow />,
   },
   {
     label: "Schedule a campaign for later",
@@ -81,8 +90,12 @@ function detectLoadingSteps(userMessage, lastAssistantMessage = "") {
       ];
   }
 
-  // Infer from the user's own message
-  // Agent — check first so "create an agent" doesn't also trigger campaign
+  // Flow / chatbot — check before campaign so "create chatbot flow" doesn't
+  // accidentally match "create" → campaign
+  if (m.includes("flow") || m.includes("chatbot"))
+    return [{ id: "flow", label: "Managing chatbot flows" }];
+
+  // Agent — check before campaign so "create an agent" doesn't trigger campaign
   if (m.includes("agent"))
     return [
       { id: "agent1", label: "Setting up agent" },
@@ -125,12 +138,28 @@ function isConfirmation(text) {
 
 // ── Message content renderer ──────────────────────────────────────────────────
 
-function FormattedMessage({ content, onNavigateToTemplates }) {
+function FormattedMessage({
+  content,
+  onNavigateToTemplates,
+  onNavigateToBuilder,
+  onNavigateToFlows,
+}) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
+  const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
+  const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
+
+  // Extract flow_id from REDIRECT_TO_BUILDER:<uuid>
+  const builderFlowId = (() => {
+    const match = content.match(/REDIRECT_TO_BUILDER:([a-f0-9-]+)/i);
+    return match ? match[1] : null;
+  })();
 
   const cleanContent = content
     .replace(/^REDIRECT_TO_TEMPLATES:\s*/m, "")
-    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "");
+    .replace(/REDIRECT_TO_TEMPLATES:\s*/g, "")
+    .replace(/REDIRECT_TO_BUILDER:[a-f0-9-]+\n?/gi, "")
+    .replace(/REDIRECT_TO_FLOWS:\n?/g, "")
+    .trim();
 
   const hasSummary = cleanContent.includes("───────");
 
@@ -149,9 +178,45 @@ function FormattedMessage({ content, onNavigateToTemplates }) {
     </div>
   );
 
+  const renderWithBuilderRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button
+        className="sai-redirect-btn"
+        onClick={() =>
+          onNavigateToBuilder && onNavigateToBuilder(builderFlowId)
+        }
+      >
+        <IconFlow size={14} />
+        <span>Open in Builder</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        Add nodes and connect them to build your flow logic.
+      </p>
+    </div>
+  );
+
+  const renderWithFlowsRedirect = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button
+        className="sai-redirect-btn"
+        onClick={() => onNavigateToFlows && onNavigateToFlows()}
+      >
+        <IconFlow size={14} />
+        <span>Open Chatbot Flows</span>
+        <IconArrow size={13} />
+      </button>
+    </div>
+  );
+
   if (!hasSummary) {
     const body = <InlineText text={cleanContent} />;
-    return hasRedirect ? renderWithRedirect(body) : body;
+    if (hasRedirect) return renderWithRedirect(body);
+    if (hasBuilderRedirect) return renderWithBuilderRedirect(body);
+    if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
+    return body;
   }
 
   const parts = cleanContent.split(/(─{3,}[\s\S]*?─{3,})/);
@@ -226,7 +291,6 @@ function FormattedMessage({ content, onNavigateToTemplates }) {
 
                 // Lines after "system prompt:" that don't have a colon key
                 // are continuation of the prompt — already handled above as inline value
-                // For subsequent lines of prompt (if split across lines):
                 if (inSystemPrompt && !line.includes(":")) {
                   return null; // handled inline above
                 }
@@ -262,7 +326,10 @@ function FormattedMessage({ content, onNavigateToTemplates }) {
     </div>
   );
 
-  return hasRedirect ? renderWithRedirect(rendered) : rendered;
+  if (hasRedirect) return renderWithRedirect(rendered);
+  if (hasBuilderRedirect) return renderWithBuilderRedirect(rendered);
+  if (hasFlowsRedirect) return renderWithFlowsRedirect(rendered);
+  return rendered;
 }
 
 function InlineText({ text }) {
@@ -308,6 +375,33 @@ export default function SamvaadikAssistant({ userId }) {
   const [pendingGroupName, setPendingGroupName] = useState("");
   const [pendingGroup, setPendingGroup] = useState(null);
 
+  // Draggable FAB state — clamp saved position to current viewport on load
+  const [fabPos, setFabPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sai_fab_pos");
+      if (!saved) return { x: null, y: null };
+      const pos = JSON.parse(saved);
+      if (pos.x === null) return { x: null, y: null };
+      // Clamp to current viewport so desktop positions don't go off-screen on mobile
+      const fabW = 160; // conservative estimate of FAB width
+      const fabH = 44;
+      const clampedX = Math.max(
+        8,
+        Math.min(window.innerWidth - fabW - 8, pos.x),
+      );
+      const clampedY = Math.max(
+        8,
+        Math.min(window.innerHeight - fabH - 8, pos.y),
+      );
+      return { x: clampedX, y: clampedY };
+    } catch {
+      return { x: null, y: null };
+    }
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0, startPosX: 0, startPosY: 0 });
+  const fabRef = useRef(null);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -321,6 +415,123 @@ export default function SamvaadikAssistant({ userId }) {
     setTimeout(() => navigate("/templates"), 300);
   }, [navigate]);
 
+  // Navigate to the chatbot builder for a specific flow
+  const handleNavigateToBuilder = useCallback(
+    (flowId) => {
+      closePanel();
+      setTimeout(() => navigate(`/chatbot/builder/${flowId}`), 300);
+    },
+    [navigate],
+  );
+
+  // Navigate to the chatbot flows list page
+  const handleNavigateToFlows = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/chatbot"), 300);
+  }, [navigate]);
+
+  // ── Draggable FAB handlers ──────────────────────────────────────────────────
+  const handleFabPointerDown = useCallback((e) => {
+    // Only drag on primary button / touch
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const fab = fabRef.current;
+    if (!fab) return;
+
+    const rect = fab.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    dragRef.current = {
+      startX: clientX,
+      startY: clientY,
+      startPosX: rect.left,
+      startPosY: rect.top,
+      moved: false,
+    };
+
+    setIsDragging(true);
+
+    const onMove = (ev) => {
+      // Prevent page scroll while dragging on touch
+      if (ev.cancelable) ev.preventDefault();
+
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const dx = cx - dragRef.current.startX;
+      const dy = cy - dragRef.current.startY;
+
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        dragRef.current.moved = true;
+      }
+
+      const newX = dragRef.current.startPosX + dx;
+      const newY = dragRef.current.startPosY + dy;
+
+      // Clamp within viewport with 8px padding on all sides
+      const fabEl = fabRef.current;
+      const fabW = fabEl ? fabEl.offsetWidth : 160;
+      const fabH = fabEl ? fabEl.offsetHeight : 44;
+      const clampedX = Math.max(
+        8,
+        Math.min(window.innerWidth - fabW - 8, newX),
+      );
+      const clampedY = Math.max(
+        8,
+        Math.min(window.innerHeight - fabH - 8, newY),
+      );
+
+      setFabPos({ x: clampedX, y: clampedY });
+    };
+
+    const onUp = () => {
+      setIsDragging(false);
+      // Save clamped position for all screen sizes
+      setFabPos((pos) => {
+        if (pos.x === null) return pos;
+        const fabEl = fabRef.current;
+        const fabW = fabEl ? fabEl.offsetWidth : 160;
+        const fabH = fabEl ? fabEl.offsetHeight : 44;
+        const safeX = Math.max(
+          8,
+          Math.min(window.innerWidth - fabW - 8, pos.x),
+        );
+        const safeY = Math.max(
+          8,
+          Math.min(window.innerHeight - fabH - 8, pos.y),
+        );
+        const safePos = { x: safeX, y: safeY };
+        try {
+          localStorage.setItem("sai_fab_pos", JSON.stringify(safePos));
+        } catch {}
+        return safePos;
+      });
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onUp);
+  }, []);
+
+  const handleFabClick = useCallback(
+    (e) => {
+      // Suppress click if the FAB was dragged
+      if (dragRef.current.moved) {
+        dragRef.current.moved = false;
+        return;
+      }
+      isOpen ? closePanel() : setIsOpen(true);
+    },
+    [isOpen],
+  );
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => setPanelVisible(true), 10);
@@ -329,6 +540,33 @@ export default function SamvaadikAssistant({ userId }) {
       setPanelVisible(false);
     }
   }, [isOpen]);
+
+  // Re-clamp FAB position when window resizes (e.g. desktop→mobile devtools)
+  useEffect(() => {
+    const handleResize = () => {
+      setFabPos((pos) => {
+        if (pos.x === null) return pos;
+        const fabW = fabRef.current?.offsetWidth || 160;
+        const fabH = fabRef.current?.offsetHeight || 44;
+        const clampedX = Math.max(
+          8,
+          Math.min(window.innerWidth - fabW - 8, pos.x),
+        );
+        const clampedY = Math.max(
+          8,
+          Math.min(window.innerHeight - fabH - 8, pos.y),
+        );
+        if (clampedX === pos.x && clampedY === pos.y) return pos;
+        const newPos = { x: clampedX, y: clampedY };
+        try {
+          localStorage.setItem("sai_fab_pos", JSON.stringify(newPos));
+        } catch {}
+        return newPos;
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -379,7 +617,8 @@ export default function SamvaadikAssistant({ userId }) {
         ) {
           if (sizeMB > 16) throw new Error("Video must be less than 16 MB.");
         } else {
-          if (sizeMB > 100) throw new Error("Document must be less than 100 MB.");
+          if (sizeMB > 100)
+            throw new Error("Document must be less than 100 MB.");
         }
 
         // Step 1: get signed Supabase upload URL (tiny JSON request, never hits Vercel limit)
@@ -704,14 +943,33 @@ export default function SamvaadikAssistant({ userId }) {
 
   return (
     <>
-      {/* FAB */}
+      {/* FAB
+          Desktop: always visible, draggable pill (icon + label).
+          Mobile:  only visible when panel is CLOSED — panel covers full screen
+                   and already has its own X button to close.
+      */}
       <button
-        className="sai-fab"
-        onClick={() => (isOpen ? closePanel() : setIsOpen(true))}
+        ref={fabRef}
+        className={`sai-fab ${isDragging ? "sai-fab--dragging" : ""} ${isOpen ? "sai-fab--panel-open" : ""}`}
+        onMouseDown={handleFabPointerDown}
+        onTouchStart={handleFabPointerDown}
+        onClick={handleFabClick}
         aria-label="Open Samvaadik AI Assistant"
+        title={isOpen ? "Close AI Assistant" : "Samvaadik AI Assistant"}
+        style={
+          fabPos.x !== null
+            ? {
+                left: fabPos.x,
+                top: fabPos.y,
+                right: "auto",
+                bottom: "auto",
+                // Remove CSS transition during active drag for instant follow
+              }
+            : undefined
+        }
       >
         <span className={`sai-fab-icon ${isOpen ? "sai-fab-icon--open" : ""}`}>
-          {isOpen ? <IconClose size={16} /> : <IconAI size={17} />}
+          {isOpen ? <IconClose size={14} /> : <IconAI size={16} />}
         </span>
         <span className="sai-fab-label">
           {isOpen ? "Close" : "AI Assistant"}
@@ -775,6 +1033,8 @@ export default function SamvaadikAssistant({ userId }) {
                   key={msg.id}
                   message={msg}
                   onNavigateToTemplates={handleNavigateToTemplates}
+                  onNavigateToBuilder={handleNavigateToBuilder}
+                  onNavigateToFlows={handleNavigateToFlows}
                 />
               ))
             )}
@@ -1042,11 +1302,19 @@ function EmptyState({ onSuggest }) {
   );
 }
 
-function MessageBubble({ message, onNavigateToTemplates }) {
+function MessageBubble({
+  message,
+  onNavigateToTemplates,
+  onNavigateToBuilder,
+  onNavigateToFlows,
+}) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
   const hasRedirect =
-    !isUser && message.content.includes("REDIRECT_TO_TEMPLATES");
+    !isUser &&
+    (message.content.includes("REDIRECT_TO_TEMPLATES") ||
+      message.content.includes("REDIRECT_TO_BUILDER") ||
+      message.content.includes("REDIRECT_TO_FLOWS"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -1092,6 +1360,8 @@ function MessageBubble({ message, onNavigateToTemplates }) {
           <FormattedMessage
             content={message.content}
             onNavigateToTemplates={onNavigateToTemplates}
+            onNavigateToBuilder={onNavigateToBuilder}
+            onNavigateToFlows={onNavigateToFlows}
           />
         )}
       </div>
@@ -1427,6 +1697,26 @@ function IconSheet({ size = 15 }) {
     >
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M3 9h18M3 15h18M9 3v18" />
+    </svg>
+  );
+}
+function IconFlow({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="5" height="5" rx="1" />
+      <rect x="16" y="3" width="5" height="5" rx="1" />
+      <rect x="9" y="16" width="6" height="5" rx="1" />
+      <path d="M5.5 8v3a2 2 0 002 2h9a2 2 0 002-2V8" />
+      <path d="M12 14v2" />
     </svg>
   );
 }

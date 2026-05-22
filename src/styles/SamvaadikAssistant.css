@@ -7,38 +7,55 @@
 
 .sai-fab {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
-  z-index: 9990;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9995;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 20px 0 16px;
-  height: 46px;
+  gap: 7px;
+  padding: 0 18px 0 14px;
+  height: 44px;
   background: #0a6b5c;
   color: #fff;
   border: none;
   border-radius: 999px;
   cursor: pointer;
   font-family: "DM Sans", sans-serif;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(10, 107, 92, 0.3);
+  box-shadow:
+    0 4px 16px rgba(10, 107, 92, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.15);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
-    background 0.18s;
+    background 0.18s,
+    opacity 0.2s ease;
   letter-spacing: -0.01em;
   user-select: none;
+  touch-action: none;
+  will-change: transform;
 }
 
-.sai-fab:hover {
+/* Dragging */
+.sai-fab--dragging {
+  cursor: grabbing !important;
+  transform: scale(1.06);
+  box-shadow:
+    0 10px 32px rgba(10, 107, 92, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: none;
+}
+
+.sai-fab:hover:not(.sai-fab--dragging) {
   background: #085f50;
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(10, 107, 92, 0.38);
+  box-shadow:
+    0 8px 24px rgba(10, 107, 92, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.sai-fab:active {
+.sai-fab:active:not(.sai-fab--dragging) {
   transform: scale(0.97);
 }
 
@@ -46,8 +63,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   transition: transform 0.25s ease;
 }
@@ -58,13 +75,43 @@
 
 .sai-fab-label {
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
-/* ── Backdrop (mobile only) ──────────────────────────────────── */
+/* ── Mobile FAB behaviour ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .sai-fab {
+    /* Slightly smaller on mobile, same pill shape */
+    bottom: 20px;
+    right: 16px;
+    height: 42px;
+    padding: 0 16px 0 12px;
+    font-size: 13px;
+    gap: 6px;
+    /* Keep touch-action: none so drag works on mobile too */
+    touch-action: none;
+  }
+
+  /*
+   * On mobile the panel is 100vw full-screen — hide the FAB while open.
+   * The panel header already has an X close button so this is fine UX.
+   */
+  .sai-fab--panel-open {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+}
+
+/* ── Backdrop ────────────────────────────────────────────────── */
 
 .sai-backdrop {
   position: fixed;
   inset: 0;
+  /* Below FAB (9995) so the FAB is always tappable on mobile */
   z-index: 9991;
   background: rgba(0, 0, 0, 0);
   transition: background 0.28s ease;
@@ -89,7 +136,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 9992;
+  z-index: 9992; /* Below FAB (9995) so FAB stays on top */
   width: 420px;
   max-width: 100vw;
   background: #ffffff;
@@ -881,7 +928,7 @@
   color: #4b5563;
 }
 
-/* ── Attached file pill ──────────────────────────────────────────────────── */
+/* ── Attached file pill ──────────────────────────────────────── */
 
 .sai-file-pill {
   display: flex;
@@ -923,7 +970,7 @@
   opacity: 1;
 }
 
-/* ── Enabled plus menu item ──────────────────────────────────────────────── */
+/* ── Enabled plus menu item ──────────────────────────────────── */
 
 .sai-plus-item--enabled {
   cursor: pointer !important;
@@ -942,7 +989,8 @@
   color: #0a6b5c;
 }
 
-/* Redirect to templates button */
+/* ── Redirect buttons ────────────────────────────────────────── */
+
 .sai-redirect-btn {
   display: inline-flex;
   align-items: center;
@@ -960,6 +1008,7 @@
     transform 0.1s;
   width: fit-content;
   text-decoration: none;
+  font-family: "DM Sans", sans-serif;
 }
 
 .sai-redirect-btn:hover {
