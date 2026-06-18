@@ -72,7 +72,7 @@ const TEMPLATES = {
         isImage: true,
         header: null,
         previewHeader: "Product image",
-        body: "Hi {{1}}, your order #{{2}} has been placed successfully!\n\nAmount: {{3}}\nItems: {{4}}\n\nThank you for shopping with us!",
+        body: "Dear {{1}}, your order #{{2}} has been received and is now being processed.\n\nOrder amount: {{3}}\nItems ordered: {{4}}\n\nYou will receive a notification once your order is shipped.",
         footer: "Powered by Samvaadik",
         vars: ["billing_full_name", "order_number", "total", "item_names"],
         previewVars: {
@@ -94,7 +94,7 @@ const TEMPLATES = {
         isImage: false,
         header: "Order Confirmed",
         previewHeader: "Order Confirmed",
-        body: "Hi {{1}}, your order #{{2}} has been placed successfully!\n\nAmount: {{3}}\nItems: {{4}}\n\nThank you for shopping with us!",
+        body: "Dear {{1}}, your order #{{2}} has been received and is now being processed.\n\nOrder amount: {{3}}\nItems ordered: {{4}}\n\nYou will receive a notification once your order is shipped.",
         footer: "Powered by Samvaadik",
         vars: ["billing_full_name", "order_number", "total", "item_names"],
         previewVars: {
