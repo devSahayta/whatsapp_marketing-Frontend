@@ -926,7 +926,7 @@ export default function WooCommerceTemplateGuide() {
         account_id: waAccountId,
         name: templateName,
         language: "en_US",
-        category: tpl.isImage ? "MARKETING" : "UTILITY",
+        category: "UTILITY",
         parameter_format: "positional",
         components,
       });
