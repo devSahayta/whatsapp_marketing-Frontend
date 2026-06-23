@@ -37,6 +37,7 @@ const EVENT_META = {
   "order.completed": { label: "Order delivered", emoji: "✅", dot: "#BA7517" },
   "order.cancelled": { label: "Order cancelled", emoji: "❌", dot: "#E24B4A" },
   "order.refunded": { label: "Order refunded", emoji: "💰", dot: "#888780" },
+  "order.delayed": { label: "Order delayed", emoji: "⏳", dot: "#D97706" },
   "cart.abandoned": { label: "Cart recovery", emoji: "🛒", dot: "#7C3AED" },
 };
 
@@ -46,6 +47,7 @@ const ORDER_TABS = [
   "order.completed",
   "order.cancelled",
   "order.refunded",
+  "order.delayed",
 ];
 const ALL_TABS = [...ORDER_TABS, "cart.abandoned"];
 
@@ -56,6 +58,7 @@ const VAR_MAP = {
   item_names: { label: "Item names", example: "Blue T-Shirt, Black Cap" },
   payment_method: { label: "Payment method", example: "Razorpay" },
   cart_total: { label: "Cart total", example: "₹3699.00" },
+  awb_number: { label: "Tracking number (AWB)", example: "1904072514104" }, // ✅ new
 };
 
 const TEMPLATES = {
@@ -144,28 +147,63 @@ const TEMPLATES = {
     ],
   },
   "order.shipped": {
-    tip: "Send this when you mark an order as Shipped. Reduces 'where is my order?' support tickets significantly.",
+    tip: "Send this when you mark an order as Shipped. Includes a Track Order button — customers can tap to track their shipment in real time. Works with ShipRocket, Delhivery, and any shipping partner.",
     options: [
       {
-        id: "ship_simple",
-        name: "Shipped notification",
-        desc: "Tells the customer their order is on the way",
+        id: "ship_track",
+        name: "Shipped with tracking button",
+        desc: "Includes a Track Order button — customers tap to track their shipment directly",
         badge: "Recommended",
         badgeColor: "#185FA5",
         badgeBg: "#E6F1FB",
         isImage: false,
+        isShipping: true, // ✅ new flag
         header: "Order Shipped",
         previewHeader: "Order Shipped",
-        body: "Hi {{1}}, great news! Your order #{{2}} has been shipped!\n\nItems: {{3}}\n\nYour order is on its way. We will notify you once delivered.\n\nThank you! 🙏",
+        body: "Hi {{1}}, your order #{{2}} has been shipped!\n\nItems: {{3}}\nTracking number: {{4}}\n\nYour order is on its way. Tap the button below to track your shipment.",
         footer: "Powered by Samvaadik",
-        vars: ["billing_full_name", "order_number", "item_names"],
+        vars: ["billing_full_name", "order_number", "item_names", "awb_number"],
         previewVars: {
           "{{1}}": "Raj Kumar",
           "{{2}}": "1001",
           "{{3}}": "Blue T-Shirt, Black Cap",
+          "{{4}}": "1904072514104",
+        },
+        apiName: "order_ship_track_sv",
+        exampleValues: [
+          "Raj Kumar",
+          "1001",
+          "Blue T-Shirt x2",
+          "1904072514104",
+        ],
+      },
+      {
+        id: "ship_simple",
+        name: "Shipped notification",
+        desc: "Tells the customer their order is on the way — no tracking button",
+        badge: "Text only",
+        badgeColor: "#5F5E5A",
+        badgeBg: "#F1EFE8",
+        isImage: false,
+        isShipping: false,
+        header: "Order Shipped",
+        previewHeader: "Order Shipped",
+        body: "Hi {{1}}, great news! Your order #{{2}} has been shipped!\n\nItems: {{3}}\nTracking number: {{4}}\n\nYour order is on its way. We will notify you once delivered.\n\nThank you! 🙏",
+        footer: "Powered by Samvaadik",
+        vars: ["billing_full_name", "order_number", "item_names", "awb_number"],
+        previewVars: {
+          "{{1}}": "Raj Kumar",
+          "{{2}}": "1001",
+          "{{3}}": "Blue T-Shirt, Black Cap",
+          "{{4}}": "1904072514104",
         },
         apiName: "order_ship_sv_v1",
-        exampleValues: ["Raj Kumar", "1001", "Blue T-Shirt x2"],
+        exampleValues: [
+          "Raj Kumar",
+          "1001",
+          "Blue T-Shirt x2",
+          "1904072514104",
+        ],
       },
       {
         id: "ship_eta",
@@ -175,19 +213,33 @@ const TEMPLATES = {
         badgeColor: "#0F6E56",
         badgeBg: "#E1F5EE",
         isImage: false,
+        isShipping: false,
         header: "Your Order Is On Its Way",
         previewHeader: "Your Order Is On Its Way",
-        body: "Hi {{1}}, your order #{{2}} has been dispatched!\n\nItems: {{3}}\nOrder value: {{4}}\n\nExpected delivery within 3-5 business days.",
+        body: "Hi {{1}}, your order #{{2}} has been dispatched!\n\nItems: {{3}}\nTracking number: {{4}}\nOrder value: {{5}}\n\nExpected delivery within 3-5 business days.",
         footer: "Powered by Samvaadik",
-        vars: ["billing_full_name", "order_number", "item_names", "total"],
+        vars: [
+          "billing_full_name",
+          "order_number",
+          "item_names",
+          "awb_number",
+          "total",
+        ],
         previewVars: {
           "{{1}}": "Raj Kumar",
           "{{2}}": "1001",
           "{{3}}": "Blue T-Shirt, Black Cap",
-          "{{4}}": "₹1299.00",
+          "{{4}}": "1904072514104",
+          "{{5}}": "₹1299.00",
         },
         apiName: "order_ship_detail_sv_v1",
-        exampleValues: ["Raj Kumar", "1001", "Blue T-Shirt x2", "₹1299.00"],
+        exampleValues: [
+          "Raj Kumar",
+          "1001",
+          "Blue T-Shirt x2",
+          "1904072514104",
+          "₹1299.00",
+        ],
       },
     ],
   },
@@ -301,6 +353,33 @@ const TEMPLATES = {
         },
         apiName: "order_refund_sv_v1",
         exampleValues: ["Raj Kumar", "1001", "₹1299.00"],
+      },
+    ],
+  },
+  "order.delayed": {
+    tip: "Sends if an order stays in Processing or On-hold without progressing. Reassures customers proactively before they reach out frustrated. You control how many reminders and how many days apart.",
+    options: [
+      {
+        id: "delay_standard",
+        name: "Order delay notice",
+        desc: "Lets the customer know their order is taking longer than usual",
+        badge: "Recommended",
+        badgeColor: "#D97706",
+        badgeBg: "#FEF3E2",
+        isImage: false,
+        header: "Order Update",
+        previewHeader: "Order Update",
+        body: "Hi {{1}}, your order #{{2}} placed on {{3}} is still being processed.\n\nWe apologize for the delay. Our team is working on it and will update you shortly. For urgent queries please reply to this message.",
+        footer: "Powered by Samvaadik",
+        vars: ["billing_full_name", "order_number", "order_date"],
+        previewVars: {
+          "{{1}}": "Raj Kumar",
+          "{{2}}": "1001",
+          "{{3}}": "12/06/2026",
+        },
+        apiName: "order_delay_sv_v1",
+        exampleValues: ["Raj Kumar", "1001", "12/06/2026"],
+        isDelayNotice: true,
       },
     ],
   },
@@ -549,6 +628,31 @@ function PhonePreview({ template }) {
               </div>
             </div>
           )}
+
+          {template.isShipping && (
+            <div
+              style={{
+                marginTop: 4,
+                paddingTop: 4,
+                borderTop: "0.5px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                style={{
+                  background: "#E3F2FD",
+                  border: "0.5px solid #90CAF9",
+                  borderRadius: 4,
+                  padding: "2px 5px",
+                  fontSize: 7,
+                  color: "#1565C0",
+                  textAlign: "center",
+                  fontWeight: 500,
+                }}
+              >
+                🚚 Track Order →
+              </div>
+            </div>
+          )}
           <div
             style={{
               fontSize: 6,
@@ -780,6 +884,10 @@ export default function WooCommerceTemplateGuide() {
   const [waAccountId, setWaAccountId] = useState(null);
   const [showPreview, setShowPreview] = useState(false); // mobile preview toggle
   const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [delayStages, setDelayStages] = useState([2, 4, 6]);
+  const [shippingFallbackUrl, setShippingFallbackUrl] = useState(
+    "https://shiprocket.co/tracking/",
+  );
 
   // Auto-fill when connection loads
   useEffect(() => {
@@ -915,6 +1023,25 @@ export default function WooCommerceTemplateGuide() {
         });
       }
 
+      if (tpl.isShipping) {
+        // Use merchant's configured URL as base — defaults to ShipRocket
+        const baseUrl = shippingFallbackUrl
+          ? shippingFallbackUrl.replace(/\/$/, "") + "/"
+          : "https://shiprocket.co/tracking/";
+        const exampleAwb = "1904072514104";
+        components.push({
+          type: "BUTTONS",
+          buttons: [
+            {
+              type: "URL",
+              text: "Track Order",
+              url: `${baseUrl}{{1}}`, // ✅ merchant's base + dynamic AWB
+              example: [`${baseUrl}${exampleAwb}`], // ✅ valid example for Meta
+            },
+          ],
+        });
+      }
+
       const createToastId = showLoading(
         tpl.isImage
           ? "Creating image template..."
@@ -947,6 +1074,10 @@ export default function WooCommerceTemplateGuide() {
             wt_id,
             trigger_event: event,
             delay_minutes: tpl.isCartRecovery ? tpl.delayMinutes || 60 : 0,
+            delay_stages: tpl.isDelayNotice ? delayStages : null, // ✅ new
+            shipping_fallback_url: tpl.isShipping
+              ? shippingFallbackUrl || null
+              : null, // ✅ new
             template_variable_map,
             include_product_image: tpl.isImage,
           });
@@ -961,6 +1092,10 @@ export default function WooCommerceTemplateGuide() {
           );
         } catch (autoErr) {
           dismissToast(autoToastId);
+          console.error(
+            "Automation creation failed:",
+            autoErr?.response?.data || autoErr.message,
+          ); // ✅ log it for debugging
           showSuccess(
             "Template submitted to Meta! Set up the automation manually once approved.",
           );
@@ -1344,6 +1479,20 @@ export default function WooCommerceTemplateGuide() {
                       </div>
                     </div>
                   )}
+                  {currentTpl.isShipping && (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
+                        Button
+                      </p>
+                      <div className="bg-slate-50 rounded-lg px-3 py-2.5">
+                        <p className="text-xs text-blue-700 font-medium">
+                          🚚 Track Order → (URL button — tracking link
+                          auto-detected from ShipRocket/Delhivery or your
+                          fallback URL)
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1466,6 +1615,86 @@ export default function WooCommerceTemplateGuide() {
                     </>
                   )}
                 </button>
+
+                {activeTab === "order.shipped" && currentTpl?.isShipping && (
+                  <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base flex-shrink-0">🚚</span>
+                      <div>
+                        <p className="text-xs font-medium text-teal-800">
+                          Fallback tracking URL
+                        </p>
+                        <p className="text-xs text-teal-600 mt-0.5 leading-relaxed">
+                          Used when no tracking URL is found automatically from
+                          ShipRocket or your shipping plugin. E.g. your store's
+                          order tracking page.
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      type="url"
+                      value={shippingFallbackUrl}
+                      onChange={(e) => setShippingFallbackUrl(e.target.value)}
+                      placeholder="https://your-store.com/track-order"
+                      className="w-full px-3 py-2 text-xs border border-teal-200 rounded-lg focus:outline-none focus:border-teal-400 bg-white"
+                    />
+                    <p className="text-xs text-teal-500">
+                      Pre-filled with ShipRocket's tracking URL. Change this if
+                      you use a different courier — e.g.
+                      https://www.delhivery.com/track/package/ The AWB number is
+                      appended automatically when the order ships.
+                    </p>
+                  </div>
+                )}
+
+                {activeTab === "order.delayed" && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base flex-shrink-0">⏳</span>
+                      <div>
+                        <p className="text-xs font-medium text-amber-800">
+                          Reminder schedule
+                        </p>
+                        <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                          Sequential reminders if the order stays stuck in
+                          Processing or On-hold. Each day is counted from order
+                          placement.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {delayStages.map((day, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={60}
+                            value={day}
+                            onChange={(e) => {
+                              const updated = [...delayStages];
+                              updated[i] = Math.max(1, Number(e.target.value));
+                              setDelayStages(updated);
+                            }}
+                            className="w-16 px-2 py-1.5 text-xs border border-amber-200 rounded-lg text-center focus:outline-none focus:border-amber-400 bg-white"
+                          />
+                          <span className="text-xs text-amber-700">
+                            day{day !== 1 ? "s" : ""}
+                          </span>
+                          {i < delayStages.length - 1 && (
+                            <span className="text-amber-400 text-xs">→</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-amber-500">
+                      Reminder{" "}
+                      {delayStages.length > 1
+                        ? `1 sent at day ${delayStages[0]}, then again at day ${delayStages.slice(1).join(", day ")}`
+                        : `sent at day ${delayStages[0]}`}
+                      .
+                    </p>
+                  </div>
+                )}
 
                 {/* Checkout URL input — cart recovery only */}
                 {isCartTab && (

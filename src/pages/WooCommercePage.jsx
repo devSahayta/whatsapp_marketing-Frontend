@@ -41,6 +41,7 @@ const EVENT_CONFIG = {
   "order.completed": { label: "Order delivered", emoji: "✅", color: "amber" },
   "order.cancelled": { label: "Order cancelled", emoji: "❌", color: "red" },
   "order.refunded": { label: "Order refunded", emoji: "💰", color: "gray" },
+  "order.delayed": { label: "Order delayed", emoji: "⏳", color: "orange" },
 };
 
 const TAG_STYLES = {
@@ -49,6 +50,7 @@ const TAG_STYLES = {
   amber: "bg-amber-50 text-amber-700",
   red: "bg-red-50 text-red-700",
   gray: "bg-gray-100 text-gray-600",
+  orange: "bg-orange-50 text-orange-700",
 };
 
 const isImageTemplate = (t) => {
@@ -109,6 +111,8 @@ export default function WooCommercePage() {
     trigger_event: "order.created",
     wt_id: "",
   });
+
+  const [delayStages, setDelayStages] = useState([2, 4, 6]);
 
   const load = useCallback(async () => {
     try {
@@ -225,45 +229,145 @@ export default function WooCommercePage() {
       return;
     }
 
-    const selectedTemplate = templates.find((t) => t.wt_id === autoForm.wt_id);
-    const VARIABLE_FIELDS = [
-      "billing_full_name",
-      "order_number",
-      "total",
-      "item_names",
-      "payment_method",
-      "order_date",
-      "shipping_address",
-    ];
-    let variableCount = 4;
-    if (selectedTemplate?.components) {
-      const comps =
-        typeof selectedTemplate.components === "string"
-          ? JSON.parse(selectedTemplate.components)
-          : selectedTemplate.components;
-      const bodyComp = comps.find((c) => c.type === "BODY");
-      if (bodyComp?.text) {
-        const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
-        const positions = matches.map((m) => parseInt(m.replace(/[{}]/g, "")));
-        variableCount = positions.length > 0 ? Math.max(...positions) : 4;
+    // ✅ Event-specific variable maps — correct order for each trigger
+    const EVENT_VARIABLE_MAPS = {
+      "order.created": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "total",
+        4: "item_names",
+      },
+      "order.processing": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "total",
+        4: "item_names",
+      },
+      "order.shipped": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "item_names",
+        4: "awb_number", // ✅ tracking number, not total
+      },
+      "order.completed": {
+        1: "billing_full_name",
+        2: "order_number",
+      },
+      "order.cancelled": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "total",
+      },
+      "order.refunded": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "total",
+      },
+      "order.delayed": {
+        1: "billing_full_name",
+        2: "order_number",
+        3: "order_date",
+      },
+    };
+
+    // Use event-specific map if available, otherwise detect from template
+    let template_variable_map = EVENT_VARIABLE_MAPS[autoForm.trigger_event];
+
+    if (!template_variable_map) {
+      // ✅ Event-specific variable maps — correct order for each trigger
+      const EVENT_VARIABLE_MAPS = {
+        "order.created": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "total",
+          4: "item_names",
+        },
+        "order.processing": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "total",
+          4: "item_names",
+        },
+        "order.shipped": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "item_names",
+          4: "awb_number", // ✅ tracking number, not total
+        },
+        "order.completed": {
+          1: "billing_full_name",
+          2: "order_number",
+        },
+        "order.cancelled": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "total",
+        },
+        "order.refunded": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "total",
+        },
+        "order.delayed": {
+          1: "billing_full_name",
+          2: "order_number",
+          3: "order_date",
+        },
+      };
+
+      // Use event-specific map if available, otherwise detect from template
+      let template_variable_map = EVENT_VARIABLE_MAPS[autoForm.trigger_event];
+
+      if (!template_variable_map) {
+        const selectedTemplate = templates.find(
+          (t) => t.wt_id === autoForm.wt_id,
+        );
+        const VARIABLE_FIELDS = [
+          "billing_full_name",
+          "order_number",
+          "total",
+          "item_names",
+          "payment_method",
+          "order_date",
+          "shipping_address",
+        ];
+        let variableCount = 4;
+        if (selectedTemplate?.components) {
+          const comps =
+            typeof selectedTemplate.components === "string"
+              ? JSON.parse(selectedTemplate.components)
+              : selectedTemplate.components;
+          const bodyComp = comps.find((c) => c.type === "BODY");
+          if (bodyComp?.text) {
+            const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
+            const positions = matches.map((m) =>
+              parseInt(m.replace(/[{}]/g, "")),
+            );
+            variableCount = positions.length > 0 ? Math.max(...positions) : 4;
+          }
+        }
+        template_variable_map = {};
+        for (let i = 1; i <= variableCount; i++) {
+          template_variable_map[String(i)] =
+            VARIABLE_FIELDS[i - 1] || `field_${i}`;
+        }
       }
     }
-    const template_variable_map = {};
-    for (let i = 1; i <= variableCount; i++)
-      template_variable_map[String(i)] = VARIABLE_FIELDS[i - 1] || `field_${i}`;
-
     try {
       await createWooAutomation({
         connection_id: activeConnection.id,
         wt_id: autoForm.wt_id,
         trigger_event: autoForm.trigger_event,
         delay_minutes: 0,
+        delay_stages:
+          autoForm.trigger_event === "order.delayed" ? delayStages : undefined,
         template_variable_map,
         include_product_image: includeImage,
       });
       showSuccess("Automation rule added!");
       setShowAutoModal(false);
       setIncludeImage(true);
+      setDelayStages([2, 4, 6]);
       load();
     } catch {
       showError("Failed to create automation");
@@ -711,7 +815,7 @@ export default function WooCommercePage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2 sm:space-y-3 max-h-[420px] sm:max-h-[480px] overflow-y-auto pr-1 -mr-1">
                   {automations
                     .filter((a) => a.trigger_event !== "cart.abandoned")
                     .map((a) => {
@@ -780,7 +884,7 @@ export default function WooCommercePage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2 sm:space-y-3 max-h-[420px] sm:max-h-[480px] overflow-y-auto pr-1 -mr-1">
                   {activeAutomations.map((a) => {
                     const cfg = EVENT_CONFIG[a.trigger_event] || {
                       label: a.trigger_event,
@@ -804,6 +908,23 @@ export default function WooCommercePage() {
                             {a.include_product_image && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
                                 🖼️
+                              </span>
+                            )}
+                            {a.trigger_event === "order.delayed" && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
+                                ⏳ Day{" "}
+                                {Array.isArray(a.delay_stages)
+                                  ? a.delay_stages.join(", ")
+                                  : "2, 4, 6"}
+                              </span>
+                            )}
+
+                            {a.trigger_event === "order.delayed" && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
+                                ⏳ Day{" "}
+                                {Array.isArray(a.delay_stages)
+                                  ? a.delay_stages.join(", ")
+                                  : "2, 4, 6"}
                               </span>
                             )}
                           </div>
@@ -831,7 +952,7 @@ export default function WooCommercePage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2 sm:space-y-3 max-h-[420px] sm:max-h-[480px] overflow-y-auto pr-1 -mr-1">
                   {logs.map((l) => {
                     const cfg = EVENT_CONFIG[l.trigger_event] || {
                       label: l.trigger_event,
@@ -1015,7 +1136,7 @@ export default function WooCommercePage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-[360px] sm:max-h-[420px] overflow-y-auto pr-1 -mr-1">
                       {cartLogs.map((l) => {
                         const statusStyle =
                           l.status === "recovered"
@@ -1232,6 +1353,43 @@ export default function WooCommercePage() {
                   Fires when an order reaches this status
                 </p>
               </div>
+
+              {/* ✅ New — only shown for order.delayed */}
+              {autoForm.trigger_event === "order.delayed" && (
+                <div className="rounded-xl p-3 sm:p-3.5 bg-orange-50 border border-orange-200 space-y-2">
+                  <p className="text-xs font-medium text-orange-800">
+                    Reminder schedule (days after order placed)
+                  </p>
+                  <p className="text-xs text-orange-600 leading-relaxed">
+                    Sent if the order is still Processing or On-hold at each day
+                    mark.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {delayStages.map((day, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={1}
+                          max={60}
+                          value={day}
+                          onChange={(e) => {
+                            const updated = [...delayStages];
+                            updated[i] = Math.max(1, Number(e.target.value));
+                            setDelayStages(updated);
+                          }}
+                          className="w-16 px-2 py-1.5 text-xs border border-orange-200 rounded-lg text-center focus:outline-none focus:border-orange-400 bg-white"
+                        />
+                        <span className="text-xs text-orange-700">
+                          day{day !== 1 ? "s" : ""}
+                        </span>
+                        {i < delayStages.length - 1 && (
+                          <span className="text-orange-400 text-xs">→</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div
                 className={`rounded-xl p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-all ${includeImage ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}
                 onClick={() => {
@@ -1327,12 +1485,45 @@ export default function WooCommercePage() {
                   Variables auto-filled from order:
                 </p>
                 <p>
-                  <code className="bg-white px-1 rounded">{"{{1}}"}</code> Name
-                  &nbsp;<code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
-                  Order# &nbsp;
-                  <code className="bg-white px-1 rounded">{"{{3}}"}</code> Total
-                  &nbsp;<code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
-                  Items
+                  {autoForm.trigger_event === "order.shipped" ? (
+                    <>
+                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
+                      Name &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
+                      Order# &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
+                      Items &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
+                      AWB#
+                    </>
+                  ) : autoForm.trigger_event === "order.delayed" ? (
+                    <>
+                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
+                      Name &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
+                      Order# &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
+                      Date
+                    </>
+                  ) : autoForm.trigger_event === "order.completed" ? (
+                    <>
+                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
+                      Name &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
+                      Order#
+                    </>
+                  ) : (
+                    <>
+                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
+                      Name &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
+                      Order# &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
+                      Total &nbsp;
+                      <code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
+                      Items
+                    </>
+                  )}
                 </p>
               </div>
             </div>
