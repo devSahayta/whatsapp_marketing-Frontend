@@ -73,6 +73,66 @@ const DELAY_OPTIONS = [
   { value: 480, label: "8 hours" },
 ];
 
+const AVAILABLE_FIELDS = [
+  { value: "billing_full_name", label: "Customer name", example: "Raj Kumar" },
+  { value: "order_number", label: "Order number", example: "#11205" },
+  { value: "total", label: "Order total", example: "₹1299.00" },
+  { value: "item_names", label: "Item names", example: "Metal Wall Decor" },
+  { value: "order_date", label: "Order date", example: "23/06/2026" },
+  { value: "payment_method", label: "Payment method", example: "Razorpay" },
+  { value: "billing_phone", label: "Customer phone", example: "9876543210" },
+  { value: "billing_email", label: "Customer email", example: "raj@gmail.com" },
+  {
+    value: "shipping_address",
+    label: "Shipping address",
+    example: "Chennai, TN",
+  },
+  {
+    value: "awb_number",
+    label: "Tracking number (AWB)",
+    example: "1904072514104",
+  },
+  {
+    value: "tracking_url",
+    label: "Tracking URL",
+    example: "https://shiprocket.co/tracking/...",
+  },
+  {
+    value: "product_url",
+    label: "Product URL",
+    example: "https://store.com/product/item/",
+  },
+];
+
+const EVENT_VARIABLE_MAPS = {
+  "order.created": {
+    1: "billing_full_name",
+    2: "order_number",
+    3: "total",
+    4: "item_names",
+  },
+  "order.processing": {
+    1: "billing_full_name",
+    2: "order_number",
+    3: "total",
+    4: "item_names",
+  },
+  "order.shipped": {
+    1: "billing_full_name",
+    2: "order_number",
+    3: "item_names",
+    4: "awb_number",
+  },
+  "order.completed": { 1: "billing_full_name", 2: "order_number" },
+  "order.cancelled": { 1: "billing_full_name", 2: "order_number", 3: "total" },
+  "order.refunded": { 1: "billing_full_name", 2: "order_number", 3: "total" },
+  "order.delayed": {
+    1: "billing_full_name",
+    2: "order_number",
+    3: "order_date",
+  },
+};
+
 export default function WooCommercePage() {
   const { userId } = useAuthUser();
   const navigate = useNavigate();
@@ -113,6 +173,9 @@ export default function WooCommercePage() {
   });
 
   const [delayStages, setDelayStages] = useState([2, 4, 6]);
+
+  const [variableMap, setVariableMap] = useState({});
+  const [templateVariables, setTemplateVariables] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -160,6 +223,33 @@ export default function WooCommercePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!autoForm.wt_id) {
+      setTemplateVariables([]);
+      setVariableMap({});
+      return;
+    }
+    const selectedTemplate = templates.find((t) => t.wt_id === autoForm.wt_id);
+    if (!selectedTemplate?.components) return;
+    const comps =
+      typeof selectedTemplate.components === "string"
+        ? JSON.parse(selectedTemplate.components)
+        : selectedTemplate.components;
+    const bodyComp = comps.find((c) => c.type === "BODY");
+    if (!bodyComp?.text) return;
+    const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
+    const positions = [
+      ...new Set(matches.map((m) => parseInt(m.replace(/[{}]/g, "")))),
+    ].sort((a, b) => a - b);
+    setTemplateVariables(positions);
+    const defaults = EVENT_VARIABLE_MAPS[autoForm.trigger_event] || {};
+    const newMap = {};
+    positions.forEach((pos) => {
+      newMap[String(pos)] = defaults[String(pos)] || "";
+    });
+    setVariableMap(newMap);
+  }, [autoForm.wt_id, autoForm.trigger_event, templates]);
 
   const handleSwitchStore = (conn) => {
     setActiveConnection(conn);
@@ -229,130 +319,61 @@ export default function WooCommercePage() {
       return;
     }
 
-    // ✅ Event-specific variable maps — correct order for each trigger
-    const EVENT_VARIABLE_MAPS = {
-      "order.created": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "total",
-        4: "item_names",
-      },
-      "order.processing": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "total",
-        4: "item_names",
-      },
-      "order.shipped": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "item_names",
-        4: "awb_number", // ✅ tracking number, not total
-      },
-      "order.completed": {
-        1: "billing_full_name",
-        2: "order_number",
-      },
-      "order.cancelled": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "total",
-      },
-      "order.refunded": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "total",
-      },
-      "order.delayed": {
-        1: "billing_full_name",
-        2: "order_number",
-        3: "order_date",
-      },
-    };
-
-    // Use event-specific map if available, otherwise detect from template
-    let template_variable_map = EVENT_VARIABLE_MAPS[autoForm.trigger_event];
-
-    if (!template_variable_map) {
-      // ✅ Event-specific variable maps — correct order for each trigger
-      const EVENT_VARIABLE_MAPS = {
-        "order.created": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "total",
-          4: "item_names",
-        },
-        "order.processing": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "total",
-          4: "item_names",
-        },
-        "order.shipped": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "item_names",
-          4: "awb_number", // ✅ tracking number, not total
-        },
-        "order.completed": {
-          1: "billing_full_name",
-          2: "order_number",
-        },
-        "order.cancelled": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "total",
-        },
-        "order.refunded": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "total",
-        },
-        "order.delayed": {
-          1: "billing_full_name",
-          2: "order_number",
-          3: "order_date",
-        },
-      };
-
-      // Use event-specific map if available, otherwise detect from template
-      let template_variable_map = EVENT_VARIABLE_MAPS[autoForm.trigger_event];
-
-      if (!template_variable_map) {
-        const selectedTemplate = templates.find(
-          (t) => t.wt_id === autoForm.wt_id,
+    // ✅ Validate all variables are mapped
+    if (templateVariables.length > 0) {
+      const unmapped = templateVariables.filter(
+        (pos) => !variableMap[String(pos)],
+      );
+      if (unmapped.length > 0) {
+        showError(
+          `Please map all variables: ${unmapped.map((p) => `{{${p}}}`).join(", ")}`,
         );
-        const VARIABLE_FIELDS = [
-          "billing_full_name",
-          "order_number",
-          "total",
-          "item_names",
-          "payment_method",
-          "order_date",
-          "shipping_address",
-        ];
-        let variableCount = 4;
-        if (selectedTemplate?.components) {
-          const comps =
-            typeof selectedTemplate.components === "string"
-              ? JSON.parse(selectedTemplate.components)
-              : selectedTemplate.components;
-          const bodyComp = comps.find((c) => c.type === "BODY");
-          if (bodyComp?.text) {
-            const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
-            const positions = matches.map((m) =>
-              parseInt(m.replace(/[{}]/g, "")),
-            );
-            variableCount = positions.length > 0 ? Math.max(...positions) : 4;
-          }
-        }
-        template_variable_map = {};
-        for (let i = 1; i <= variableCount; i++) {
-          template_variable_map[String(i)] =
-            VARIABLE_FIELDS[i - 1] || `field_${i}`;
-        }
+        return;
       }
     }
+
+    // ✅ Use merchant-configured map from UI dropdowns
+    let template_variable_map =
+      templateVariables.length > 0
+        ? variableMap
+        : EVENT_VARIABLE_MAPS[autoForm.trigger_event] || {};
+
+    // Fallback — if still empty, detect from template body
+    if (Object.keys(template_variable_map).length === 0) {
+      const selectedTemplate = templates.find(
+        (t) => t.wt_id === autoForm.wt_id,
+      );
+      const FALLBACK_FIELDS = [
+        "billing_full_name",
+        "order_number",
+        "total",
+        "item_names",
+        "payment_method",
+        "order_date",
+        "shipping_address",
+      ];
+      let variableCount = 4;
+      if (selectedTemplate?.components) {
+        const comps =
+          typeof selectedTemplate.components === "string"
+            ? JSON.parse(selectedTemplate.components)
+            : selectedTemplate.components;
+        const bodyComp = comps.find((c) => c.type === "BODY");
+        if (bodyComp?.text) {
+          const matches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
+          const positions = matches.map((m) =>
+            parseInt(m.replace(/[{}]/g, "")),
+          );
+          variableCount = positions.length > 0 ? Math.max(...positions) : 4;
+        }
+      }
+      template_variable_map = {};
+      for (let i = 1; i <= variableCount; i++) {
+        template_variable_map[String(i)] =
+          FALLBACK_FIELDS[i - 1] || `field_${i}`;
+      }
+    }
+
     try {
       await createWooAutomation({
         connection_id: activeConnection.id,
@@ -368,6 +389,8 @@ export default function WooCommercePage() {
       setShowAutoModal(false);
       setIncludeImage(true);
       setDelayStages([2, 4, 6]);
+      setVariableMap({});
+      setTemplateVariables([]);
       load();
     } catch {
       showError("Failed to create automation");
@@ -1305,6 +1328,8 @@ export default function WooCommercePage() {
           onClick={() => {
             setShowAutoModal(false);
             setIncludeImage(true);
+            setVariableMap({});
+            setTemplateVariables([]);
           }}
         >
           <div
@@ -1480,52 +1505,119 @@ export default function WooCommercePage() {
                   </p>
                 )}
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl sm:rounded-2xl text-xs text-slate-500 leading-relaxed space-y-1">
-                <p className="font-medium text-slate-700 mb-1">
-                  Variables auto-filled from order:
-                </p>
-                <p>
-                  {autoForm.trigger_event === "order.shipped" ? (
-                    <>
-                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
-                      Name &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
-                      Order# &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
-                      Items &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
-                      AWB#
-                    </>
-                  ) : autoForm.trigger_event === "order.delayed" ? (
-                    <>
-                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
-                      Name &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
-                      Order# &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
-                      Date
-                    </>
-                  ) : autoForm.trigger_event === "order.completed" ? (
-                    <>
-                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
-                      Name &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
-                      Order#
-                    </>
-                  ) : (
-                    <>
-                      <code className="bg-white px-1 rounded">{"{{1}}"}</code>{" "}
-                      Name &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{2}}"}</code>{" "}
-                      Order# &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{3}}"}</code>{" "}
-                      Total &nbsp;
-                      <code className="bg-white px-1 rounded">{"{{4}}"}</code>{" "}
-                      Items
-                    </>
-                  )}
-                </p>
-              </div>
+              {templateVariables.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200 bg-white">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">
+                        Variable mapping
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Map each placeholder to an order field
+                      </p>
+                    </div>
+                    {templateVariables.some(
+                      (pos) => !variableMap[String(pos)],
+                    ) && (
+                      <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                        {
+                          templateVariables.filter(
+                            (pos) => !variableMap[String(pos)],
+                          ).length
+                        }{" "}
+                        unmapped
+                      </span>
+                    )}
+                    {!templateVariables.some(
+                      (pos) => !variableMap[String(pos)],
+                    ) && (
+                      <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                        All mapped ✓
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Rows */}
+                  <div className="p-2.5 flex flex-col gap-1.5">
+                    {templateVariables.map((pos) => {
+                      const isMapped = !!variableMap[String(pos)];
+                      return (
+                        <div
+                          key={pos}
+                          className="grid items-center rounded-lg border px-2.5 py-2"
+                          style={{
+                            gridTemplateColumns: "40px 14px 1fr",
+                            gap: "6px",
+                            background: isMapped ? "#F0FDF4" : "#FFF7ED",
+                            borderColor: isMapped ? "#BBF7D0" : "#FED7AA",
+                          }}
+                        >
+                          <code
+                            className="font-mono text-center rounded"
+                            style={{
+                              fontSize: 11,
+                              padding: "2px 5px",
+                              background: "#FAEEDA",
+                              color: "#854F0B",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {`{{${pos}}}`}
+                          </code>
+                          <span
+                            className="text-center text-slate-400"
+                            style={{ fontSize: 11 }}
+                          >
+                            →
+                          </span>
+                          <select
+                            value={variableMap[String(pos)] || ""}
+                            onChange={(e) =>
+                              setVariableMap((prev) => ({
+                                ...prev,
+                                [String(pos)]: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-transparent focus:outline-none text-slate-800 min-w-0"
+                            style={{
+                              fontSize: 12,
+                              border: "none",
+                              padding: 0,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <option value="">Select field...</option>
+                            {AVAILABLE_FIELDS.map((f) => (
+                              <option key={f.value} value={f.value}>
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer hint */}
+                  <div className="px-3 pb-2.5 flex items-center gap-1.5">
+                    <span className="text-emerald-500 text-xs">●</span>
+                    <span className="text-xs text-slate-400">mapped</span>
+                    <span className="mx-1 text-slate-300">·</span>
+                    <span className="text-amber-400 text-xs">●</span>
+                    <span className="text-xs text-slate-400">
+                      needs selection
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                  <span className="text-slate-300 text-base">⚙️</span>
+                  <p className="font-medium text-slate-600">
+                    Select a template to configure variable mapping
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 px-5 sm:px-6 py-4 border-t border-slate-100">
               <button
