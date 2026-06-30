@@ -1061,14 +1061,14 @@ export default function WooCommercePage() {
                       // Status emoji
                       const statusEmoji =
                         displayStatus === "read"
-                          ? "👁️"
+                          ? ""
                           : displayStatus === "delivered"
-                            ? "✅"
+                            ? ""
                             : displayStatus === "sent"
-                              ? "📤"
+                              ? ""
                               : displayStatus === "failed"
-                                ? "❌"
-                                : "⏳";
+                                ? ""
+                                : "";
 
                       // Error message — friendly version
                       const rawError =
