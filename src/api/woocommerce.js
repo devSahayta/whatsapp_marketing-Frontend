@@ -20,10 +20,13 @@ export const deleteWooAutomation = (id) =>
   api.delete(`/api/woocommerce/automations/${id}`);
 
 // ✅ Now accepts optional connection_id to filter by store
-export const getWooLogs = (connection_id) =>
-  api.get(
-    `/api/woocommerce/logs${connection_id ? `?connection_id=${connection_id}` : ""}`,
-  );
+export const getWooLogs = (connection_id, params = {}) =>
+  api.get("/api/woocommerce/logs", {
+    params: { connection_id, ...params },
+  });
+
+export const syncWooLogs = (connection_id) =>
+  api.get("/api/woocommerce/logs/sync", { params: { connection_id } });
 
 export const getWaAccountId = () => api.get("/api/woocommerce/account-id");
 

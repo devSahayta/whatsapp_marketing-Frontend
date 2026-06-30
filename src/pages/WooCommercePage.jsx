@@ -29,6 +29,7 @@ import {
   getWooLogs,
   getCartRecoveryStats,
   getCartRecoveryLogs,
+  syncWooLogs,
 } from "../api/woocommerce";
 import { fetchDbTemplates } from "../api/templates";
 import useAuthUser from "../hooks/useAuthUser";
@@ -174,6 +175,12 @@ export default function WooCommercePage() {
 
   const [delayStages, setDelayStages] = useState([2, 4, 6]);
 
+  const [syncing, setSyncing] = useState(false);
+  const [expandedLog, setExpandedLog] = useState(null);
+  const [logsPage, setLogsPage] = useState(0);
+  const [hasMoreLogs, setHasMoreLogs] = useState(true);
+  const LOGS_PER_PAGE = 20;
+
   const [variableMap, setVariableMap] = useState({});
   const [templateVariables, setTemplateVariables] = useState([]);
 
@@ -184,7 +191,7 @@ export default function WooCommercePage() {
         await Promise.allSettled([
           getWooConnections(),
           getWooAutomations(activeConnection?.id),
-          getWooLogs(activeConnection?.id),
+          getWooLogs(activeConnection?.id, { limit: 20, offset: 0 }),
           fetchDbTemplates(userId),
           getCartRecoveryStats(),
           getCartRecoveryLogs(),
@@ -467,6 +474,40 @@ export default function WooCommercePage() {
       );
     } catch {
       showError("Failed to update cart recovery");
+    }
+  };
+
+  const handleSyncLogs = async () => {
+    try {
+      setSyncing(true);
+      const res = await syncWooLogs(activeConnection?.id);
+      const updated = res.data?.updated || 0;
+      showSuccess(
+        updated > 0
+          ? `Synced ${updated} log${updated > 1 ? "s" : ""} with latest status`
+          : "All logs are up to date",
+      );
+      load();
+    } catch {
+      showError("Failed to sync logs");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleLoadMoreLogs = async () => {
+    try {
+      const nextPage = logsPage + 1;
+      const res = await getWooLogs(activeConnection?.id, {
+        limit: LOGS_PER_PAGE,
+        offset: nextPage * LOGS_PER_PAGE,
+      });
+      const newLogs = res.data?.logs || [];
+      if (newLogs.length < LOGS_PER_PAGE) setHasMoreLogs(false);
+      setLogs((prev) => [...prev, ...newLogs]);
+      setLogsPage(nextPage);
+    } catch {
+      showError("Failed to load more logs");
     }
   };
 
@@ -963,55 +1004,217 @@ export default function WooCommercePage() {
               ))}
 
             {/* Logs */}
-            {activeTab === "logs" &&
-              (logs.length === 0 ? (
-                <div className="text-center py-8 sm:py-10">
-                  <div className="text-3xl mb-3">📋</div>
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    No logs yet
+            {activeTab === "logs" && (
+              <div className="space-y-3">
+                {/* Logs header with sync button */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-slate-600">
+                    {logs.length} log{logs.length !== 1 ? "s" : ""}
                   </p>
-                  <p className="text-xs text-slate-400">
-                    Send logs appear here once automations start firing.
-                  </p>
+                  <button
+                    onClick={handleSyncLogs}
+                    disabled={syncing || !activeConnection}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-40"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`}
+                    />
+                    {syncing ? "Syncing..." : "Sync status"}
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-2 sm:space-y-3 max-h-[420px] sm:max-h-[480px] overflow-y-auto pr-1 -mr-1">
-                  {logs.map((l) => {
-                    const cfg = EVENT_CONFIG[l.trigger_event] || {
-                      label: l.trigger_event,
-                      emoji: "📦",
-                      color: "gray",
-                    };
-                    return (
-                      <div
-                        key={l.id}
-                        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-slate-100 rounded-xl sm:rounded-2xl bg-slate-50"
-                      >
-                        <div className="text-base flex-shrink-0">
-                          {cfg.emoji}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">
-                            {cfg.label} · #{l.wc_order_id}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">
-                            {l.phone_number} ·{" "}
-                            {new Date(l.triggered_at).toLocaleString("en-IN", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })}
-                          </p>
-                        </div>
-                        <span
-                          className={`text-xs font-medium px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0 ${l.status === "sent" ? "bg-emerald-50 text-emerald-700" : l.status === "failed" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}
+
+                {logs.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10">
+                    <div className="text-3xl mb-3">📋</div>
+                    <p className="text-sm font-medium text-slate-700 mb-1">
+                      No logs yet
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Send logs appear here once automations start firing.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1 -mr-1">
+                    {logs.map((l) => {
+                      const cfg = EVENT_CONFIG[l.trigger_event] || {
+                        label: l.trigger_event,
+                        emoji: "📦",
+                        color: "gray",
+                      };
+
+                      // ✅ Use real_status from joined whatsapp_messages
+                      const displayStatus = l.real_status || l.status;
+                      const isExpanded = expandedLog === l.id;
+
+                      // Status style
+                      const statusStyle =
+                        displayStatus === "read"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : displayStatus === "delivered"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : displayStatus === "sent"
+                              ? "bg-slate-100 text-slate-600 border border-slate-200"
+                              : displayStatus === "failed"
+                                ? "bg-red-50 text-red-700 border border-red-200"
+                                : "bg-gray-100 text-gray-600 border border-gray-200";
+
+                      // Status emoji
+                      const statusEmoji =
+                        displayStatus === "read"
+                          ? "👁️"
+                          : displayStatus === "delivered"
+                            ? "✅"
+                            : displayStatus === "sent"
+                              ? "📤"
+                              : displayStatus === "failed"
+                                ? "❌"
+                                : "⏳";
+
+                      // Error message — friendly version
+                      const rawError =
+                        l.wa_error_message || l.error_message || "";
+                      const friendlyError = rawError
+                        ? rawError.includes("131049")
+                          ? "Message blocked — customer hasn't messaged this number before"
+                          : rawError.includes("131026")
+                            ? "Phone number not on WhatsApp"
+                            : rawError.includes("132000")
+                              ? "Template variable mismatch — wrong number of variables"
+                              : rawError.includes("132012")
+                                ? "Template format mismatch — check image/button config"
+                                : rawError.includes("100")
+                                  ? "Invalid request — check template configuration"
+                                  : rawError.length > 120
+                                    ? rawError.slice(0, 120) + "..."
+                                    : rawError
+                        : null;
+
+                      return (
+                        <div
+                          key={l.id}
+                          className="border border-slate-100 rounded-xl sm:rounded-2xl overflow-hidden"
                         >
-                          {l.status}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                          {/* Main row */}
+                          <div
+                            className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                            onClick={() =>
+                              setExpandedLog(isExpanded ? null : l.id)
+                            }
+                          >
+                            <div className="text-base flex-shrink-0">
+                              {cfg.emoji}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">
+                                {cfg.label} · #{l.wc_order_id}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5 truncate">
+                                {l.phone_number} ·{" "}
+                                {new Date(l.triggered_at).toLocaleString(
+                                  "en-IN",
+                                  {
+                                    dateStyle: "short",
+                                    timeStyle: "short",
+                                  },
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle}`}
+                              >
+                                {statusEmoji} {displayStatus}
+                              </span>
+                              {(friendlyError ||
+                                l.read_at ||
+                                l.delivered_at) && (
+                                <ChevronDown
+                                  className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expanded details */}
+                          {isExpanded && (
+                            <div className="px-3 sm:px-4 py-3 bg-white border-t border-slate-100 space-y-2">
+                              {/* Delivery timeline */}
+                              {(l.sent_at || l.delivered_at || l.read_at) && (
+                                <div className="flex items-center gap-3 text-xs flex-wrap">
+                                  {l.sent_at && (
+                                    <span className="flex items-center gap-1 text-slate-500">
+                                      <span className="text-slate-400">
+                                        Sent
+                                      </span>
+                                      {new Date(l.sent_at).toLocaleTimeString(
+                                        "en-IN",
+                                        { timeStyle: "short" },
+                                      )}
+                                    </span>
+                                  )}
+                                  {l.delivered_at && (
+                                    <span className="flex items-center gap-1 text-emerald-600">
+                                      <span>✅ Delivered</span>
+                                      {new Date(
+                                        l.delivered_at,
+                                      ).toLocaleTimeString("en-IN", {
+                                        timeStyle: "short",
+                                      })}
+                                    </span>
+                                  )}
+                                  {l.read_at && (
+                                    <span className="flex items-center gap-1 text-blue-600">
+                                      <span>Read</span>
+                                      {new Date(l.read_at).toLocaleTimeString(
+                                        "en-IN",
+                                        { timeStyle: "short" },
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Error message */}
+                              {friendlyError && (
+                                <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg">
+                                  <p className="text-xs font-medium text-red-700 mb-0.5">
+                                    Why it failed
+                                  </p>
+                                  <p className="text-xs text-red-600 leading-relaxed">
+                                    {friendlyError}
+                                  </p>
+                                  {l.wa_error_code && (
+                                    <p className="text-xs text-red-400 mt-1">
+                                      Error code: {l.wa_error_code}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Order ID reference */}
+                              <p className="text-xs text-slate-400">
+                                Order #{l.wc_order_id} · Log ID:{" "}
+                                {l.id?.slice(0, 8)}...
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Load more */}
+                    {hasMoreLogs && logs.length >= LOGS_PER_PAGE && (
+                      <button
+                        onClick={handleLoadMoreLogs}
+                        className="w-full py-2.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50"
+                      >
+                        Load more logs
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Cart Recovery */}
             {activeTab === "cart-recovery" && (
@@ -1171,11 +1374,11 @@ export default function WooCommercePage() {
                                 : "bg-gray-100 text-gray-600";
                         const statusLabel =
                           l.status === "recovered"
-                            ? "🎉 Recovered"
+                            ? " Recovered"
                             : l.status === "sent"
-                              ? "📤 Sent"
+                              ? " Sent"
                               : l.status === "failed"
-                                ? "❌ Failed"
+                                ? " Failed"
                                 : l.status;
                         const cartItems = Array.isArray(l.cart_items)
                           ? l.cart_items
