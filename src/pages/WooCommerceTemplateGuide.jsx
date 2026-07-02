@@ -157,10 +157,10 @@ const TEMPLATES = {
         badgeColor: "#185FA5",
         badgeBg: "#E6F1FB",
         isImage: false,
-        isShipping: true,
+        isShipping: true, // ✅ new flag
         header: "Order Shipped",
         previewHeader: "Order Shipped",
-        body: "Hey {{1}} 👋\n\nYour Vedas Homes order {{2}} is on its way. 🚚\n\nItems: {{3}}\nTracking number:{{4}}\n\nSomething special is headed your way — the kind that's felt before it's seen.\nGet ready, your vibe is about to find you via your home decor. ⚡\n\nExpect it within 7–9 working days.",
+        body: "Hi {{1}}, your order #{{2}} has been shipped!\n\nItems: {{3}}\nTracking number: {{4}}\n\nYour order is on its way. Tap the button below to track your shipment.",
         footer: "Thank you for shopping with Vedas Homes",
         vars: ["billing_full_name", "order_number", "item_names", "awb_number"],
         previewVars: {
@@ -177,6 +177,7 @@ const TEMPLATES = {
           "1904072514104",
         ],
       },
+
       {
         id: "ship_simple",
         name: "Shipped notification",
