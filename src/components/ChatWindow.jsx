@@ -44,6 +44,21 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
       ? pts(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : "";
 
+  const fmtFull = (ts) => {
+    if (!ts) return "";
+    try {
+      return pts(ts).toLocaleString([], {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  };
+
   const sortMsgs = (arr) =>
     (arr || [])
       .map((m) => ({
@@ -171,6 +186,26 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
       default:
         return "USER";
     }
+  };
+
+  const STATUS_META = {
+    sent: { icon: "✓", cls: "wa-tick-sent" },
+    delivered: { icon: "✓✓", cls: "wa-tick-delivered" },
+    read: { icon: "✓✓", cls: "wa-tick-read" },
+    failed: { icon: "⚠", cls: "wa-tick-failed" },
+  };
+
+  const buildStatusTooltip = (wm) => {
+    const lines = [];
+    if (wm.sent_at) lines.push(`Sent: ${fmtFull(wm.sent_at)}`);
+    if (wm.delivered_at) lines.push(`Delivered: ${fmtFull(wm.delivered_at)}`);
+    if (wm.read_at) lines.push(`Read: ${fmtFull(wm.read_at)}`);
+    if (wm.failed_at) lines.push(`Failed: ${fmtFull(wm.failed_at)}`);
+    if (wm.error_message)
+      lines.push(
+        `Error: ${wm.error_message}${wm.error_code ? ` (code ${wm.error_code})` : ""}`,
+      );
+    return lines.join("\n");
   };
 
   const startDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -464,6 +499,9 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
           else if (right) cls += " sender-admin";
           else cls += " received";
 
+          const wm = msg.whatsapp_messages;
+          const statusMeta = wm ? STATUS_META[st(wm.status)] : null;
+
           return (
             <div key={msg.message_id} className="wa-message-row">
               {showSep && (
@@ -483,7 +521,24 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
                   <span className="wa-sender-type">
                     · {senderLabel(msg.sender_type)}
                   </span>
+                  {statusMeta && (
+                    <span
+                      className={`wa-status-tick ${statusMeta.cls}`}
+                      title={buildStatusTooltip(wm)}
+                    >
+                      {statusMeta.icon}
+                    </span>
+                  )}
                 </div>
+
+                {wm && st(wm.status) === "failed" && wm.error_message && (
+                  <div
+                    className="wa-message-error"
+                    title={buildStatusTooltip(wm)}
+                  >
+                    ⚠ {wm.error_message}
+                  </div>
+                )}
               </div>
             </div>
           );
