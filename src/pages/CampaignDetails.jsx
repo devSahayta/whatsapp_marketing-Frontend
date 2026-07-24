@@ -353,7 +353,8 @@ const CampaignDetails = () => {
       }
     } catch (err) {
       showError(
-        err?.response?.data?.error || "Failed to export campaign to Google Sheets",
+        err?.response?.data?.error ||
+          "Failed to export campaign to Google Sheets",
       );
     } finally {
       setExportingSheet(false);
@@ -587,12 +588,24 @@ const CampaignDetails = () => {
                     </div>
                   </div>
 
-                  <p className="text-xs text-gray-500 mt-2">
-                    Sent at{" "}
-                    {msg.sent_at
-                      ? new Date(msg.sent_at).toLocaleTimeString("en-IN")
+                  {msg.status !== "pending" && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      {msg.status.toUpperCase()} at{" "}
+                      {msg[`${msg.status}_at`]
+                        ? new Date(msg[`${msg.status}_at`]).toLocaleTimeString(
+                            "en-IN",
+                          )
+                        : "-"}
+                    </p>
+                  )}
+                  {/* <p className="text-xs text-gray-500 mt-2">
+                    {msg.status.toUpperCase()} at{" "}
+                    {msg[`${msg.status}_at`]
+                      ? new Date(msg[`${msg.status}_at`]).toLocaleTimeString(
+                          "en-IN",
+                        )
                       : "-"}
-                  </p>
+                  </p> */}
                 </div>
               );
             })}

@@ -719,6 +719,37 @@
   font-weight: 600;
 }
 
+/* Status ticks (sent / delivered / read / failed) */
+.wa-status-tick {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  cursor: default;
+}
+.wa-tick-sent {
+  color: var(--t-muted);
+}
+.wa-tick-delivered {
+  color: var(--t-muted);
+}
+.wa-tick-read {
+  color: #53bdeb;
+}
+.wa-tick-failed {
+  color: #ef4444;
+  letter-spacing: normal;
+}
+
+/* Failed message error line */
+.wa-message-error {
+  font-size: 10.5px;
+  color: #ef4444;
+  text-align: right;
+  margin-top: 2px;
+  opacity: 0.9;
+  cursor: default;
+}
+
 /* ── Image messages ──────────────────────────────────────── */
 .wa-image-message {
   position: relative;
