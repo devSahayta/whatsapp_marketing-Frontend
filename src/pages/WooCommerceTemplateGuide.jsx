@@ -39,10 +39,16 @@ const EVENT_META = {
   "order.refunded": { label: "Order refunded", emoji: "💰", dot: "#888780" },
   "order.delayed": { label: "Order delayed", emoji: "⏳", dot: "#D97706" },
   "cart.abandoned": { label: "Cart recovery", emoji: "🛒", dot: "#7C3AED" },
+  "order.cod_confirmation": {
+    label: "COD confirmation",
+    emoji: "💵",
+    dot: "#0F766E",
+  },
 };
 
 const ORDER_TABS = [
   "order.created",
+  "order.cod_confirmation", // ✅ new
   "order.shipped",
   "order.completed",
   "order.cancelled",
@@ -143,6 +149,35 @@ const TEMPLATES = {
           "Blue T-Shirt x2",
           "Razorpay",
         ],
+      },
+    ],
+  },
+
+  "order.cod_confirmation": {
+    tip: "Fires only on Cash on Delivery orders, right when they're placed. A quick tap from the customer cuts down fake or unwanted COD orders before you pack and ship.",
+    options: [
+      {
+        id: "cod_confirm_standard",
+        name: "COD confirmation with Confirm button",
+        desc: "Customer taps 'Confirm the Order' right inside WhatsApp — the reply lands in your chat dashboard",
+        badge: "Recommended",
+        badgeColor: "#0F766E",
+        badgeBg: "#E6FBF6",
+        isImage: false,
+        isQuickReply: true, // ✅ new flag
+        header: "Confirm Your Order",
+        previewHeader: "Confirm Your Order",
+        body: "Hi {{1}}, thanks for your order! 🙏\n\nSince you chose Cash on Delivery, we'd love a quick confirmation before we start packing.\n\nOrder ID: {{2}}\nAmount: {{3}}\n\nTap below to confirm and we'll get it moving right away.",
+        footer: "Reply STOP to unsubscribe.",
+        vars: ["billing_full_name", "order_number", "total"],
+        previewVars: {
+          "{{1}}": "Raj Kumar",
+          "{{2}}": "1001",
+          "{{3}}": "₹1299.00",
+        },
+        apiName: "order_cod_confirm_sv",
+        exampleValues: ["Raj Kumar", "1001", "₹1299.00"],
+        quickReplyText: "Confirm the Order",
       },
     ],
   },
@@ -580,6 +615,11 @@ function PhonePreview({ template }) {
           </div>
         )}
 
+        {/* ✅ Quick Reply preview block REMOVED from here — it now lives
+            inside the white message bubble below, alongside the
+            isCartRecovery / isShipping button previews, so it's visually
+            consistent with them (see inside the bubble div). */}
+
         <div
           style={{
             background: "#fff",
@@ -605,6 +645,34 @@ function PhonePreview({ template }) {
           <div style={{ fontSize: 8, lineHeight: 1.5, color: "#333" }}>
             {renderBody(template.body, template.previewVars)}
           </div>
+
+          {/* ✅ Quick Reply button preview — now correctly inside the
+              bubble, same pattern as isCartRecovery / isShipping below */}
+          {template.isQuickReply && (
+            <div
+              style={{
+                marginTop: 4,
+                paddingTop: 4,
+                borderTop: "0.5px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                style={{
+                  background: "#ECFDF5",
+                  border: "0.5px solid #6EE7B7",
+                  borderRadius: 4,
+                  padding: "2px 5px",
+                  fontSize: 7,
+                  color: "#047857",
+                  textAlign: "center",
+                  fontWeight: 500,
+                }}
+              >
+                ✅ {template.quickReplyText || "Confirm the Order"}
+              </div>
+            </div>
+          )}
+
           {template.isCartRecovery && (
             <div
               style={{
@@ -1019,6 +1087,19 @@ export default function WooCommerceTemplateGuide() {
               type: "URL",
               text: "Complete Purchase",
               url: checkoutUrl,
+            },
+          ],
+        });
+      }
+
+      // ✅ Quick Reply button for COD confirmation
+      if (tpl.isQuickReply) {
+        components.push({
+          type: "BUTTONS",
+          buttons: [
+            {
+              type: "QUICK_REPLY",
+              text: tpl.quickReplyText || "Confirm the Order",
             },
           ],
         });
@@ -1476,6 +1557,19 @@ export default function WooCommerceTemplateGuide() {
                       <div className="bg-slate-50 rounded-lg px-3 py-2.5">
                         <p className="text-xs text-emerald-700 font-medium">
                           Complete Purchase → (URL button to checkout)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {currentTpl.isQuickReply && (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
+                        Button
+                      </p>
+                      <div className="bg-slate-50 rounded-lg px-3 py-2.5">
+                        <p className="text-xs text-teal-700 font-medium">
+                          {currentTpl.quickReplyText} — Quick Reply, answered
+                          inside WhatsApp (no link, no page)
                         </p>
                       </div>
                     </div>
