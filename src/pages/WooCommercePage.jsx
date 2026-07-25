@@ -43,6 +43,11 @@ const EVENT_CONFIG = {
   "order.cancelled": { label: "Order cancelled", emoji: "❌", color: "red" },
   "order.refunded": { label: "Order refunded", emoji: "💰", color: "gray" },
   "order.delayed": { label: "Order delayed", emoji: "⏳", color: "orange" },
+  "order.cod_confirmation": {
+    label: "COD confirmation",
+    emoji: "💵",
+    color: "cod",
+  },
 };
 
 const TAG_STYLES = {
@@ -52,6 +57,7 @@ const TAG_STYLES = {
   red: "bg-red-50 text-red-700",
   gray: "bg-gray-100 text-gray-600",
   orange: "bg-orange-50 text-orange-700",
+  cod: "bg-teal-50 text-teal-700", // ✅ new
 };
 
 const isImageTemplate = (t) => {
@@ -111,6 +117,12 @@ const EVENT_VARIABLE_MAPS = {
     2: "order_number",
     3: "total",
     4: "item_names",
+  },
+
+  "order.cod_confirmation": {
+    1: "billing_full_name",
+    2: "order_number",
+    3: "total",
   },
   "order.processing": {
     1: "billing_full_name",
@@ -1070,9 +1082,21 @@ export default function WooCommercePage() {
                                 ? ""
                                 : "";
 
-                      // Error message — friendly version
-                      const rawError =
-                        l.wa_error_message || l.error_message || "";
+                      // ✅ Only treat as an error if status actually indicates failure
+                      const isRealFailure =
+                        displayStatus === "failed" ||
+                        displayStatus === "skipped";
+
+                      // ✅ Detect if this was a successful reconciliation recovery (not a failure)
+                      const isReconciliationRecovery =
+                        !isRealFailure &&
+                        l.error_message?.includes(
+                          "Recovered via reconciliation",
+                        );
+
+                      const rawError = isRealFailure
+                        ? l.wa_error_message || l.error_message || ""
+                        : "";
                       const friendlyError = rawError
                         ? rawError.includes("131049")
                           ? "Message blocked — customer hasn't messaged this number before"
@@ -1082,11 +1106,16 @@ export default function WooCommercePage() {
                               ? "Template variable mismatch — wrong number of variables"
                               : rawError.includes("132012")
                                 ? "Template format mismatch — check image/button config"
-                                : rawError.includes("100")
-                                  ? "Invalid request — check template configuration"
-                                  : rawError.length > 120
-                                    ? rawError.slice(0, 120) + "..."
-                                    : rawError
+                                : rawError.includes("ETIMEDOUT")
+                                  ? "Connection to WhatsApp timed out — network issue"
+                                  : rawError.includes("ECONNRESET") ||
+                                      rawError.includes("socket hang up")
+                                    ? "Connection dropped mid-request — network issue"
+                                    : rawError.includes("100")
+                                      ? "Invalid request — check template configuration"
+                                      : rawError.length > 120
+                                        ? rawError.slice(0, 120) + "..."
+                                        : rawError
                         : null;
 
                       return (
@@ -1126,6 +1155,7 @@ export default function WooCommercePage() {
                                 {statusEmoji} {displayStatus}
                               </span>
                               {(friendlyError ||
+                                isReconciliationRecovery ||
                                 l.read_at ||
                                 l.delivered_at) && (
                                 <ChevronDown
@@ -1174,7 +1204,7 @@ export default function WooCommercePage() {
                                 </div>
                               )}
 
-                              {/* Error message */}
+                              {/* Error message — only for real failures */}
                               {friendlyError && (
                                 <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg">
                                   <p className="text-xs font-medium text-red-700 mb-0.5">
@@ -1188,6 +1218,21 @@ export default function WooCommercePage() {
                                       Error code: {l.wa_error_code}
                                     </p>
                                   )}
+                                </div>
+                              )}
+
+                              {/* ✅ Reconciliation recovery info — informational, not an error */}
+                              {isReconciliationRecovery && (
+                                <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-lg">
+                                  <p className="text-xs font-medium text-blue-700 mb-0.5">
+                                    🔁 Recovered automatically
+                                  </p>
+                                  <p className="text-xs text-blue-600 leading-relaxed">
+                                    The original WooCommerce notification didn't
+                                    arrive in time, so our backup system
+                                    detected and sent this message successfully.
+                                    The customer received it normally.
+                                  </p>
                                 </div>
                               )}
 
