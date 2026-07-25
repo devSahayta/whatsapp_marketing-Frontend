@@ -10,6 +10,16 @@ export const fetchTemplatesForBuilder = (userId) =>
 export const fetchTemplatesComplete = (userId) =>
   api.get(`/api/watemplates/all?user_id=${userId}`);
 
+export const fetchTemplatesPaginated = (
+  userId,
+  { page = 1, limit = 10, search = "", status = "ALL" } = {},
+) => {
+  const params = new URLSearchParams({ user_id: userId, page, limit });
+  if (search) params.set("search", search);
+  if (status && status !== "ALL") params.set("status", status);
+  return api.get(`/api/watemplates/list?${params.toString()}`);
+};
+
 export const fetchMetaTemplatesById = (templateId, userId) =>
   api.get(
     `/api/watemplates/meta/template?templateId=${templateId}&user_id=${userId}`,

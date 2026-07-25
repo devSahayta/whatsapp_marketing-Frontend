@@ -21,7 +21,8 @@ import {
 import useAuthUser from "../hooks/useAuthUser";
 import {
   deleteMetaTemplate,
-  fetchTemplatesComplete,
+  // fetchTemplatesComplete,
+  fetchTemplatesPaginated,
   uploadTemplateMedia,
 } from "../api/templates";
 import { uploadMedia } from "../api/media";
@@ -597,56 +598,6 @@ function TemplateCard({
             {previewText || "No body content added to this template yet."}
           </p>
         </div>
-
-        {/* <div
-          className="relative shrink-0"
-          ref={isMenuOpen ? attachMenuRef : null}
-        >
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onMenuToggle();
-            }}
-            className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
-            aria-label="Template actions"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </button>
-
-          {isMenuOpen && (
-            <div className="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-              <button
-                type="button"
-                onClick={onPreview}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
-              >
-                <Eye className="h-4 w-4" />
-                Preview
-              </button>
-
-              {template.status === "APPROVED" && (
-                <button
-                  type="button"
-                  onClick={() => onSend(template.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-sky-700 transition hover:bg-sky-50"
-                >
-                  <Send className="h-4 w-4" />
-                  Send
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => onDelete(template)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-rose-700 transition hover:bg-rose-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </button>
-            </div>
-          )}
-        </div> */}
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -728,17 +679,45 @@ export default function TemplateList() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
+  const LIMIT = 10;
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+  const [stats, setStats] = useState({ total: 0, approved: 0, pending: 0 });
+
   const menuRef = useRef(null);
+
+  // debounce the search box so we don't hit the API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // any time the search term or status filter changes, go back to page 1
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
 
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const res = await fetchTemplatesComplete(userId);
-      setTemplates(res?.data || []);
+      // const res = await fetchTemplatesComplete(userId);
+      // setTemplates(res?.data || []);
+
+      const res = await fetchTemplatesPaginated(userId, {
+        page,
+        limit: LIMIT,
+        search: debouncedSearch,
+        status: statusFilter,
+      });
+      const body = res?.data || {};
+      setTemplates(body.data || []);
+      setPagination(body.pagination || { total: 0, totalPages: 1 });
+      setStats(body.stats || { total: 0, approved: 0, pending: 0 });
     } catch (error) {
       console.error(error);
       showError("Failed to load templates");
@@ -751,7 +730,7 @@ export default function TemplateList() {
     if (userId) {
       loadTemplates();
     }
-  }, [userId]);
+  }, [userId, page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -783,7 +762,13 @@ export default function TemplateList() {
         setSelectedTemplate(null);
       }
 
-      loadTemplates();
+      // loadTemplates();
+
+      if (templates.length === 1 && page > 1) {
+        setPage((p) => p - 1); // triggers reload via the effect above
+      } else {
+        loadTemplates();
+      }
     } catch (error) {
       dismissToast(toastId);
       console.error(error);
@@ -791,27 +776,27 @@ export default function TemplateList() {
     }
   };
 
-  const approvedTemplates = templates.filter(
-    (template) => template.status === "APPROVED",
-  ).length;
-  const pendingTemplates = templates.filter(
-    (template) => template.status === "PENDING",
-  ).length;
+  // const approvedTemplates = templates.filter(
+  //   (template) => template.status === "APPROVED",
+  // ).length;
+  // const pendingTemplates = templates.filter(
+  //   (template) => template.status === "PENDING",
+  // ).length;
 
-  const filteredTemplates = templates.filter((template) => {
-    const query = search.trim().toLowerCase();
-    const bodyText = getBodyText(template).toLowerCase();
-    const matchesSearch =
-      !query ||
-      template.name?.toLowerCase().includes(query) ||
-      template.category?.toLowerCase().includes(query) ||
-      template.language?.toLowerCase().includes(query) ||
-      bodyText.includes(query);
-    const matchesStatus =
-      statusFilter === "ALL" ? true : template.status === statusFilter;
+  // const filteredTemplates = templates.filter((template) => {
+  //   const query = search.trim().toLowerCase();
+  //   const bodyText = getBodyText(template).toLowerCase();
+  //   const matchesSearch =
+  //     !query ||
+  //     template.name?.toLowerCase().includes(query) ||
+  //     template.category?.toLowerCase().includes(query) ||
+  //     template.language?.toLowerCase().includes(query) ||
+  //     bodyText.includes(query);
+  //   const matchesStatus =
+  //     statusFilter === "ALL" ? true : template.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+  //   return matchesSearch && matchesStatus;
+  // });
 
   return (
     <>
@@ -857,7 +842,8 @@ export default function TemplateList() {
                 <div className="rounded-[1.75rem] bg-slate-900 p-5 text-white shadow-lg">
                   <p className="text-sm text-white">Total templates</p>
                   <p className="mt-3 text-4xl font-semibold text-white">
-                    {templates.length}
+                    {/* {templates.length} */}
+                    {stats.total}
                   </p>
                 </div>
                 <div className="rounded-[1.75rem] bg-emerald-50 p-5 ring-1 ring-emerald-100">
@@ -868,7 +854,8 @@ export default function TemplateList() {
                     </p>
                   </div>
                   <p className="mt-3 text-3xl font-semibold text-slate-900">
-                    {approvedTemplates}
+                    {/* {approvedTemplates} */}
+                    {stats.approved}
                   </p>
                 </div>
                 <div className="rounded-[1.75rem] bg-amber-50 p-5 ring-1 ring-amber-100">
@@ -879,7 +866,8 @@ export default function TemplateList() {
                     </p>
                   </div>
                   <p className="mt-3 text-3xl font-semibold text-slate-900">
-                    {pendingTemplates}
+                    {/* {pendingTemplates} */}
+                    {stats.pending}
                   </p>
                 </div>
               </div>
@@ -927,7 +915,7 @@ export default function TemplateList() {
             </div>
           )}
 
-          {!loading && filteredTemplates.length === 0 && (
+          {!loading && templates.length === 0 && (
             <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/80 px-6 py-16 text-center shadow-sm">
               <div className="mx-auto max-w-md">
                 <h3 className="text-xl font-semibold text-slate-900">
@@ -941,9 +929,9 @@ export default function TemplateList() {
             </div>
           )}
 
-          {!loading && filteredTemplates.length > 0 && (
+          {!loading && templates.length > 0 && (
             <section className="grid gap-5 grid-cols-1 sm:grid-cols-2">
-              {filteredTemplates.map((template) => (
+              {templates.map((template) => (
                 <TemplateCard
                   key={template.wt_id}
                   template={template}
@@ -966,6 +954,38 @@ export default function TemplateList() {
                 />
               ))}
             </section>
+          )}
+
+          {!loading && templates.length > 0 && pagination.totalPages > 1 && (
+            <div className="flex flex-col items-center justify-between gap-3 rounded-[1.75rem] border border-white/70 bg-white/90 px-5 py-4 shadow-sm sm:flex-row">
+              <p className="text-sm text-slate-500">
+                Page {page} of {pagination.totalPages} · {pagination.total}{" "}
+                templates
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page <= 1}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="min-w-[3rem] text-center text-sm font-semibold text-slate-900">
+                  {page} / {pagination.totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((p) => Math.min(p + 1, pagination.totalPages))
+                  }
+                  disabled={page >= pagination.totalPages}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
