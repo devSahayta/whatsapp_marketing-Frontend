@@ -12,9 +12,12 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
   const messagesEndRef = useRef(null);
   const { getToken } = useKindeAuth();
   const lastTsRef = useRef(null);
+  const messagesRef = useRef([]);
   const [sendBlocked, setSendBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [windowBlocked, setWindowBlocked] = useState(false);
+  const [windowReason, setWindowReason] = useState(null);
 
   /* ─── helpers ────────────────────────────────────────── */
   const isNearBottom = () => {
@@ -113,10 +116,36 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
     scrollBottom();
   }, [messages.length]);
 
+  /* ─── 24-hour window check ───────────────────────────── */
+  useEffect(() => {
+    messagesRef.current = messages;
+    const { blocked, reason } = computeWindowStatus(messages);
+    setWindowBlocked(blocked);
+    setWindowReason(reason);
+  }, [messages]);
+
+  useEffect(() => {
+    const recheck = () => {
+      const { blocked, reason } = computeWindowStatus(messagesRef.current);
+      setWindowBlocked(blocked);
+      setWindowReason(reason);
+    };
+    const timer = setInterval(recheck, 60000);
+    return () => clearInterval(timer);
+  }, [chatId]);
+
   /* ─── send ───────────────────────────────────────────── */
   const send = async () => {
     const msg = inputText.trim();
     if (!msg || !chatId) return;
+    if (windowBlocked) {
+      showError(
+        windowReason === "NO_USER_REPLY"
+          ? "User hasn't replied yet — send a template first"
+          : "24-hour window expired — send a template",
+      );
+      return;
+    }
     try {
       setIsSending(true);
       const token = await getToken();
@@ -165,6 +194,23 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
   // Bot messages sit LEFT (same side as customer — they're automated, not manual)
   // Admin messages sit RIGHT
   const isRight = (senderType) => st(senderType) === "admin";
+
+  // 24-hour session window: admin can only free-text reply within 24h of the
+  // user's last inbound message (Meta's customer service window rule).
+  const computeWindowStatus = (msgs) => {
+    let lastUserMsg = null;
+    for (let i = (msgs || []).length - 1; i >= 0; i--) {
+      if (st(msgs[i].sender_type) === "user") {
+        lastUserMsg = msgs[i];
+        break;
+      }
+    }
+    if (!lastUserMsg) return { blocked: true, reason: "NO_USER_REPLY" };
+    const hoursSince =
+      (Date.now() - pts(lastUserMsg.created_at).getTime()) / 3600000;
+    if (hoursSince >= 24) return { blocked: true, reason: "WINDOW_EXPIRED" };
+    return { blocked: false, reason: null };
+  };
 
   const senderLabel = (t) => {
     switch (st(t)) {
@@ -526,12 +572,15 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
   };
 
   /* ─── placeholder text ───────────────────────────────── */
+  const effectiveBlocked = sendBlocked || windowBlocked;
+  const effectiveReason = sendBlocked ? blockReason : windowReason;
+
   const placeholder =
-    blockReason === "NO_USER_REPLY"
+    effectiveReason === "NO_USER_REPLY"
       ? "User hasn't replied — send a template first"
-      : blockReason === "WINDOW_EXPIRED"
+      : effectiveReason === "WINDOW_EXPIRED"
         ? "24-hour window expired — send a template"
-        : blockReason === "TEMPLATE_ONLY_WAITING_FOR_USER"
+        : effectiveReason === "TEMPLATE_ONLY_WAITING_FOR_USER"
           ? "Waiting for user reply…"
           : "Type a message…";
 
@@ -630,7 +679,7 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
 
       {/* ── Input ─────────────────────────────────────── */}
       <div className="wa-input-area">
-        {sendBlocked ? (
+        {effectiveBlocked ? (
           <div className="wa-input-blocked">🔒 {placeholder}</div>
         ) : (
           <input
@@ -643,7 +692,7 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
 
         <button
           className="wa-send-btn"
-          disabled={isSending || sendBlocked || !inputText.trim()}
+          disabled={isSending || effectiveBlocked || !inputText.trim()}
           onClick={send}
           aria-label="Send"
         >

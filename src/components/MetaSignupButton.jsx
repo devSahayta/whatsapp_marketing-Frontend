@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import useFacebookSDK from "../hooks/useFacebookSDK";
 import {
@@ -13,14 +13,53 @@ const MetaSignupButton = ({ userId, onSuccess }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
 
+  // Populated by the postMessage listener below while the Meta popup is open;
+  // read by the FB.login callback once the user finishes (ref survives across
+  // the popup's postMessage events without forcing re-renders).
+  const signupEventRef = useRef(null);
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (
+        event.origin !== "https://www.facebook.com" &&
+        event.origin !== "https://web.facebook.com"
+      ) {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "WA_EMBEDDED_SIGNUP") {
+          console.log("Embedded signup event:", data.event, data.data);
+          // e.g. data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING' for coexistence
+          signupEventRef.current = {
+            event: data.event,
+            wabaId: data.data?.waba_id,
+            phoneNumberId: data.data?.phone_number_id,
+          };
+        }
+      } catch (e) {
+        // Non-JSON postMessage from another source — ignore.
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   // Separate async function — NOT passed directly to FB.login
-  const sendCodeToBackend = async (code) => {
+  const sendCodeToBackend = async (code, signupEventData) => {
     const loadingToastId = showLoading("Connecting your WhatsApp account...");
     try {
       const res = await fetch(`${backendURL}/api/waccount/embedded-signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, user_id: userId }),
+        body: JSON.stringify({
+          code,
+          user_id: userId,
+          signup_event: signupEventData?.event,
+          waba_id: signupEventData?.wabaId,
+          phone_number_id: signupEventData?.phoneNumberId,
+        }),
       });
 
       const data = await res.json();
@@ -65,8 +104,10 @@ const MetaSignupButton = ({ userId, onSuccess }) => {
           return;
         }
 
-        // Call the async function separately
-        sendCodeToBackend(code);
+        // Call the async function separately, passing along whatever the
+        // postMessage listener captured (e.g. coexistence vs full-migration).
+        sendCodeToBackend(code, signupEventRef.current);
+        signupEventRef.current = null;
       },
       {
         config_id: import.meta.env.VITE_META_CONFIG_ID,
@@ -74,7 +115,7 @@ const MetaSignupButton = ({ userId, onSuccess }) => {
         override_default_response_type: true,
         extras: {
           setup: {},
-          featureType: "",
+          featureType: "whatsapp_business_app_onboarding",
           sessionInfoVersion: "3",
         },
       },
