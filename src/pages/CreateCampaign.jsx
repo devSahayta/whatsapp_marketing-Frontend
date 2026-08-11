@@ -33,8 +33,18 @@ import { convertISTtoUTC, isFutureDateTime } from "../utils/timezoneHelper";
 // ✅ NEW: Import MediaGallery component
 import MediaGallery from "../components/campaigns/MediaGallery";
 
+import CarouselPreview from "../components/campaigns/CarouselPreview";
+
 import WarmupErrorModal from "../components/warm-up/WarmupErrorModal";
 import "../styles/warmup-error-modal.css";
+
+function extractVariableNumbers(text) {
+  if (!text) return [];
+  const matches = [...text.matchAll(/\{\{(\d+)\}\}/g)];
+  return [...new Set(matches.map((m) => m[1]))].sort(
+    (a, b) => Number(a) - Number(b),
+  );
+}
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
@@ -59,6 +69,12 @@ const CreateCampaign = () => {
 
   // ✅ ADD THIS LINE:
   const [warmupError, setWarmupError] = useState(null);
+
+  const [carouselButtonValues, setCarouselButtonValues] = useState({});
+
+  const [bodyVariableValues, setBodyVariableValues] = useState({});
+
+  const [useAutoName, setUseAutoName] = useState(true);
 
   // WhatsApp account
   const [whatsappAccount, setWhatsappAccount] = useState(null);
@@ -137,14 +153,12 @@ const CreateCampaign = () => {
     }
   };
 
-  // Function to get template preview
   const getTemplatePreview = () => {
     if (!formData.wt_id) return null;
 
     const template = templates.find((t) => t.wt_id === formData.wt_id);
     if (!template) return null;
 
-    // Parse components
     let components = template.components;
     if (typeof components === "string") {
       try {
@@ -154,7 +168,6 @@ const CreateCampaign = () => {
       }
     }
 
-    // Parse preview (for template preview image)
     let preview = template.preview;
     if (typeof preview === "string") {
       try {
@@ -164,16 +177,46 @@ const CreateCampaign = () => {
       }
     }
 
+    const isCarousel = template.is_carousel === true;
+
+    if (isCarousel) {
+      const carouselComp = components.find((c) => c.type === "CAROUSEL");
+      const bodyComp = components.find((c) => c.type === "BODY");
+      const previewCarouselComp = preview?.components?.find(
+        (c) => c.type === "CAROUSEL",
+      );
+
+      const cards = (carouselComp?.cards || []).map((card, i) => {
+        const headerDef = card.components.find((c) => c.type === "HEADER");
+        const bodyDef = card.components.find((c) => c.type === "BODY");
+        const buttonsDef = card.components.find((c) => c.type === "BUTTONS");
+        const previewCard = previewCarouselComp?.cards?.[i];
+        const previewHeaderUrl = previewCard?.components?.find(
+          (c) => c.type === "HEADER",
+        )?.example?.header_handle?.[0];
+
+        return {
+          card_index: i,
+          header_format: headerDef?.format,
+          preview_image_url: previewHeaderUrl || null,
+          body_text: bodyDef?.text || null,
+          buttons: buttonsDef?.buttons || [],
+        };
+      });
+
+      return { isCarousel: true, body: bodyComp, cards, hasMedia: false };
+    }
+
     const headerComp = components.find((c) => c.type === "HEADER");
     const bodyComp = components.find((c) => c.type === "BODY");
     const buttonsComp = components.find((c) => c.type === "BUTTONS");
 
-    // Get template preview URL (the image used when creating template)
     const templatePreviewUrl = preview?.components?.find(
       (c) => c.type === "HEADER",
     )?.example?.header_handle?.[0];
 
     return {
+      isCarousel: false,
       header: headerComp,
       body: bodyComp,
       buttons: buttonsComp,
@@ -181,7 +224,7 @@ const CreateCampaign = () => {
         headerComp &&
         ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format),
       mediaType: headerComp?.format,
-      templatePreviewUrl, // ← The image from template creation
+      templatePreviewUrl,
       preview,
     };
   };
@@ -410,6 +453,9 @@ const CreateCampaign = () => {
     setUploadedMediaId(null);
     setMediaPreview(null);
     setMediaSelectionMode("upload");
+    setCarouselButtonValues({});
+    setBodyVariableValues({});
+    setUseAutoName(true);
     setError("");
 
     console.log("✅ Template selected, account_id:", template.account_id);
@@ -485,6 +531,39 @@ const CreateCampaign = () => {
           return false;
         }
 
+        const bodyVarNumbers = extractVariableNumbers(
+          templatePreview?.body?.text,
+        );
+        const missingBodyVar = bodyVarNumbers.some((num) => {
+          if (num === "1" && useAutoName) return false; // auto-filled, no input needed
+          return !bodyVariableValues[num] || !bodyVariableValues[num].trim();
+        });
+        if (missingBodyVar) {
+          setError("Please fill in all message variables");
+          return false;
+        }
+
+        if (templatePreview?.isCarousel) {
+          const missingButtonValue = templatePreview.cards.some((card) =>
+            card.buttons.some((btn, btnIndex) => {
+              const needsValue =
+                btn.type === "URL" && btn.url && btn.url.includes("{{");
+              if (!needsValue) return false;
+              const val =
+                carouselButtonValues[String(card.card_index)]?.[
+                  String(btnIndex)
+                ];
+              return !val || !val.trim();
+            }),
+          );
+          if (missingButtonValue) {
+            setError(
+              "Please fill in the link value for each carousel card button",
+            );
+            return false;
+          }
+        }
+
         if (!formData.scheduled_at) {
           setError("Please select date and time");
           return false;
@@ -537,6 +616,52 @@ const CreateCampaign = () => {
       // Convert IST to UTC before sending to backend
       const utcScheduledAt = convertISTtoUTC(formData.scheduled_at);
 
+      const templatePreviewForSubmit = getTemplatePreview();
+      const bodyText = templatePreviewForSubmit?.body?.text;
+      const bodyVarNumbers = extractVariableNumbers(bodyText);
+
+      const bodyVariablesPayload = {};
+      bodyVarNumbers.forEach((num) => {
+        if (num === "1" && useAutoName) {
+          bodyVariablesPayload[num] = "{{contact_name}}";
+        } else {
+          bodyVariablesPayload[num] = bodyVariableValues[num] || "";
+        }
+      });
+
+      let templateVariablesPayload;
+
+      if (templatePreviewForSubmit?.isCarousel) {
+        const cardsPayload = {};
+        templatePreviewForSubmit.cards.forEach((card) => {
+          const btnValues = {};
+          card.buttons.forEach((btn, btnIndex) => {
+            const needsValue =
+              btn.type === "URL" && btn.url && btn.url.includes("{{");
+            if (needsValue) {
+              const val =
+                carouselButtonValues[String(card.card_index)]?.[
+                  String(btnIndex)
+                ];
+              btnValues[String(btnIndex)] = { value: val || "" };
+            }
+          });
+          if (Object.keys(btnValues).length > 0) {
+            cardsPayload[String(card.card_index)] = { buttons: btnValues };
+          }
+        });
+
+        templateVariablesPayload = {
+          body: bodyVariablesPayload,
+          cards: cardsPayload,
+        };
+      } else {
+        templateVariablesPayload =
+          Object.keys(bodyVariablesPayload).length > 0
+            ? bodyVariablesPayload
+            : formData.template_variables;
+      }
+
       const payload = {
         user_id: user.id,
         campaign_name: formData.campaign_name,
@@ -546,7 +671,7 @@ const CreateCampaign = () => {
         account_id: selectedTemplate?.account_id,
         scheduled_at: utcScheduledAt,
         timezone: "Asia/Kolkata",
-        template_variables: formData.template_variables,
+        template_variables: templateVariablesPayload,
         media_id: uploadedMediaId,
       };
 
@@ -971,8 +1096,83 @@ const CreateCampaign = () => {
                   )}
                 </div>
 
-                {/* Template Preview */}
-                {formData.wt_id && <TemplatePreviewComponent />}
+                {/* Body variables — {{1}} can be auto-name or manual */}
+                {formData.wt_id &&
+                  (() => {
+                    const tp = getTemplatePreview();
+                    const varNumbers = extractVariableNumbers(tp?.body?.text);
+                    if (varNumbers.length === 0) return null;
+                    return (
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-4">
+                        <h3 className="font-semibold text-gray-900">
+                          Message Variables
+                        </h3>
+                        {varNumbers.map((num) => {
+                          if (num === "1") {
+                            return (
+                              <div key={num} className="space-y-2">
+                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={useAutoName}
+                                    onChange={(e) =>
+                                      setUseAutoName(e.target.checked)
+                                    }
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                  />
+                                  Fill {`{{1}}`} automatically with each
+                                  contact's name
+                                </label>
+                                {!useAutoName && (
+                                  <input
+                                    type="text"
+                                    value={bodyVariableValues["1"] || ""}
+                                    onChange={(e) =>
+                                      setBodyVariableValues((prev) => ({
+                                        ...prev,
+                                        1: e.target.value,
+                                      }))
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Value for {{1}}"
+                                  />
+                                )}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={num}>
+                              <label className="block text-xs text-gray-500 mb-1">
+                                {`{{${num}}}`}
+                              </label>
+                              <input
+                                type="text"
+                                value={bodyVariableValues[num] || ""}
+                                onChange={(e) =>
+                                  setBodyVariableValues((prev) => ({
+                                    ...prev,
+                                    [num]: e.target.value,
+                                  }))
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                placeholder={`Value for {{${num}}}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                {/* Carousel card preview — editable button link values */}
+                {formData.wt_id && getTemplatePreview()?.isCarousel && (
+                  <CarouselPreview
+                    preview={getTemplatePreview()}
+                    userId={user.id}
+                    values={carouselButtonValues}
+                    onChange={setCarouselButtonValues}
+                  />
+                )}
 
                 {/* Media Selection - Only show if template has media header */}
                 {formData.wt_id && getTemplatePreview()?.hasMedia && (

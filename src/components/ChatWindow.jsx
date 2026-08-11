@@ -279,6 +279,20 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
     }
   };
 
+  const parseCarouselCards = (c) => {
+    if (!c) return [];
+    try {
+      return typeof c === "string" ? JSON.parse(c) : c;
+    } catch {
+      return [];
+    }
+  };
+
+  const resolveCarouselImage = (url) => {
+    if (!url || !userId) return null;
+    return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy-url?url=${encodeURIComponent(url)}&user_id=${userId}`;
+  };
+
   const dlFile = async (url, name = "file") => {
     try {
       const res = await fetch(url);
@@ -405,6 +419,74 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
           >
             ⬇️
           </span>
+        </div>
+      );
+    }
+
+    if (msg.message_type === "template_carousel") {
+      const cards = parseCarouselCards(msg.carousel_cards);
+      return (
+        <div className="wa-template-message">
+          <div
+            className="wa-message-text"
+            style={{ whiteSpace: "pre-wrap", marginBottom: 8 }}
+          >
+            <ReactMarkdown components={MD}>{msg.message}</ReactMarkdown>
+          </div>
+
+          <div className="wa-carousel-row">
+            {cards.map((card) => {
+              const imgSrc = resolveCarouselImage(card.preview_image_url);
+              return (
+                <div key={card.card_index} className="wa-carousel-card">
+                  <div className="wa-carousel-card-media">
+                    {imgSrc ? (
+                      card.header_format === "VIDEO" ? (
+                        <video
+                          src={imgSrc}
+                          controls
+                          className="wa-carousel-card-img"
+                        />
+                      ) : (
+                        <img
+                          src={imgSrc}
+                          alt=""
+                          className="wa-carousel-card-img"
+                          onClick={() => window.open(imgSrc, "_blank")}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      )
+                    ) : (
+                      <div className="wa-carousel-card-placeholder">🖼️</div>
+                    )}
+                  </div>
+
+                  {card.body_text && (
+                    <div className="wa-carousel-card-body">
+                      {card.body_text}
+                    </div>
+                  )}
+
+                  {card.buttons?.length > 0 && (
+                    <div className="wa-carousel-card-buttons">
+                      {card.buttons.map((b, i) => (
+                        <button key={i} className="wa-template-button">
+                          {b.type === "URL"
+                            ? "🔗 "
+                            : b.type === "PHONE_NUMBER"
+                              ? "📞 "
+                              : ""}
+                          {b.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
     }
