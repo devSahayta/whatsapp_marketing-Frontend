@@ -54,3 +54,6 @@ export const fetchDbTemplates = (userId) =>
 
 export const uploadTemplateMedia = (wtId, body) =>
   api.patch(`/api/watemplates/${wtId}/media-id`, body);
+
+export const uploadCarouselCardMedia = (wtId, body) =>
+  api.patch(`/api/watemplates/${wtId}/carousel-media`, body);

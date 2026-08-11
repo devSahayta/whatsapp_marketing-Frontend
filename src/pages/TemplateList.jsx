@@ -7,6 +7,7 @@ import {
   Eye,
   FileText,
   Image as ImageIcon,
+  Images,
   Languages,
   LayoutTemplate,
   MessageSquareText,
@@ -24,6 +25,7 @@ import {
   // fetchTemplatesComplete,
   fetchTemplatesPaginated,
   uploadTemplateMedia,
+  uploadCarouselCardMedia,
 } from "../api/templates";
 import { uploadMedia } from "../api/media";
 import {
@@ -55,6 +57,33 @@ const getHeaderMediaUrl = (mediaId, userId) => {
   return `${import.meta.env.VITE_BACKEND_URL}/api/watemplates/media-proxy/${mediaId}?user_id=${userId}`;
 };
 
+// ── Carousel helpers ──────────────────────────────────────────────────────
+const getCarouselComponent = (template) =>
+  template?.components?.find((c) => c.type?.toUpperCase() === "CAROUSEL");
+
+const getCardComponent = (card, type) =>
+  card?.components?.find((c) => c.type?.toUpperCase() === type);
+
+const getCardButtons = (card) =>
+  getCardComponent(card, "BUTTONS")?.buttons || [];
+
+const isCarouselTemplate = (template) =>
+  !!template?.is_carousel || !!getCarouselComponent(template);
+
+// Resolve a display URL for a given card's media — same source of truth as
+// normal templates use (media_id -> media-proxy), never Meta's cached
+// preview URL, since that only reflects the media at template-creation time.
+const getCardMediaUrl = (template, cardIndex, userId, overrideMediaId) => {
+  if (overrideMediaId) return getHeaderMediaUrl(overrideMediaId, userId);
+
+  const stored = (template?.carousel_media || []).find(
+    (m) => m.card_index === cardIndex,
+  );
+  if (stored?.media_id) return getHeaderMediaUrl(stored.media_id, userId);
+
+  return null;
+};
+
 const formatTemplateText = (text = "", values = []) => {
   if (!text) return "No body content";
 
@@ -65,11 +94,95 @@ const formatTemplateText = (text = "", values = []) => {
   });
 };
 
-function TemplatePhonePreview({ template, userId, mediaId }) {
+function CarouselCardThumb({
+  template,
+  cardIndex,
+  card,
+  userId,
+  overrideMediaId,
+}) {
+  const header = getCardComponent(card, "HEADER");
+  const buttons = getCardButtons(card);
+  const mediaType = header?.format?.toLowerCase();
+  const mediaUrl = getCardMediaUrl(template, cardIndex, userId, overrideMediaId);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+  }, [overrideMediaId]);
+
+  return (
+    <div className="w-40 flex-shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div className="relative h-28 bg-slate-100">
+        {isLoading && !hasError && mediaUrl && (
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-slate-400">
+            Loading...
+          </div>
+        )}
+        {!mediaUrl || hasError ? (
+          <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
+            Card {cardIndex + 1}
+          </div>
+        ) : mediaType === "video" ? (
+          <video
+            src={mediaUrl}
+            controls
+            className="h-full w-full object-cover"
+            onLoadedData={() => setIsLoading(false)}
+            onError={() => {
+              setIsLoading(false);
+              setHasError(true);
+            }}
+          />
+        ) : (
+          <img
+            src={mediaUrl}
+            alt={`Card ${cardIndex + 1}`}
+            className="h-full w-full object-cover"
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setIsLoading(false);
+              setHasError(true);
+            }}
+          />
+        )}
+      </div>
+      {buttons.length > 0 && (
+        <div className="space-y-1.5 px-2 py-2">
+          {buttons.map((button, index) => (
+            <div
+              key={`${button.text}-${index}`}
+              className="flex items-center justify-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-2 py-1.5 text-[11px] font-medium text-sky-700"
+            >
+              {button.type === "PHONE_NUMBER" || button.type === "URL" ? (
+                <ArrowRight className="h-3 w-3" />
+              ) : (
+                <MessageSquareText className="h-3 w-3" />
+              )}
+              <span className="truncate">{button.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TemplatePhonePreview({
+  template,
+  userId,
+  mediaId,
+  carouselMediaOverrides = {},
+}) {
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
   const footer = getComponent(template, "FOOTER");
   const buttons = getButtons(template);
+  const carousel = getCarouselComponent(template);
+  const isCarousel = isCarouselTemplate(template);
 
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
@@ -87,6 +200,48 @@ function TemplatePhonePreview({ template, userId, mediaId }) {
     setIsMediaLoading(true);
     setMediaError(false);
   }, [template?.wt_id ?? template?.template_id, mediaId]);
+
+  if (isCarousel) {
+    return (
+      <div className="self-start rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
+        <div className="overflow-hidden rounded-[1.6rem] bg-[#e8f5e9]">
+          <div className="flex items-center justify-between bg-[#103529] px-4 py-3 text-white">
+            <div>
+              <p className="text-sm font-semibold">WhatsApp preview</p>
+              <p className="text-xs text-white/70">Carousel template</p>
+            </div>
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          </div>
+
+          <div
+            className="min-h-[28rem] space-y-3 bg-cover bg-center p-4"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(235,252,240,0.94), rgba(235,252,240,0.94)), url('/wa-bg.png')",
+            }}
+          >
+            <div className="ml-auto max-w-[92%] overflow-hidden rounded-[1.4rem] rounded-tr-md bg-white px-4 py-4 text-[15px] leading-6 text-slate-800 shadow-lg">
+              <p className="whitespace-pre-wrap">{bodyText}</p>
+              <p className="text-right text-[11px] text-slate-400">12:07 PM</p>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {(carousel?.cards || []).map((card, index) => (
+                <CarouselCardThumb
+                  key={index}
+                  template={template}
+                  cardIndex={index}
+                  card={card}
+                  userId={userId}
+                  overrideMediaId={carouselMediaOverrides[index]}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="self-start rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl">
@@ -259,6 +414,10 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
   const [localMediaId, setLocalMediaId] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Carousel: per-card pending file + freshly-uploaded media_id overrides
+  const [cardUploads, setCardUploads] = useState({}); // { [card_index]: { file, error, uploading } }
+  const [localCarouselMedia, setLocalCarouselMedia] = useState({}); // { [card_index]: media_id }
+
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
@@ -280,15 +439,21 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
     setLocalMediaId(null);
     setUploadFile(null);
     setFileError(null);
+    setCardUploads({});
+    setLocalCarouselMedia({});
   }, [template?.wt_id]);
 
-  const buttons = getButtons(template);
+  const carousel = getCarouselComponent(template);
+  const isCarousel = isCarouselTemplate(template);
+  const buttons = isCarousel
+    ? getCardButtons(carousel?.cards?.[0])
+    : getButtons(template);
   const header = getHeaderComponent(template);
   const body = getComponent(template, "BODY");
 
-  const hasMediaHeader = ["IMAGE", "VIDEO", "DOCUMENT"].includes(
-    template.header_format,
-  );
+  const hasMediaHeader =
+    !isCarousel &&
+    ["IMAGE", "VIDEO", "DOCUMENT"].includes(template.header_format);
 
   // localMediaId takes precedence so preview refreshes immediately after upload
   const effectiveMediaId = localMediaId ?? template.media_id;
@@ -324,6 +489,71 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
     }
   };
 
+  // ── Carousel: per-card media reupload ──────────────────────────────────
+  const getEffectiveCardMediaId = (cardIndex) => {
+    if (localCarouselMedia[cardIndex] !== undefined)
+      return localCarouselMedia[cardIndex];
+    const stored = (template.carousel_media || []).find(
+      (m) => m.card_index === cardIndex,
+    );
+    return stored?.media_id || null;
+  };
+
+  const onCardFileSelected = (cardIndex, headerFormat, file) => {
+    if (!file) return;
+    const error = validateMediaFile(file, headerFormat);
+    setCardUploads((prev) => ({
+      ...prev,
+      [cardIndex]: { file: error ? null : file, error, uploading: false },
+    }));
+  };
+
+  const cancelCardUpload = (cardIndex) => {
+    setCardUploads((prev) => {
+      const next = { ...prev };
+      delete next[cardIndex];
+      return next;
+    });
+  };
+
+  const handleCardMediaUpload = async (cardIndex, headerFormat) => {
+    const pending = cardUploads[cardIndex];
+    if (!pending?.file || !template.wt_id) return;
+
+    setCardUploads((prev) => ({
+      ...prev,
+      [cardIndex]: { ...prev[cardIndex], uploading: true },
+    }));
+
+    try {
+      const formData = new FormData();
+      formData.append("file", pending.file);
+      formData.append("user_id", userId);
+      const uploadRes = await uploadMedia(formData);
+      const mediaId =
+        uploadRes.data?.saved?.media_id || uploadRes.data?.media?.id;
+      if (!mediaId) throw new Error("No media ID returned");
+
+      await uploadCarouselCardMedia(template.wt_id, {
+        user_id: userId,
+        card_index: cardIndex,
+        media_id: mediaId,
+        header_format: headerFormat,
+      });
+
+      showSuccess(`Card ${cardIndex + 1} media updated`);
+      setLocalCarouselMedia((prev) => ({ ...prev, [cardIndex]: mediaId }));
+      cancelCardUpload(cardIndex);
+      onMediaUpload?.();
+    } catch {
+      showError(`Failed to upload media for card ${cardIndex + 1}`);
+      setCardUploads((prev) => ({
+        ...prev,
+        [cardIndex]: { ...prev[cardIndex], uploading: false },
+      }));
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50">
       <button
@@ -352,6 +582,12 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                 >
                   {template.status}
                 </span>
+                {isCarousel && (
+                  <span className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                    <Images className="h-3 w-3" />
+                    Carousel
+                  </span>
+                )}
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                   {template.category || "Uncategorized"}
                 </span>
@@ -377,6 +613,7 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
             template={template}
             userId={userId}
             mediaId={effectiveMediaId}
+            carouselMediaOverrides={localCarouselMedia}
           />
 
           <div className="space-y-4">
@@ -409,12 +646,21 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                     {template.parameter_format || "-"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Header</span>
-                  <span className="font-medium uppercase text-slate-900">
-                    {header?.format || header?.type || "None"}
-                  </span>
-                </div>
+                {isCarousel ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Cards</span>
+                    <span className="font-medium text-slate-900">
+                      {carousel?.cards?.length || template.card_count || 0}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Header</span>
+                    <span className="font-medium uppercase text-slate-900">
+                      {header?.format || header?.type || "None"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <span>Buttons</span>
                   <span className="font-medium text-slate-900">
@@ -527,6 +773,116 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
               </div>
             )}
 
+            {isCarousel && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Card Media
+                </h3>
+                <p className="mt-2 text-xs text-slate-400">
+                  WhatsApp media expires after 25 days — re-upload a card's
+                  media before sending if it shows as missing.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {(carousel?.cards || []).map((card, index) => {
+                    const cardHeaderFormat =
+                      getCardComponent(card, "HEADER")?.format || "IMAGE";
+                    const effectiveCardMediaId =
+                      getEffectiveCardMediaId(index);
+                    const pending = cardUploads[index];
+
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-slate-700">
+                            Card {index + 1}{" "}
+                            <span className="font-normal text-slate-400">
+                              ({cardHeaderFormat})
+                            </span>
+                          </span>
+                          {!effectiveCardMediaId && (
+                            <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                              <AlertTriangle className="h-3 w-3" />
+                              Needs reupload
+                            </span>
+                          )}
+                        </div>
+
+                        {effectiveCardMediaId && (
+                          <p className="mt-1.5 truncate text-[11px] text-slate-500">
+                            Media ID: {effectiveCardMediaId}
+                          </p>
+                        )}
+
+                        <div className="mt-2.5">
+                          {pending?.file ? (
+                            <div className="space-y-2">
+                              <p className="truncate text-xs text-slate-600">
+                                {pending.file.name}
+                              </p>
+                              {pending.error && (
+                                <div className="flex items-start gap-1.5 rounded-xl bg-rose-50 px-3 py-2">
+                                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                                  <p className="text-xs text-rose-700">
+                                    {pending.error}
+                                  </p>
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCardMediaUpload(index, cardHeaderFormat)
+                                  }
+                                  disabled={pending.uploading || !!pending.error}
+                                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  {pending.uploading ? "Uploading..." : "Upload"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cancelCardUpload(index)}
+                                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-white"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700">
+                              <Upload className="h-4 w-4" />
+                              {effectiveCardMediaId
+                                ? "Replace Media"
+                                : "Upload Media"}
+                              <input
+                                type="file"
+                                accept={
+                                  MEDIA_CONSTRAINTS[cardHeaderFormat]?.accept
+                                }
+                                className="hidden"
+                                onChange={(e) => {
+                                  onCardFileSelected(
+                                    index,
+                                    cardHeaderFormat,
+                                    e.target.files?.[0] ?? null,
+                                  );
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Quick Actions
@@ -535,11 +891,11 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                 {template.status === "APPROVED" && (
                   <button
                     type="button"
-                    onClick={() => onSend(template.template_id)}
+                    onClick={() => onSend(template)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
                   >
                     <Send className="h-4 w-4" />
-                    Send Template
+                    {isCarousel ? "Send via Campaign" : "Send Template"}
                   </button>
                 )}
                 <button
@@ -567,8 +923,12 @@ function TemplateCard({
   onDelete,
   attachMenuRef,
 }) {
+  const carousel = getCarouselComponent(template);
+  const isCarousel = isCarouselTemplate(template);
   const header = getHeaderComponent(template);
-  const buttons = getButtons(template);
+  const buttons = isCarousel
+    ? getCardButtons(carousel?.cards?.[0])
+    : getButtons(template);
   const bodyText = getBodyText(template);
   const previewText =
     bodyText.length > 120 ? `${bodyText.slice(0, 120)}...` : bodyText;
@@ -586,6 +946,12 @@ function TemplateCard({
             >
               {template.status}
             </span>
+            {isCarousel && (
+              <span className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                <Images className="h-3 w-3" />
+                Carousel
+              </span>
+            )}
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
               {template.category || "Uncategorized"}
             </span>
@@ -613,17 +979,21 @@ function TemplateCard({
 
         <div className="rounded-2xl bg-slate-50 px-4 py-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            {header?.format === "IMAGE" ? (
+            {isCarousel ? (
+              <Images className="h-4 w-4" />
+            ) : header?.format === "IMAGE" ? (
               <ImageIcon className="h-4 w-4" />
             ) : header?.format === "VIDEO" ? (
               <Video className="h-4 w-4" />
             ) : (
               <LayoutTemplate className="h-4 w-4" />
             )}
-            Header
+            {isCarousel ? "Carousel" : "Header"}
           </div>
           <p className="mt-2 text-sm font-medium text-slate-900">
-            {header?.format || "None"}
+            {isCarousel
+              ? `${carousel?.cards?.length || template.card_count || 0} cards`
+              : header?.format || "None"}
           </p>
         </div>
 
@@ -651,11 +1021,11 @@ function TemplateCard({
         {template.status === "APPROVED" && (
           <button
             type="button"
-            onClick={() => onSend(template.template_id)}
+            onClick={() => onSend(template)}
             className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
           >
             <Send className="h-4 w-4" />
-            Send
+            {isCarousel ? "Send via Campaign" : "Send"}
           </button>
         )}
 
@@ -829,6 +1199,15 @@ export default function TemplateList() {
 
                   <button
                     type="button"
+                    onClick={() => navigate("/template/create-carousel")}
+                    className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    <Images className="h-4 w-4" />
+                    Create Carousel
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={loadTemplates}
                     disabled={loading}
                     className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
@@ -946,9 +1325,13 @@ export default function TemplateList() {
                     setSelectedTemplate(template);
                     setOpenMenuId(null);
                   }}
-                  onSend={(templateId) => {
+                  onSend={(tmpl) => {
                     setOpenMenuId(null);
-                    navigate(`/templates/send/${templateId}`);
+                    if (isCarouselTemplate(tmpl)) {
+                      navigate("/campaigns");
+                    } else {
+                      navigate(`/templates/send/${tmpl.template_id}`);
+                    }
                   }}
                   onDelete={handleDelete}
                 />
@@ -995,7 +1378,11 @@ export default function TemplateList() {
           template={selectedTemplate}
           userId={userId}
           onClose={() => setSelectedTemplate(null)}
-          onSend={(templateId) => navigate(`/templates/send/${templateId}`)}
+          onSend={(tmpl) =>
+            isCarouselTemplate(tmpl)
+              ? navigate("/campaigns")
+              : navigate(`/templates/send/${tmpl.template_id}`)
+          }
           onMediaUpload={loadTemplates}
         />
       )}

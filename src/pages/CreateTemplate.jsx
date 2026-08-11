@@ -342,6 +342,7 @@ export default function CreateTemplate() {
       type: "URL",
       text: "Visit",
       url: "",
+      example: "",
     };
     setButtonItems((p) => [...p, item]);
     setComponents((prev) =>
@@ -615,6 +616,11 @@ export default function CreateTemplate() {
           if (!btn.url || !/^https?:\/\//.test(btn.url)) {
             errors.buttons = "URL button must have a valid https:// URL";
           }
+          const hasVariable = /{{\s*1\s*}}/.test(btn.url || "");
+          if (hasVariable && !btn.example?.trim()) {
+            errors.buttons =
+              "Provide an example value for the URL button's {{1}} variable";
+          }
         }
         if (btn.type === "PHONE_NUMBER") {
           if (!btn.phone || !/^\+?[0-9]{6,15}$/.test(btn.phone)) {
@@ -673,7 +679,10 @@ export default function CreateTemplate() {
             return { type: "QUICK_REPLY", text: b.text };
           } else if (b.type === "URL") {
             // Some templates expect "type":"URL", "text": "...", "url":"..."
-            return { type: "URL", text: b.text, url: b.url };
+            const hasVariable = /{{\s*1\s*}}/.test(b.url || "");
+            return hasVariable
+              ? { type: "URL", text: b.text, url: b.url, example: [b.example || ""] }
+              : { type: "URL", text: b.text, url: b.url };
           } else if (b.type === "PHONE_NUMBER") {
             return { type: "PHONE_NUMBER", text: b.text, phone: b.phone };
           }
@@ -1491,17 +1500,39 @@ export default function CreateTemplate() {
                                       }
                                     />
                                     {b.type === "URL" && (
-                                      <input
-                                        type="text"
-                                        className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all placeholder-gray-300"
-                                        placeholder="https://yourwebsite.com"
-                                        value={b.url || ""}
-                                        onChange={(e) =>
-                                          updateButtonItem(b.id, {
-                                            url: e.target.value,
-                                          })
-                                        }
-                                      />
+                                      <div className="space-y-2">
+                                        <input
+                                          type="text"
+                                          className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all placeholder-gray-300"
+                                          placeholder="https://yourwebsite.com/p/{{1}}"
+                                          value={b.url || ""}
+                                          onChange={(e) =>
+                                            updateButtonItem(b.id, {
+                                              url: e.target.value,
+                                            })
+                                          }
+                                        />
+                                        <p className="text-[11px] text-gray-400">
+                                          Optional: end the URL with{" "}
+                                          <code className="bg-gray-100 px-1 rounded">
+                                            {"{{1}}"}
+                                          </code>{" "}
+                                          to make it dynamic per send.
+                                        </p>
+                                        {/{{\s*1\s*}}/.test(b.url || "") && (
+                                          <input
+                                            type="text"
+                                            className="w-full border border-amber-200 bg-amber-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-400 transition-all placeholder-amber-300"
+                                            placeholder="Example value for {{1}}, e.g. product-slug"
+                                            value={b.example || ""}
+                                            onChange={(e) =>
+                                              updateButtonItem(b.id, {
+                                                example: e.target.value,
+                                              })
+                                            }
+                                          />
+                                        )}
+                                      </div>
                                     )}
                                     {b.type === "PHONE_NUMBER" && (
                                       <input

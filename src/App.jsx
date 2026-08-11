@@ -20,6 +20,7 @@ import DocumentViewer from "./components/DocumentViewer";
 import ChatPage from "./pages/ChatPage";
 import TemplateList from "./pages/TemplateList";
 import CreateTemplate from "./pages/CreateTemplate";
+import CreateCarouselTemplate from "./pages/CreateCarouselTemplate";
 import SendTemplate from "./pages/SendTemplate";
 // import MediaList from "./pages/MediaList";
 import WAccountPage from "./pages/WAccountPage";
@@ -281,6 +282,16 @@ function AppContent() {
               <PrivateSubscribedRoute>
                 <WhatsappAccountRoute>
                   <CreateTemplate />
+                </WhatsappAccountRoute>
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/template/create-carousel"
+            element={
+              <PrivateSubscribedRoute>
+                <WhatsappAccountRoute>
+                  <CreateCarouselTemplate />
                 </WhatsappAccountRoute>
               </PrivateSubscribedRoute>
             }
