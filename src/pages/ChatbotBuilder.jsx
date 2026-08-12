@@ -158,7 +158,11 @@ function BuilderCanvas({ flowId }) {
 
             const merged = (metaRes.data || [])
               .filter((t) => t.status === "APPROVED")
-              .map((t) => t.preview);
+              .map((t) => ({
+                ...t.preview,
+                is_carousel: t.is_carousel,
+                carousel_media: t.carousel_media,
+              }));
             setTemplates(merged);
           } catch {
             // templates are optional — don't block the builder
