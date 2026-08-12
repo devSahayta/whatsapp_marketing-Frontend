@@ -80,6 +80,18 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
+function extractCarouselCards(components) {
+  const carouselComp = components?.find((c) => c.type === "CAROUSEL");
+  if (!carouselComp?.cards) return [];
+  return carouselComp.cards.map((card, i) => {
+    const buttonsDef = card.components.find((c) => c.type === "BUTTONS");
+    return {
+      card_index: i,
+      buttons: buttonsDef?.buttons || [],
+    };
+  });
+}
+
 function KeywordsField({ keywords = [], onChange }) {
   const [input, setInput] = useState("");
 
@@ -204,8 +216,10 @@ function CompactMediaList({ accountId, onSelect, selectedMediaId, mediaType }) {
 
   const typeChip = (mime) => {
     if (!mime) return { label: "FILE", color: "#64748b", bg: "#f1f5f9" };
-    if (mime.startsWith("image/")) return { label: "IMG", color: "#0369a1", bg: "#dbeafe" };
-    if (mime.startsWith("video/")) return { label: "VID", color: "#7c3aed", bg: "#ede9fe" };
+    if (mime.startsWith("image/"))
+      return { label: "IMG", color: "#0369a1", bg: "#dbeafe" };
+    if (mime.startsWith("video/"))
+      return { label: "VID", color: "#7c3aed", bg: "#ede9fe" };
     return { label: "DOC", color: "#166534", bg: "#dcfce7" };
   };
 
@@ -222,7 +236,10 @@ function CompactMediaList({ accountId, onSelect, selectedMediaId, mediaType }) {
         <Loader2
           size={16}
           color="#94a3b8"
-          style={{ animation: "spin 1s linear infinite", display: "inline-block" }}
+          style={{
+            animation: "spin 1s linear infinite",
+            display: "inline-block",
+          }}
         />
         <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
           Loading…
@@ -234,7 +251,9 @@ function CompactMediaList({ accountId, onSelect, selectedMediaId, mediaType }) {
   if (error) {
     return (
       <div style={{ padding: "12px 0", textAlign: "center" }}>
-        <p style={{ margin: "0 0 6px", fontSize: 11, color: "#dc2626" }}>{error}</p>
+        <p style={{ margin: "0 0 6px", fontSize: 11, color: "#dc2626" }}>
+          {error}
+        </p>
         <button
           onClick={load}
           style={{
@@ -372,9 +391,15 @@ function CompactMediaList({ accountId, onSelect, selectedMediaId, mediaType }) {
                     {media.file_name}
                   </p>
                   <p style={{ margin: 0, fontSize: 10, color: "#94a3b8" }}>
-                    {[fmtSize(media.size_bytes), media.uploaded_at
-                      ? new Date(media.uploaded_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
-                      : null]
+                    {[
+                      fmtSize(media.size_bytes),
+                      media.uploaded_at
+                        ? new Date(media.uploaded_at).toLocaleDateString(
+                            "en-IN",
+                            { day: "2-digit", month: "short" },
+                          )
+                        : null,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
@@ -394,7 +419,14 @@ function CompactMediaList({ accountId, onSelect, selectedMediaId, mediaType }) {
                       flexShrink: 0,
                     }}
                   >
-                    <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1 }}>
+                    <span
+                      style={{
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}
+                    >
                       ✓
                     </span>
                   </div>
@@ -511,7 +543,9 @@ function MediaPickerField({ config, onChange, mediaType, accountId, userId }) {
             ✓ {config.media_name || config.media_id}
           </span>
           <button
-            onClick={() => onChange({ ...config, media_id: "", media_name: "" })}
+            onClick={() =>
+              onChange({ ...config, media_id: "", media_name: "" })
+            }
             style={{
               background: "none",
               border: "none",
@@ -681,7 +715,13 @@ function MediaPickerField({ config, onChange, mediaType, accountId, userId }) {
 }
 
 // ── Schedule Message config editor ────────────────────────────────────────────
-function ScheduleMessageEditor({ config, onChange, templates = [], userId, accountId }) {
+function ScheduleMessageEditor({
+  config,
+  onChange,
+  templates = [],
+  userId,
+  accountId,
+}) {
   const update = (key, value) => onChange({ ...config, [key]: value });
 
   const extractVars = (components) => {
@@ -797,13 +837,25 @@ function ScheduleMessageEditor({ config, onChange, templates = [], userId, accou
       {variables.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <label style={labelStyle}>VARIABLE MAPPING</label>
-          <p style={{ margin: "0 0 8px", fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>
+          <p
+            style={{
+              margin: "0 0 8px",
+              fontSize: 10,
+              color: "#94a3b8",
+              lineHeight: 1.5,
+            }}
+          >
             Map each {"{{n}}"} to a session variable
           </p>
           {variables.map((pos) => (
             <div
               key={pos}
-              style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 8,
+              }}
             >
               <span
                 style={{
@@ -879,7 +931,14 @@ function ScheduleMessageEditor({ config, onChange, templates = [], userId, accou
             </option>
           ))}
         </select>
-        <p style={{ margin: "4px 0 0", fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>
+        <p
+          style={{
+            margin: "4px 0 0",
+            fontSize: 10,
+            color: "#94a3b8",
+            lineHeight: 1.5,
+          }}
+        >
           Scheduled relative to when this node is reached. e.g. node reached at
           6 pm + 30 min delay → sends at 6:30 pm.
         </p>
@@ -905,7 +964,9 @@ function ScheduleMessageEditor({ config, onChange, templates = [], userId, accou
           lineHeight: 1.7,
         }}
       >
-        <p style={{ margin: "0 0 4px", fontWeight: 700 }}>How this node works</p>
+        <p style={{ margin: "0 0 4px", fontWeight: 700 }}>
+          How this node works
+        </p>
         <ul style={{ margin: 0, paddingLeft: 14 }}>
           <li>Creates a scheduled message when the flow reaches this node</li>
           <li>The template is sent to the contact at the scheduled time</li>
@@ -1237,7 +1298,8 @@ function ConfigEditor({
         (c) => c.type === "BUTTONS",
       );
       const isMediaTemplate =
-        headerComp && ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format);
+        headerComp &&
+        ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format);
 
       return (
         <>
@@ -1260,6 +1322,7 @@ function ConfigEditor({
                       template_name: "",
                       template_id: "",
                       template_variable_map: {},
+                      carousel_variable_map: {},
                       header_format: "",
                       media_id: "",
                       media_name: "",
@@ -1271,6 +1334,7 @@ function ConfigEditor({
                     template_name: t.name,
                     template_id: t.id,
                     template_variable_map: {},
+                    carousel_variable_map: {},
                     header_format:
                       t.header_format ||
                       t.components?.find((c) => c.type === "HEADER")?.format ||
@@ -1414,6 +1478,113 @@ function ConfigEditor({
               ))}
             </div>
           )}
+
+          {selectedTpl?.is_carousel &&
+            (() => {
+              const carouselCards = extractCarouselCards(
+                selectedTpl.components,
+              );
+              const cardsWithDynamicButtons = carouselCards
+                .map((card) => ({
+                  ...card,
+                  dynButtons: card.buttons
+                    .map((btn, btnIndex) => ({ btn, btnIndex }))
+                    .filter(
+                      ({ btn }) =>
+                        btn.type === "URL" && btn.url && btn.url.includes("{{"),
+                    ),
+                }))
+                .filter((c) => c.dynButtons.length > 0);
+
+              if (cardsWithDynamicButtons.length === 0) return null;
+
+              return (
+                <div style={{ marginTop: 4 }}>
+                  <label style={labelStyle}>CAROUSEL BUTTON VALUES</label>
+                  <p
+                    style={{
+                      margin: "0 0 8px",
+                      fontSize: 10,
+                      color: "#94a3b8",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Set a value or {"{{variable}}"} for each card's dynamic
+                    button
+                  </p>
+                  {cardsWithDynamicButtons.map((card) => (
+                    <div
+                      key={card.card_index}
+                      style={{
+                        marginBottom: 10,
+                        padding: "8px 10px",
+                        background: "#f8fafc",
+                        borderRadius: 7,
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: "0 0 6px",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "#475569",
+                        }}
+                      >
+                        Card {card.card_index + 1}
+                      </p>
+                      {card.dynButtons.map(({ btn, btnIndex }) => (
+                        <div
+                          key={btnIndex}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "#0369a1",
+                              background: "#e0f2fe",
+                              borderRadius: 4,
+                              padding: "2px 6px",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {btn.text}
+                          </span>
+                          <input
+                            type="text"
+                            value={
+                              config.carousel_variable_map?.[card.card_index]?.[
+                                btnIndex
+                              ] || ""
+                            }
+                            onChange={(e) => {
+                              const map = {
+                                ...(config.carousel_variable_map || {}),
+                              };
+                              map[card.card_index] = {
+                                ...(map[card.card_index] || {}),
+                                [btnIndex]: e.target.value,
+                              };
+                              onChange({
+                                ...config,
+                                carousel_variable_map: map,
+                              });
+                            }}
+                            placeholder="value or {{variable}}"
+                            style={{ ...inputStyle, flex: 1 }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
           {isMediaTemplate && (
             <MediaPickerField
