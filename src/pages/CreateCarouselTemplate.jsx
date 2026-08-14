@@ -116,7 +116,7 @@ const buildCardButtons = (sharedButtons, card) =>
         : { type: "URL", text: b.text, url: b.url };
     }
     if (b.type === "PHONE_NUMBER") {
-      return { type: "PHONE_NUMBER", text: b.text, phone: b.phone };
+      return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone };
     }
     return b;
   });
