@@ -18,7 +18,13 @@ import { Save, ArrowLeft, Play, Pause, Loader2, Zap } from "lucide-react";
 
 import useAuthUser from "../hooks/useAuthUser";
 import { showSuccess, showError } from "../utils/toast";
-import { getFlowById, updateFlow, saveFlow } from "../api/chatbot";
+import {
+  getFlowById,
+  updateFlow,
+  saveFlow,
+  checkKeywordConflicts,
+} from "../api/chatbot";
+import KeywordConflictModal from "../components/chatbot/KeywordConflictModal";
 import { fetchTemplatesForBuilder } from "../api/templates";
 import { getAgents } from "../api/agents";
 import { fetchWhatsappAccount } from "../api/waccount";
@@ -126,6 +132,7 @@ function BuilderCanvas({ flowId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [conflictModal, setConflictModal] = useState(null);
 
   // ── Load flow + templates + agents ──────────────────────────────────────────
   useEffect(() => {
@@ -300,21 +307,53 @@ function BuilderCanvas({ flowId }) {
   };
 
   // ── Toggle active/inactive ────────────────────────────────────────────────────
-  const handleToggleStatus = async () => {
-    if (!flow) return;
+  const doActivate = async () => {
     setToggling(true);
-    const newStatus = flow.status === "active" ? "inactive" : "active";
     try {
-      const res = await updateFlow(flowId, { status: newStatus });
+      const res = await updateFlow(flowId, { status: "active" });
       setFlow(res.data.flow);
-      showSuccess(
-        newStatus === "active" ? "Flow is now active!" : "Flow deactivated.",
-      );
+      showSuccess("Flow is now active!");
     } catch {
       showError("Failed to update status");
     } finally {
       setToggling(false);
     }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!flow) return;
+
+    if (flow.status === "active") {
+      setToggling(true);
+      try {
+        const res = await updateFlow(flowId, { status: "inactive" });
+        setFlow(res.data.flow);
+        showSuccess("Flow deactivated.");
+      } catch {
+        showError("Failed to update status");
+      } finally {
+        setToggling(false);
+      }
+      return;
+    }
+
+    try {
+      const res = await checkKeywordConflicts(flowId);
+      const conflicts = res.data?.conflicts || [];
+      if (conflicts.length > 0) {
+        setConflictModal(conflicts);
+        return;
+      }
+    } catch {
+      // don't block on check failure
+    }
+
+    await doActivate();
+  };
+
+  const handleConfirmActivateAnyway = async () => {
+    setConflictModal(null);
+    await doActivate();
   };
 
   // ── Loading screen ────────────────────────────────────────────────────────────
@@ -579,6 +618,15 @@ function BuilderCanvas({ flowId }) {
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {conflictModal && (
+        <KeywordConflictModal
+          conflicts={conflictModal}
+          flowName={flow?.name}
+          onCancel={() => setConflictModal(null)}
+          onConfirm={handleConfirmActivateAnyway}
+          confirming={toggling}
+        />
+      )}
     </div>
   );
 }
