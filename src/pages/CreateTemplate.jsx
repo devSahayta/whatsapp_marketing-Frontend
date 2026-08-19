@@ -684,7 +684,7 @@ export default function CreateTemplate() {
               ? { type: "URL", text: b.text, url: b.url, example: [b.example || ""] }
               : { type: "URL", text: b.text, url: b.url };
           } else if (b.type === "PHONE_NUMBER") {
-            return { type: "PHONE_NUMBER", text: b.text, phone: b.phone };
+            return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone };
           }
           return b;
         });
