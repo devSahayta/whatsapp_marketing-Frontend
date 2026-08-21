@@ -10,11 +10,9 @@ export const getFlows = (userId, accountId) => {
   return api.get(url);
 };
 
-export const getFlowById = (flowId) =>
-  api.get(`/api/chatbot/flows/${flowId}`);
+export const getFlowById = (flowId) => api.get(`/api/chatbot/flows/${flowId}`);
 
-export const createFlow = (data) =>
-  api.post("/api/chatbot/flows", data);
+export const createFlow = (data) => api.post("/api/chatbot/flows", data);
 
 export const updateFlow = (flowId, data) =>
   api.put(`/api/chatbot/flows/${flowId}`, data);
@@ -37,3 +35,6 @@ export const getFlowSessions = (flowId, status) => {
   if (status) url += `?status=${status}`;
   return api.get(url);
 };
+
+export const checkKeywordConflicts = (flowId) =>
+  api.get(`/api/chatbot/flows/${flowId}/keyword-conflicts`);

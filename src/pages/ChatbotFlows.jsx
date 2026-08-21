@@ -18,7 +18,14 @@ import {
 
 import useAuthUser from "../hooks/useAuthUser";
 import { showSuccess, showError } from "../utils/toast";
-import { getFlows, createFlow, deleteFlow, updateFlow } from "../api/chatbot";
+import {
+  getFlows,
+  createFlow,
+  deleteFlow,
+  updateFlow,
+  checkKeywordConflicts,
+} from "../api/chatbot";
+import KeywordConflictModal from "../components/chatbot/KeywordConflictModal";
 import { fetchWhatsappAccount } from "../api/waccount";
 
 const STATUS_META = {
@@ -76,6 +83,9 @@ export default function ChatbotFlows() {
   const [deletingId, setDeletingId] = useState(null);
 
   const [newFlow, setNewFlow] = useState({ name: "", description: "" });
+
+  const [conflictModal, setConflictModal] = useState(null); // { flow, conflicts }
+  const [activating, setActivating] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -135,22 +145,57 @@ export default function ChatbotFlows() {
     }
   };
 
-  const handleToggleStatus = async (flow, e) => {
-    e.stopPropagation();
-    const newStatus = flow.status === "active" ? "inactive" : "active";
+  const activateFlow = async (flow) => {
     try {
-      const res = await updateFlow(flow.flow_id, { status: newStatus });
+      const res = await updateFlow(flow.flow_id, { status: "active" });
       setFlows((prev) =>
         prev.map((f) => (f.flow_id === flow.flow_id ? res.data.flow : f)),
       );
-      showSuccess(
-        newStatus === "active" ? "Flow activated!" : "Flow deactivated.",
-      );
+      showSuccess("Flow activated!");
     } catch {
       showError("Failed to update status");
     }
   };
 
+  const handleToggleStatus = async (flow, e) => {
+    e.stopPropagation();
+
+    if (flow.status === "active") {
+      // Deactivating — no conflict check needed
+      try {
+        const res = await updateFlow(flow.flow_id, { status: "inactive" });
+        setFlows((prev) =>
+          prev.map((f) => (f.flow_id === flow.flow_id ? res.data.flow : f)),
+        );
+        showSuccess("Flow deactivated.");
+      } catch {
+        showError("Failed to update status");
+      }
+      return;
+    }
+
+    // Activating — check for conflicts first
+    try {
+      const res = await checkKeywordConflicts(flow.flow_id);
+      const conflicts = res.data?.conflicts || [];
+      if (conflicts.length > 0) {
+        setConflictModal({ flow, conflicts });
+        return;
+      }
+    } catch {
+      // if the check itself fails, don't block activation
+    }
+
+    await activateFlow(flow);
+  };
+
+  const handleConfirmActivateAnyway = async () => {
+    if (!conflictModal) return;
+    setActivating(true);
+    await activateFlow(conflictModal.flow);
+    setActivating(false);
+    setConflictModal(null);
+  };
   const filtered = flows.filter(
     (f) =>
       f.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -632,6 +677,15 @@ export default function ChatbotFlows() {
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {conflictModal && (
+        <KeywordConflictModal
+          conflicts={conflictModal.conflicts}
+          flowName={conflictModal.flow.name}
+          onCancel={() => setConflictModal(null)}
+          onConfirm={handleConfirmActivateAnyway}
+          confirming={activating}
+        />
+      )}
     </div>
   );
 }
