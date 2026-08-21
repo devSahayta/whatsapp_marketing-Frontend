@@ -56,6 +56,7 @@ import CreateAgent from "./pages/CreateAgent";
 import TestAgent from "./pages/TestAgent";
 import WooCommercePage from "./pages/WooCommercePage";
 import WooCommerceTemplateGuide from "./pages/WooCommerceTemplateGuide";
+import ShopifyPage from "./pages/ShopifyPage";
 import ApiKeysPage from "./pages/ApiKeysPage";
 
 import SamvaadikAssistant from "./components/SamvaadikAssistant";
@@ -263,6 +264,14 @@ function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <WooCommerceTemplateGuide />
+              </PrivateSubscribedRoute>
+            }
+          />
+          <Route
+            path="/integrations/shopify"
+            element={
+              <PrivateSubscribedRoute>
+                <ShopifyPage />
               </PrivateSubscribedRoute>
             }
           />

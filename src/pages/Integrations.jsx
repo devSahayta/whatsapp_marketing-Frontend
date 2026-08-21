@@ -49,6 +49,14 @@ const IntegrationCard = ({
       iconWrap: connected ? "bg-amber-100" : "bg-gray-100",
       iconColor: connected ? "text-amber-600" : "text-gray-500",
     },
+    green: {
+      ring: "border-green-200",
+      badge: connected
+        ? "bg-green-100 text-green-700"
+        : "bg-gray-100 text-gray-700",
+      iconWrap: connected ? "bg-green-100" : "bg-gray-100",
+      iconColor: connected ? "text-green-600" : "text-gray-500",
+    },
   };
 
   const styles = accentStyles[accent] || accentStyles.emerald;
@@ -213,6 +221,29 @@ const Integrations = () => {
     ];
   }, [integrationStatus]);
 
+  const shopifyDetails = useMemo(() => {
+    const shopify = integrationStatus?.shopify || {};
+
+    return [
+      {
+        label: "Status",
+        value: shopify.connected ? "Connected" : "Not connected",
+      },
+      {
+        label: "Store",
+        value: shopify.connected
+          ? shopify.store_name || shopify.shop_domain
+          : "No store linked",
+      },
+      {
+        label: "Connected at",
+        value: shopify.connected
+          ? formatDateTime(shopify.connected_at)
+          : "Not connected yet",
+      },
+    ];
+  }, [integrationStatus]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 px-4 py-8">
@@ -305,6 +336,32 @@ const Integrations = () => {
                   className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Connect WooCommerce
+                </button>
+              )
+            }
+          />
+
+          <IntegrationCard
+            title="Shopify"
+            subtitle="Connect your Shopify store to Samvaadik."
+            connected={Boolean(integrationStatus?.shopify?.connected)}
+            details={shopifyDetails}
+            accent="green"
+            action={
+              integrationStatus?.shopify?.connected ? (
+                <button
+                  onClick={() => navigate("/integrations/shopify")}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <PlugZap className="h-4 w-4" />
+                  Manage Shopify
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/integrations/shopify")}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Connect Shopify
                 </button>
               )
             }
