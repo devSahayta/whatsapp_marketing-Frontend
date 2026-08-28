@@ -523,7 +523,10 @@ const CreateCampaign = () => {
         }
 
         // Check if template requires media
-        const templatePreview = getTemplatePreview();
+        const templatePreview = React.useMemo(
+          () => getTemplatePreview(),
+          [formData.wt_id, templates],
+        );
         if (templatePreview?.hasMedia && !uploadedMediaId) {
           setError(
             `Please upload or select ${templatePreview.mediaType} for this template`,
@@ -1095,6 +1098,13 @@ const CreateCampaign = () => {
                     </div>
                   )}
                 </div>
+
+                {formData.wt_id && !getTemplatePreview()?.isCarousel && (
+                  <TemplatePreviewComponent
+                    preview={getTemplatePreview()}
+                    userId={user.id}
+                  />
+                )}
 
                 {/* Body variables — {{1}} can be auto-name or manual */}
                 {formData.wt_id &&
