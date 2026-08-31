@@ -523,10 +523,7 @@ const CreateCampaign = () => {
         }
 
         // Check if template requires media
-        const templatePreview = React.useMemo(
-          () => getTemplatePreview(),
-          [formData.wt_id, templates],
-        );
+        const templatePreview = getTemplatePreview();
         if (templatePreview?.hasMedia && !uploadedMediaId) {
           setError(
             `Please upload or select ${templatePreview.mediaType} for this template`,
