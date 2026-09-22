@@ -43,18 +43,22 @@ import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 
 const ALL_SCOPES = [
   {
-    id: "send_template",
-    label: "Send Template",
-    desc: "Send WhatsApp templates",
-  },
-  {
     id: "send_message",
     label: "Send Message",
     desc: "Send free-form messages",
   },
-  { id: "get_templates", label: "Get Templates", desc: "Fetch template list" },
-  // { id: "upload_media", label: "Upload Media", desc: "Upload media files" },
+  { id: "upload_media", label: "Upload Media", desc: "Upload media files" },
   { id: "get_account", label: "Get Account", desc: "Read account info" },
+  {
+    id: "get_scheduled_messages",
+    label: "Get Scheduled Messages",
+    desc: "Fetch scheduled message list",
+  },
+  {
+    id: "manage_templates",
+    label: "Manage Templates",
+    desc: "Create, fetch, and delete WhatsApp templates",
+  },
 ];
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -113,11 +117,11 @@ function CopyButton({ text, className = "" }) {
 
 function ScopeBadge({ scope }) {
   const colors = {
-    send_template: "bg-blue-50 text-blue-700 border-blue-100",
     send_message: "bg-violet-50 text-violet-700 border-violet-100",
-    get_templates: "bg-amber-50 text-amber-700 border-amber-100",
     upload_media: "bg-pink-50 text-pink-700 border-pink-100",
     get_account: "bg-teal-50 text-teal-700 border-teal-100",
+    get_scheduled_messages: "bg-amber-50 text-amber-700 border-amber-100",
+    manage_templates: "bg-blue-50 text-blue-700 border-blue-100",
   };
   const label = ALL_SCOPES.find((s) => s.id === scope)?.label || scope;
   return (
