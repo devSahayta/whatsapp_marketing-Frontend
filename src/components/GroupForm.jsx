@@ -1,3 +1,5 @@
+// src/components/GroupForm.jsx
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Upload,
@@ -172,6 +174,8 @@ const EventForm = ({ user }) => {
     setIsSubmitting(true);
     setSubmitStatus(null);
 
+    let skipped = []; // declared here so it's in scope for both branches AND after them
+
     try {
       if (!user?.id) {
         throw new Error("User not authenticated. Cannot create group.");
@@ -193,7 +197,7 @@ const EventForm = ({ user }) => {
         });
 
         const count = importResponse?.data?.count || 0;
-        const skipped = importResponse?.data?.skippedRows || [];
+        skipped = importResponse?.data?.skippedRows || [];
 
         setImportedCount(count);
         setSkippedRows(skipped);
@@ -213,14 +217,18 @@ const EventForm = ({ user }) => {
 
         await api.post("/api/groups", payload);
         setMessage("Group created successfully!");
+        // skipped stays [] here — CSV path doesn't report skips yet (see earlier note)
       }
 
       setSubmitStatus("success");
       resetForm();
 
-      setTimeout(() => {
-        navigate("/groups");
-      }, 3000);
+      // Only auto-redirect if there's nothing the user needs to read first.
+      if (skipped.length === 0) {
+        setTimeout(() => {
+          navigate("/groups");
+        }, 3000);
+      }
     } catch (error) {
       setSubmitStatus("error");
       setMessage(
@@ -499,7 +507,7 @@ const EventForm = ({ user }) => {
         </button>
       </form>
       <AnimatePresence>
-        {submitStatus === "success" && (
+        {submitStatus === "success" && skippedRows.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -568,7 +576,10 @@ const EventForm = ({ user }) => {
       </AnimatePresence>
       <SkippedContactsModal
         open={skipModalOpen}
-        onClose={() => setSkipModalOpen(false)}
+        onClose={() => {
+          setSkipModalOpen(false);
+          navigate("/groups");
+        }}
         importedCount={importedCount}
         skippedRows={skippedRows}
       />
