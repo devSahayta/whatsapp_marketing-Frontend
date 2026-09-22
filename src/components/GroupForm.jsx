@@ -20,6 +20,8 @@ import {
 } from "../api/googleSheets";
 import "../styles/form.css";
 
+import SkippedContactsModal from "./SkippedContactsModal";
+
 const INITIAL_FORM_DATA = {
   groupName: "",
   description: "",
@@ -38,7 +40,12 @@ const EventForm = ({ user }) => {
   const [googleSheetsError, setGoogleSheetsError] = useState("");
   const [googleConnectLoading, setGoogleConnectLoading] = useState(false);
   const [googleStatus, setGoogleStatus] = useState(null);
-  const [loadingIntegrationStatus, setLoadingIntegrationStatus] = useState(false);
+
+  const [skipModalOpen, setSkipModalOpen] = useState(false);
+  const [skippedRows, setSkippedRows] = useState([]);
+  const [importedCount, setImportedCount] = useState(0);
+  const [loadingIntegrationStatus, setLoadingIntegrationStatus] =
+    useState(false);
 
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -114,7 +121,9 @@ const EventForm = ({ user }) => {
       importSource: source,
       dataset: source === "csv" ? prev.dataset : null,
       spreadsheetId:
-        source === "google" && googleStatus?.connected ? prev.spreadsheetId : "",
+        source === "google" && googleStatus?.connected
+          ? prev.spreadsheetId
+          : "",
     }));
 
     if (source !== "csv" && fileInputRef.current) {
@@ -183,12 +192,16 @@ const EventForm = ({ user }) => {
           description: formData.description || "",
         });
 
-        const importedCount = importResponse?.data?.count;
-        const skippedRows = importResponse?.data?.skippedRows?.length || 0;
+        const count = importResponse?.data?.count || 0;
+        const skipped = importResponse?.data?.skippedRows || [];
+
+        setImportedCount(count);
+        setSkippedRows(skipped);
+        if (skipped.length > 0) setSkipModalOpen(true);
 
         setMessage(
-          importedCount
-            ? `Group created successfully! Imported ${importedCount} contacts${skippedRows ? ` and skipped ${skippedRows} invalid row${skippedRows > 1 ? "s" : ""}` : ""}.`
+          count
+            ? `Group created successfully! Imported ${count} contacts.`
             : "Group created successfully and contacts were imported from Google Sheets.",
         );
       } else {
@@ -371,12 +384,14 @@ const EventForm = ({ user }) => {
 
             <div className="upload-instructions">
               <p className="upload-note">
-                Choose a connected Google Sheet that contains `name`,
-                `phoneno`, and optional `email` columns in `Sheet1`.
+                Choose a connected Google Sheet that contains `name`, `phoneno`,
+                and optional `email` columns in `Sheet1`.
               </p>
               <div className="integration-actions">
                 {loadingIntegrationStatus ? (
-                  <div className="field-note">Checking Google connection...</div>
+                  <div className="field-note">
+                    Checking Google connection...
+                  </div>
                 ) : googleStatus?.connected ? (
                   <>
                     <div className="connection-status-pill connected">
@@ -408,7 +423,9 @@ const EventForm = ({ user }) => {
                       className="template-download-btn"
                     >
                       <Link2 size={16} />
-                      {googleConnectLoading ? "Connecting..." : "Connect Google"}
+                      {googleConnectLoading
+                        ? "Connecting..."
+                        : "Connect Google"}
                     </button>
                   </>
                 )}
@@ -451,9 +468,9 @@ const EventForm = ({ user }) => {
               googleStatus?.connected &&
               !loadingSheets &&
               googleSheets.length === 0 && (
-              <p className="field-note">
-                No Google spreadsheets found for this account yet.
-              </p>
+                <p className="field-note">
+                  No Google spreadsheets found for this account yet.
+                </p>
               )}
           </div>
         )}
@@ -481,7 +498,6 @@ const EventForm = ({ user }) => {
           {isSubmitting ? "Creating Group..." : "Create Group"}
         </button>
       </form>
-
       <AnimatePresence>
         {submitStatus === "success" && (
           <motion.div
@@ -550,6 +566,12 @@ const EventForm = ({ user }) => {
           </motion.div>
         )}
       </AnimatePresence>
+      <SkippedContactsModal
+        open={skipModalOpen}
+        onClose={() => setSkipModalOpen(false)}
+        importedCount={importedCount}
+        skippedRows={skippedRows}
+      />
     </div>
   );
 };
