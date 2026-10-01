@@ -92,7 +92,7 @@ function extractCarouselCards(components) {
   });
 }
 
-function KeywordsField({ keywords = [], onChange }) {
+function KeywordsField({ keywords = [], onChange, label = "KEYWORDS" }) {
   const [input, setInput] = useState("");
 
   const add = () => {
@@ -107,7 +107,7 @@ function KeywordsField({ keywords = [], onChange }) {
 
   return (
     <div style={fieldStyle}>
-      <label style={labelStyle}>KEYWORDS</label>
+      <label style={labelStyle}>{label}</label>
       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
         <input
           type="text"
@@ -1264,6 +1264,57 @@ function ConfigEditor({
           />
         </>
       );
+
+    case "image_trigger": {
+      const hasCaptionFilter = (config.caption_keywords || []).length > 0;
+      return (
+        <>
+          <KeywordsField
+            label="CAPTION KEYWORDS (optional)"
+            keywords={config.caption_keywords || []}
+            onChange={(v) => update("caption_keywords", v)}
+          />
+          {hasCaptionFilter && (
+            <SelectField
+              label="CAPTION MATCH TYPE"
+              value={config.match_type || "contains"}
+              onChange={(v) => update("match_type", v)}
+              options={[
+                { value: "contains", label: "Contains" },
+                { value: "exact", label: "Exact match" },
+                { value: "starts_with", label: "Starts with" },
+              ]}
+            />
+          )}
+          <div
+            style={{
+              padding: "9px 11px",
+              background: "#f0f9ff",
+              border: "1px solid #bae6fd",
+              borderRadius: 7,
+              fontSize: 10,
+              color: "#0369a1",
+              lineHeight: 1.7,
+            }}
+          >
+            <p style={{ margin: "0 0 4px", fontWeight: 700 }}>
+              How this trigger works
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 14 }}>
+              <li>
+                {hasCaptionFilter
+                  ? "Starts the flow when a customer sends an image whose caption matches a keyword"
+                  : "Starts the flow when a customer sends any image"}
+              </li>
+              <li>
+                Use <strong>{"{{image_url}}"}</strong> and{" "}
+                <strong>{"{{image_caption}}"}</strong> in later nodes
+              </li>
+            </ul>
+          </div>
+        </>
+      );
+    }
 
     case "send_message":
       return (

@@ -112,7 +112,8 @@ export default function KeywordConflictModal({
               }}
             >
               <div style={{ flexShrink: 0, marginTop: 1 }}>
-                {c.type === "flow_keyword_overlap" ? (
+                {c.type === "flow_keyword_overlap" ||
+                c.type === "flow_image_trigger_overlap" ? (
                   <Zap size={13} color="#d97706" />
                 ) : (
                   <Bot size={13} color="#d97706" />
@@ -121,7 +122,26 @@ export default function KeywordConflictModal({
               <div
                 style={{ fontSize: 12.5, color: "#78350f", lineHeight: 1.6 }}
               >
-                {c.type === "flow_keyword_overlap" ? (
+                {c.type === "flow_image_trigger_overlap" ? (
+                  c.shared_keywords?.length ? (
+                    <>
+                      Image trigger shares caption keyword
+                      {c.shared_keywords.length > 1 ? "s" : ""}{" "}
+                      <strong>
+                        {c.shared_keywords.map((k) => `"${k}"`).join(", ")}
+                      </strong>{" "}
+                      with active flow <strong>"{c.flow_name}"</strong>.
+                      Whichever trigger matches first will fire — this is not
+                      guaranteed.
+                    </>
+                  ) : (
+                    <>
+                      Active flow <strong>"{c.flow_name}"</strong> also starts on
+                      any incoming image. Only one of them will fire — this is
+                      not guaranteed.
+                    </>
+                  )
+                ) : c.type === "flow_keyword_overlap" ? (
                   <>
                     Shares keyword
                     {c.shared_keywords.length > 1 ? "s" : ""}{" "}

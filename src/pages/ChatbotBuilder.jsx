@@ -36,6 +36,7 @@ import NodeProperties from "../components/chatbot/NodeProperties";
 const nodeTypes = Object.fromEntries(
   [
     "keyword_trigger",
+    "image_trigger",
     "api_trigger",
     "send_message",
     "send_template",
@@ -55,6 +56,7 @@ const nodeTypes = Object.fromEntries(
 // ── Default config for each node type ─────────────────────────────────────────
 const DEFAULT_CONFIG = {
   keyword_trigger: { keywords: [], match_type: "contains" },
+  image_trigger: { caption_keywords: [], match_type: "contains" },
   api_trigger: {},
   send_message: { text: "" },
   send_template: {

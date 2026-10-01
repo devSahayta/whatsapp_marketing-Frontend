@@ -7,7 +7,7 @@ import { NODE_META } from "./ChatbotNode";
 const PALETTE_GROUPS = [
   {
     label: "TRIGGERS",
-    types: ["keyword_trigger"],
+    types: ["keyword_trigger", "image_trigger"],
   },
   {
     label: "MESSAGES",

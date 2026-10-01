@@ -18,6 +18,7 @@ import {
   Megaphone,
   Sparkles,
   CalendarClock,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export const NODE_META = {
@@ -26,6 +27,13 @@ export const NODE_META = {
     icon: Hash,
     color: "#0ea5e9",
     bg: "#e0f2fe",
+    category: "trigger",
+  },
+  image_trigger: {
+    label: "Image Trigger",
+    icon: ImageIcon,
+    color: "#0891b2",
+    bg: "#cffafe",
     category: "trigger",
   },
   api_trigger: {
@@ -131,6 +139,13 @@ function getSummary(type, config) {
             .map((k) => `"${k}"`)
             .join(", ")}`
         : null;
+    case "image_trigger":
+      return config.caption_keywords?.length
+        ? `Image with caption: ${config.caption_keywords
+            .slice(0, 3)
+            .map((k) => `"${k}"`)
+            .join(", ")}`
+        : "Any incoming image";
     case "send_message":
       return config.text
         ? config.text.length > 50
