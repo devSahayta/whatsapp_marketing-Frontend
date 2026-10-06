@@ -647,6 +647,7 @@ export default function CreateTemplate() {
           });
         } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(comp.format)) {
           if (headerHandleOverride) {
+            // ✅ Clean — no filename here
             final.push({
               type: "HEADER",
               format: comp.format,
@@ -681,10 +682,19 @@ export default function CreateTemplate() {
             // Some templates expect "type":"URL", "text": "...", "url":"..."
             const hasVariable = /{{\s*1\s*}}/.test(b.url || "");
             return hasVariable
-              ? { type: "URL", text: b.text, url: b.url, example: [b.example || ""] }
+              ? {
+                  type: "URL",
+                  text: b.text,
+                  url: b.url,
+                  example: [b.example || ""],
+                }
               : { type: "URL", text: b.text, url: b.url };
           } else if (b.type === "PHONE_NUMBER") {
-            return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone };
+            return {
+              type: "PHONE_NUMBER",
+              text: b.text,
+              phone_number: b.phone,
+            };
           }
           return b;
         });
@@ -795,6 +805,7 @@ export default function CreateTemplate() {
         media_id: mediaId,
         header_format: headerType !== "NONE" ? headerType : null,
         header_handle: currentHeaderHandle || null,
+        header_filename: headerUploadFile?.name || null, // ✅ add this
       };
 
       const resp = await apiCreateTemplate(payload);
