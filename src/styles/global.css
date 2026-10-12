@@ -264,3 +264,11 @@ p {
     max-height: 650px;
   }
 }
+
+/* Google Picker must sit above modals and the Samvaadik assistant (z ~9995) */
+.picker-dialog-bg {
+  z-index: 100000 !important;
+}
+.picker-dialog {
+  z-index: 100001 !important;
+}

@@ -6,9 +6,10 @@ import {
   PlugZap,
   RefreshCw,
   ShieldAlert,
+  Unlink,
   XCircle,
 } from "lucide-react";
-import { connectGoogle } from "../api/googleSheets";
+import { connectGoogle, disconnectGoogle } from "../api/googleSheets";
 import { fetchIntegrationStatus } from "../api/integrations";
 import { showError, showSuccess } from "../utils/toast";
 
@@ -113,6 +114,7 @@ const Integrations = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
   const [integrationStatus, setIntegrationStatus] = useState({});
   const navigate = useNavigate();
 
@@ -170,6 +172,31 @@ const Integrations = () => {
         error?.response?.data?.error || "Failed to start Google connection",
       );
       setConnectingGoogle(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    if (
+      !window.confirm(
+        "Disconnect your Google account? Sheet import, sync and campaign export will stop until you reconnect. Your groups and contacts will not be deleted.",
+      )
+    )
+      return;
+
+    try {
+      setDisconnectingGoogle(true);
+      await disconnectGoogle();
+      showSuccess("Google account disconnected");
+      setIntegrationStatus((prev) => ({
+        ...prev,
+        google: { connected: false },
+      }));
+    } catch (error) {
+      showError(
+        error?.response?.data?.error || "Failed to disconnect Google account",
+      );
+    } finally {
+      setDisconnectingGoogle(false);
     }
   };
 
@@ -297,9 +324,20 @@ const Integrations = () => {
             details={googleDetails}
             action={
               integrationStatus?.google?.connected ? (
-                <div className="inline-flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Ready for sheet import and export.
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Ready for sheet import and export.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogle}
+                    disabled={disconnectingGoogle}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-medium text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Unlink className="h-4 w-4" />
+                    {disconnectingGoogle ? "Disconnecting..." : "Disconnect"}
+                  </button>
                 </div>
               ) : (
                 <button

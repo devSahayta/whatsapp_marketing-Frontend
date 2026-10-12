@@ -9,17 +9,13 @@ import {
   Download,
   FileSpreadsheet,
   Link2,
-  RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/apiClient";
 import { fetchIntegrationStatus } from "../api/integrations";
-import {
-  connectGoogle,
-  fetchGoogleSheets,
-  importFromGoogleSheet,
-} from "../api/googleSheets";
+import { connectGoogle, importFromGoogleSheet } from "../api/googleSheets";
+import { pickGoogleSheet } from "../utils/googlePicker";
 import "../styles/form.css";
 
 import SkippedContactsModal from "./SkippedContactsModal";
@@ -30,6 +26,7 @@ const INITIAL_FORM_DATA = {
   dataset: null,
   importSource: "csv",
   spreadsheetId: "",
+  spreadsheetName: "",
 };
 
 const EventForm = ({ user }) => {
@@ -37,8 +34,7 @@ const EventForm = ({ user }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [message, setMessage] = useState("");
-  const [googleSheets, setGoogleSheets] = useState([]);
-  const [loadingSheets, setLoadingSheets] = useState(false);
+  const [pickingSheet, setPickingSheet] = useState(false);
   const [googleSheetsError, setGoogleSheetsError] = useState("");
   const [googleConnectLoading, setGoogleConnectLoading] = useState(false);
   const [googleStatus, setGoogleStatus] = useState(null);
@@ -57,11 +53,6 @@ const EventForm = ({ user }) => {
     loadIntegrationStatus();
   }, [formData.importSource, user?.id]);
 
-  useEffect(() => {
-    if (formData.importSource !== "google" || !googleStatus?.connected) return;
-    loadGoogleSheets();
-  }, [formData.importSource, googleStatus?.connected]);
-
   const loadIntegrationStatus = async () => {
     setLoadingIntegrationStatus(true);
     setGoogleSheetsError("");
@@ -70,13 +61,8 @@ const EventForm = ({ user }) => {
       const response = await fetchIntegrationStatus();
       const nextGoogleStatus = response?.data?.google || { connected: false };
       setGoogleStatus(nextGoogleStatus);
-
-      if (!nextGoogleStatus.connected) {
-        setGoogleSheets([]);
-      }
     } catch (error) {
       setGoogleStatus({ connected: false });
-      setGoogleSheets([]);
       setGoogleSheetsError(
         error?.response?.data?.error ||
           "Unable to check Google connection status right now.",
@@ -86,23 +72,29 @@ const EventForm = ({ user }) => {
     }
   };
 
-  const loadGoogleSheets = async () => {
+  const handlePickSheet = async () => {
     if (!googleStatus?.connected) return;
 
-    setLoadingSheets(true);
+    setPickingSheet(true);
     setGoogleSheetsError("");
 
     try {
-      const response = await fetchGoogleSheets();
-      setGoogleSheets(response?.data?.sheets || []);
+      const sheet = await pickGoogleSheet();
+      if (!sheet) return; // user closed the picker
+
+      setFormData((prev) => ({
+        ...prev,
+        spreadsheetId: sheet.id,
+        spreadsheetName: sheet.name,
+      }));
     } catch (error) {
-      setGoogleSheets([]);
       setGoogleSheetsError(
         error?.response?.data?.error ||
-          "Unable to load Google Sheets. Please connect Google and try again.",
+          error?.message ||
+          "Unable to open Google Drive. Please try again.",
       );
     } finally {
-      setLoadingSheets(false);
+      setPickingSheet(false);
     }
   };
 
@@ -125,6 +117,10 @@ const EventForm = ({ user }) => {
       spreadsheetId:
         source === "google" && googleStatus?.connected
           ? prev.spreadsheetId
+          : "",
+      spreadsheetName:
+        source === "google" && googleStatus?.connected
+          ? prev.spreadsheetName
           : "",
     }));
 
@@ -186,7 +182,7 @@ const EventForm = ({ user }) => {
       }
 
       if (formData.importSource === "google" && !formData.spreadsheetId) {
-        throw new Error("Please select a Google Spreadsheet.");
+        throw new Error("Please choose a Google Sheet from Google Drive.");
       }
 
       if (formData.importSource === "google") {
@@ -385,15 +381,16 @@ const EventForm = ({ user }) => {
           </div>
         ) : (
           <div className="form-group">
-            <label htmlFor="spreadsheetId" className="form-label">
+            <label className="form-label">
               <Link2 size={20} />
               Select Google Spreadsheet
             </label>
 
             <div className="upload-instructions">
               <p className="upload-note">
-                Choose a connected Google Sheet that contains `name`, `phoneno`,
-                and optional `email` columns in `Sheet1`.
+                Choose a Google Sheet from your Drive that contains `name`,
+                `phoneno`, and optional `email` columns in `Sheet1`. Samvaadik
+                can only access the sheets you choose.
               </p>
               <div className="integration-actions">
                 {loadingIntegrationStatus ? (
@@ -408,15 +405,16 @@ const EventForm = ({ user }) => {
                     </div>
                     <button
                       type="button"
-                      onClick={loadGoogleSheets}
-                      disabled={loadingSheets}
+                      onClick={handlePickSheet}
+                      disabled={pickingSheet}
                       className="template-download-btn"
                     >
-                      <RefreshCw
-                        size={16}
-                        className={loadingSheets ? "spin-icon" : ""}
-                      />
-                      {loadingSheets ? "Loading..." : "Refresh Sheets"}
+                      <FileSpreadsheet size={16} />
+                      {pickingSheet
+                        ? "Opening Google Drive..."
+                        : formData.spreadsheetId
+                          ? "Choose a different sheet"
+                          : "Choose from Google Drive"}
                     </button>
                   </>
                 ) : (
@@ -440,46 +438,15 @@ const EventForm = ({ user }) => {
               </div>
             </div>
 
-            <select
-              id="spreadsheetId"
-              name="spreadsheetId"
-              value={formData.spreadsheetId}
-              onChange={handleInputChange}
-              required={formData.importSource === "google"}
-              className="form-input"
-              disabled={
-                loadingSheets ||
-                loadingIntegrationStatus ||
-                !googleStatus?.connected
-              }
-            >
-              <option value="">
-                {loadingIntegrationStatus
-                  ? "Checking Google connection..."
-                  : !googleStatus?.connected
-                    ? "Connect Google to load spreadsheets"
-                    : loadingSheets
-                      ? "Loading spreadsheets..."
-                      : "Select a spreadsheet"}
-              </option>
-              {googleSheets.map((sheet) => (
-                <option key={sheet.id} value={sheet.id}>
-                  {sheet.name}
-                </option>
-              ))}
-            </select>
+            {formData.spreadsheetId && (
+              <p className="file-info">
+                Selected: {formData.spreadsheetName || "Google Sheet"}
+              </p>
+            )}
 
             {googleSheetsError && (
               <p className="field-note field-note-error">{googleSheetsError}</p>
             )}
-            {!googleSheetsError &&
-              googleStatus?.connected &&
-              !loadingSheets &&
-              googleSheets.length === 0 && (
-                <p className="field-note">
-                  No Google spreadsheets found for this account yet.
-                </p>
-              )}
           </div>
         )}
 

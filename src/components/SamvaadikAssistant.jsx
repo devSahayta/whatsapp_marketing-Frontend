@@ -12,6 +12,7 @@ import {
   prepareMediaHeader,
   deleteMedia,
 } from "../api/media";
+import { pickGoogleSheet } from "../utils/googlePicker";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -153,11 +154,13 @@ function FormattedMessage({
   onNavigateToBuilder,
   onNavigateToFlows,
   onNavigateToIntegrations,
+  onPickGoogleSheet,
 }) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
   const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
   const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
   const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
+  const hasPickSheet = content.includes("GOOGLE_PICK_SHEET:");
 
   // Extract flow_id from REDIRECT_TO_BUILDER:<uuid>
   const builderFlowId = (() => {
@@ -172,6 +175,7 @@ function FormattedMessage({
     .replace(/REDIRECT_TO_FLOWS:\n?/g, "")
     .replace(/^GOOGLE_NOT_CONNECTED:\s*/m, "")
     .replace(/GOOGLE_NOT_CONNECTED:\s*/g, "")
+    .replace(/GOOGLE_PICK_SHEET:\s*/g, "")
     .trim();
 
   const hasSummary = cleanContent.includes("───────");
@@ -225,6 +229,23 @@ function FormattedMessage({
     </div>
   );
 
+  const renderWithPickSheet = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button
+        className="sai-redirect-btn"
+        onClick={() => onPickGoogleSheet && onPickGoogleSheet()}
+      >
+        <IconSheet size={14} />
+        <span>Choose from Google Drive</span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        Samvaadik can only access the sheets you choose here.
+      </p>
+    </div>
+  );
+
   const renderWithFlowsRedirect = (body) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {body}
@@ -245,6 +266,7 @@ function FormattedMessage({
     if (hasBuilderRedirect) return renderWithBuilderRedirect(body);
     if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
     if (hasGoogleRedirect) return renderWithGoogleRedirect(body);
+    if (hasPickSheet) return renderWithPickSheet(body);
     return body;
   }
 
@@ -359,6 +381,7 @@ function FormattedMessage({
   if (hasBuilderRedirect) return renderWithBuilderRedirect(rendered);
   if (hasFlowsRedirect) return renderWithFlowsRedirect(rendered);
   if (hasGoogleRedirect) return renderWithGoogleRedirect(rendered);
+  if (hasPickSheet) return renderWithPickSheet(rendered);
   return rendered;
 }
 
@@ -927,6 +950,23 @@ export default function SamvaadikAssistant({ userId }) {
     ],
   );
 
+  // Picking a sheet grants Samvaadik access to it; the agent then sees it
+  // in list_google_sheets.
+  const handlePickGoogleSheet = useCallback(async () => {
+    setError(null);
+    try {
+      const sheet = await pickGoogleSheet();
+      if (!sheet) return;
+      sendMessage(`I selected the Google Sheet "${sheet.name}" from Google Drive.`);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Unable to open Google Drive. Please try again.",
+      );
+    }
+  }, [sendMessage]);
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -1071,6 +1111,7 @@ export default function SamvaadikAssistant({ userId }) {
                   onNavigateToBuilder={handleNavigateToBuilder}
                   onNavigateToFlows={handleNavigateToFlows}
                   onNavigateToIntegrations={handleNavigateToIntegrations}
+                  onPickGoogleSheet={handlePickGoogleSheet}
                 />
               ))
             )}
@@ -1353,6 +1394,7 @@ function MessageBubble({
   onNavigateToBuilder,
   onNavigateToFlows,
   onNavigateToIntegrations,
+  onPickGoogleSheet,
 }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
@@ -1361,7 +1403,8 @@ function MessageBubble({
     (message.content.includes("REDIRECT_TO_TEMPLATES") ||
       message.content.includes("REDIRECT_TO_BUILDER") ||
       message.content.includes("REDIRECT_TO_FLOWS") ||
-      message.content.includes("GOOGLE_NOT_CONNECTED"));
+      message.content.includes("GOOGLE_NOT_CONNECTED") ||
+      message.content.includes("GOOGLE_PICK_SHEET"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -1410,6 +1453,7 @@ function MessageBubble({
             onNavigateToBuilder={onNavigateToBuilder}
             onNavigateToFlows={onNavigateToFlows}
             onNavigateToIntegrations={onNavigateToIntegrations}
+            onPickGoogleSheet={onPickGoogleSheet}
           />
         )}
       </div>

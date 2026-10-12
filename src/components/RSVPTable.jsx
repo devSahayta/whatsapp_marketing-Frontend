@@ -16,7 +16,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { fetchGroups } from "../api/groups";
 import { syncContactsFromGoogleSheet } from "../api/googleSheets";
+import { pickGoogleSheet } from "../utils/googlePicker";
 import useAuthUser from "../hooks/useAuthUser";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
 
 const RSVPTable = ({ eventId: propEventId }) => {
   const { eventId: paramEventId } = useParams();
@@ -49,7 +52,14 @@ const RSVPTable = ({ eventId: propEventId }) => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem("rsvpTable.itemsPerPage"));
+      return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 10;
+    } catch {
+      return 10;
+    }
+  });
 
   // ===============================
   // Fetch Contacts
@@ -126,10 +136,33 @@ const RSVPTable = ({ eventId: propEventId }) => {
     }
   };
 
+  // Samvaadik only has drive.file access, so a sheet linked under an older
+  // Google connection must be re-selected in the Picker before it can sync.
+  const regrantSheetAccess = async (spreadsheetId) => {
+    toast("Please select this group's sheet in Google Drive to allow syncing.");
+    const picked = await pickGoogleSheet({ fileId: spreadsheetId });
+    if (!picked) return false;
+    if (picked.id !== spreadsheetId) {
+      toast.error(
+        "That's a different sheet. Please select the sheet linked to this group.",
+      );
+      return false;
+    }
+    return true;
+  };
+
   const handleSyncContacts = async () => {
     try {
       setIsSyncing(true);
-      const response = await syncContactsFromGoogleSheet({ group_id: eventId });
+      let response;
+      try {
+        response = await syncContactsFromGoogleSheet({ group_id: eventId });
+      } catch (err) {
+        const data = err?.response?.data;
+        if (data?.code !== "SHEET_ACCESS_REQUIRED") throw err;
+        if (!(await regrantSheetAccess(data.spreadsheetId))) return;
+        response = await syncContactsFromGoogleSheet({ group_id: eventId });
+      }
       const syncData = response?.data || {};
       const importedCount =
         syncData.importedCount ?? syncData.count ?? syncData.imported ?? 0;
@@ -188,10 +221,29 @@ const RSVPTable = ({ eventId: propEventId }) => {
     currentPage * itemsPerPage
   );
 
+  // Show only previous, current and next page numbers
+  const visiblePages = [currentPage - 1, currentPage, currentPage + 1].filter(
+    (p) => p >= 1 && p <= totalPages
+  );
+  const rangeStart = filteredData.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const rangeEnd = Math.min(currentPage * itemsPerPage, filteredData.length);
+
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
     setSelected([]); // Clear selection when changing page
+  };
+
+  const handleItemsPerPageChange = (e) => {
+    const size = Number(e.target.value);
+    setItemsPerPage(size);
+    setCurrentPage(1);
+    setSelected([]);
+    try {
+      localStorage.setItem("rsvpTable.itemsPerPage", String(size));
+    } catch {
+      // ignore storage errors
+    }
   };
 
   // ===============================
@@ -513,35 +565,59 @@ const RSVPTable = ({ eventId: propEventId }) => {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredData.length > 0 && (
         <div className="pagination-container">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="pagination-btn"
-          >
-            Previous
-          </button>
-
-          <div className="pagination-numbers">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                className={`page-number ${currentPage === i + 1 ? "active" : ""}`}
-                onClick={() => handlePageChange(i + 1)}
+          <div className="pagination-info">
+            <label className="page-size-control">
+              Rows per page
+              <select
+                className="page-size-select"
+                value={itemsPerPage}
+                onChange={handleItemsPerPageChange}
               >
-                {i + 1}
-              </button>
-            ))}
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="pagination-range">
+              {rangeStart}–{rangeEnd} of {filteredData.length}
+            </span>
           </div>
 
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="pagination-btn"
-          >
-            Next
-          </button>
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="pagination-btn"
+              >
+                Previous
+              </button>
+
+              <div className="pagination-numbers">
+                {visiblePages.map((page) => (
+                  <button
+                    key={page}
+                    className={`page-number ${currentPage === page ? "active" : ""}`}
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

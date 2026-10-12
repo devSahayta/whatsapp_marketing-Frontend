@@ -2,8 +2,11 @@ import api from "./apiClient";
 
 export const connectGoogle = () => api.get("/api/integrations/google/connect");
 
-export const fetchGoogleSheets = () =>
-  api.get("/api/integrations/google/sheets");
+export const disconnectGoogle = () =>
+  api.delete("/api/integrations/google/disconnect");
+
+export const fetchGooglePickerToken = () =>
+  api.get("/api/integrations/google/picker-token");
 
 export const importFromGoogleSheet = (payload) =>
   api.post("/api/integrations/google/import-contacts", payload);
