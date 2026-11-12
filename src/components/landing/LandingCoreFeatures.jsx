@@ -8,7 +8,9 @@ import {
   RefreshCw,
   BarChart3,
   MessageCircle,
+  ArrowRight,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const features = [
   {
@@ -163,6 +165,17 @@ const LandingCoreFeatures = () => {
               <span className="text-green-600">conversions</span>.
             </p>
           </div>
+        </div>
+
+        {/* Link to full feature pages (chatbot, AI agent, integrations...) */}
+        <div className="mt-8 flex justify-center">
+          <Link
+            to="/features"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30"
+          >
+            Explore chatbots, AI agents & integrations
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </section>

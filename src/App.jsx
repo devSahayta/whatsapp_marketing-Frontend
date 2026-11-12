@@ -62,6 +62,9 @@ import ApiKeysPage from "./pages/ApiKeysPage";
 
 import SamvaadikAssistant from "./components/SamvaadikAssistant";
 import NotFound from "./pages/NotFound";
+import MarketingPage from "./pages/MarketingPage";
+import FeaturesHub from "./pages/FeaturesHub";
+import { MARKETING_PAGES } from "./marketing/marketingPages";
 import {
   isPublicPath,
   isPrerenderVisible,
@@ -500,6 +503,15 @@ export function AppContent() {
             path="/refund-cancellation-policy"
             element={<RefundCancellationPolicy />}
           />
+          {/* Public SEO pages: features, integrations, use cases */}
+          <Route path="/features" element={<FeaturesHub />} />
+          {MARKETING_PAGES.map((p) => (
+            <Route
+              key={p.path}
+              path={p.path}
+              element={<MarketingPage path={p.path} />}
+            />
+          ))}
           <Route path="*" element={<NotFound />} />
         </Routes>
 

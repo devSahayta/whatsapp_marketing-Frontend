@@ -2,10 +2,19 @@
 // Used by the app (to decide robots meta), by scripts/prerender.mjs (which
 // pages to bake into static HTML) and to generate sitemap.xml.
 // Plain JS on purpose: it is imported from Node at build time.
+// Feature / integration / use-case pages come from src/marketing/marketingPages.js.
+
+import { MARKETING_PAGES, FEATURES_HUB } from "../marketing/marketingPages.js";
 
 export const PUBLIC_ROUTES = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/pricing", changefreq: "weekly", priority: "0.9" },
+  { path: FEATURES_HUB.path, changefreq: "weekly", priority: "0.9" },
+  ...MARKETING_PAGES.map((p) => ({
+    path: p.path,
+    changefreq: "monthly",
+    priority: "0.8",
+  })),
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/privacy-policy", changefreq: "yearly", priority: "0.3" },

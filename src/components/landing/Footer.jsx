@@ -2,15 +2,16 @@
 
 import { Link } from "react-router-dom";
 import { Mail, Globe, ShieldCheck } from "lucide-react";
+import { MARKETING_PAGES } from "../../marketing/marketingPages";
 
 const Footer = () => {
   return (
     <footer className="relative bg-white/80 backdrop-blur border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         {/* Top */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
           {/* Brand */}
-          <div className=" col-span-2 space-y-3 max-w-80 ">
+          <div className="col-span-2 md:col-span-3 lg:col-span-2 space-y-3 max-w-80">
             {/* <h3 className="text-2xl font-bold text-gray-900 mb-3">Samvaadik</h3> */}
             <img
               src="/images/logo-samvaadik.png"
@@ -24,18 +25,50 @@ const Footer = () => {
           </div>
 
           {/* Product */}
-          {/* <div>
+          <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-4">
               Product
             </h4>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li>WhatsApp Campaigns</li>
-              <li>Template Management</li>
-              <li>Contact Groups</li>
-              <li>Analytics Dashboard</li>
-              <li>Chat Inbox</li>
+              <li>
+                <Link to="/features" className="hover:text-gray-900">
+                  All Features
+                </Link>
+              </li>
+              {MARKETING_PAGES.filter((p) => p.category === "Feature").map(
+                (p) => (
+                  <li key={p.path}>
+                    <Link to={p.path} className="hover:text-gray-900">
+                      {p.navLabel}
+                    </Link>
+                  </li>
+                )
+              )}
+              <li>
+                <Link to="/pricing" className="hover:text-gray-900">
+                  Pricing
+                </Link>
+              </li>
             </ul>
-          </div> */}
+          </div>
+
+          {/* Integrations & use cases */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-4">
+              Solutions
+            </h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              {MARKETING_PAGES.filter((p) => p.category !== "Feature").map(
+                (p) => (
+                  <li key={p.path}>
+                    <Link to={p.path} className="hover:text-gray-900">
+                      {p.navLabel}
+                    </Link>
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
 
           {/* Company */}
           <div>

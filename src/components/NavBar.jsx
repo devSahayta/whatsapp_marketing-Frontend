@@ -180,24 +180,31 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                to="/features"
+                className="hidden sm:inline-flex rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white/60 transition-all duration-200"
+              >
+                Features
+              </Link>
+
               <Link
                 to="/pricing"
-                className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-rose-600 transition-all duration-200 hover:-translate-y-0.5"
+                className="rounded-full px-3 py-1.5 text-xs sm:px-5 sm:py-2 sm:text-sm font-semibold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-rose-600 transition-all duration-200 hover:-translate-y-0.5"
               >
                 Pricing
               </Link>
 
               <button
                 onClick={login}
-                className="rounded-full px-5 py-2 text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-md hover:bg-white/80 transition-all duration-200"
+                className="rounded-full px-3 py-1.5 text-xs sm:px-5 sm:py-2 sm:text-sm font-medium text-gray-700 bg-white/60 backdrop-blur-md hover:bg-white/80 transition-all duration-200"
               >
                 Login
               </button>
 
               <button
                 onClick={register}
-                className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:-translate-y-0.5"
+                className="rounded-full px-3 py-1.5 text-xs sm:px-5 sm:py-2 sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:-translate-y-0.5"
               >
                 Sign Up
               </button>

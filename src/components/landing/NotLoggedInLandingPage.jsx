@@ -8,6 +8,7 @@ import LandingAnalyticsPreview from "./LandingAnalyticsPreview";
 import HowItWorksSection from "./HowItWorksSection";
 import WhoIsSamvaadikForSection from "./WhoIsSamvaadikForSection";
 import FinalCTASection from "./FinalCTASection";
+import LandingFAQ from "./LandingFAQ";
 import Footer from "./Footer";
 
 const NotLoggedInLandingPage = () => {
@@ -21,6 +22,7 @@ const NotLoggedInLandingPage = () => {
       <LandingAnalyticsPreview />
       <HowItWorksSection />
       <WhoIsSamvaadikForSection />
+      <LandingFAQ />
       <FinalCTASection />
       <Footer />
     </div>

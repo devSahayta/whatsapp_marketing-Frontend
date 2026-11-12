@@ -19,6 +19,7 @@ const SEO = ({
   path,
   url,
   noindex = false,
+  jsonLd, // optional schema.org object (or array of objects)
 }) => {
   const siteTitle = title.includes("Samvaadik") ? title : `${title} | Samvaadik`;
   const canonical = url || `${SITE_URL}${path && path !== "/" ? path : "/"}`;
@@ -56,6 +57,16 @@ const SEO = ({
       <meta name="twitter:title" content={siteTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+
+      {jsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(
+            Array.isArray(jsonLd)
+              ? { "@context": "https://schema.org", "@graph": jsonLd }
+              : { "@context": "https://schema.org", ...jsonLd }
+          )}
+        </script>
+      )}
     </Helmet>
   );
 };
