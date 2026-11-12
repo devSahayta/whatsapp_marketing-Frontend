@@ -243,16 +243,20 @@ p {
   font-style: normal;
 }
 
-/* .root-background {
-  background-image: url("/images/background-image.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  min-height: 100vh;
-} */
-
 .root-background {
   background: linear-gradient(120deg, #f1f5f9, #eef2ff, #fce7f3);
+}
+
+/* Pure-CSS recreation of the old background-image.jpg (lavender left,
+   sky-blue top, pink bottom-right). Used by the landing hero and final CTA. */
+.pastel-gradient-bg {
+  background-color: #f3e2f4;
+  background-image:
+    radial-gradient(ellipse 45% 70% at 0% 45%, #b4b2e2 0%, rgba(180, 178, 226, 0) 100%),
+    radial-gradient(ellipse 40% 45% at 50% 0%, #dbf1fd 0%, rgba(219, 241, 253, 0) 100%),
+    radial-gradient(ellipse 30% 45% at 100% 0%, #bfe3fa 0%, rgba(191, 227, 250, 0) 100%),
+    radial-gradient(ellipse 55% 55% at 72% 78%, #ffd2ea 0%, rgba(255, 210, 234, 0) 100%),
+    radial-gradient(ellipse 35% 35% at 100% 100%, #ffc4d5 0%, rgba(255, 196, 213, 0) 100%);
 }
 
 .max-h-350 {

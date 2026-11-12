@@ -78,10 +78,7 @@ const FinalCTASection = () => {
 
   return (
     <section
-      className="relative py-28 bg-cover bg-center"
-      style={{
-        backgroundImage: "url('/images/background-image.jpg')",
-      }}
+      className="relative py-28 pastel-gradient-bg"
     >
       {/* Soft overlay for readability */}
       <div className="absolute inset-0 bg-white/60 backdrop-blur-sm"></div>

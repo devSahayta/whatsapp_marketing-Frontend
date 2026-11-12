@@ -336,7 +336,7 @@ export const MARKETING_PAGES = [
     useCases: [
       { title: "Sales teams", text: "Follow up on campaign replies while interest is high." },
       { title: "Customer support", text: "Resolve order, booking and service queries on WhatsApp." },
-      { title: "Operations and events", text: "Coordinate with customers or guests directly from their contact record." },
+      { title: "Operations teams", text: "Confirm bookings, deliveries and appointments directly with customers." },
     ],
     faqs: [
       {
@@ -579,7 +579,7 @@ export const MARKETING_PAGES = [
     useCasesTitle: "Great for",
     useCases: [
       { title: "Teams that work in spreadsheets", text: "Sales and marketing lists stay in Sheets while messages go out from Samvaadik." },
-      { title: "Event guest lists", text: "Turn an RSVP sheet into a WhatsApp group for updates." },
+      { title: "Lead lists", text: "Turn a sheet of leads or customers into a WhatsApp group in a few clicks." },
       { title: "Reporting", text: "Share campaign results with managers without screenshots." },
     ],
     faqs: [
@@ -598,92 +598,8 @@ export const MARKETING_PAGES = [
     ],
     related: [
       "/features/whatsapp-bulk-messaging",
-      "/use-cases/event-management",
-      "/woocommerce-whatsapp-integration",
-    ],
-  },
-
-  // ──────────────────────────── USE CASES ─────────────────────────────
-  {
-    path: "/use-cases/event-management",
-    category: "Use case",
-    navLabel: "Events & Weddings",
-    icon: "PartyPopper",
-    summary:
-      "Guest communication for weddings and corporate events: RSVP lists, document collection and flight tracking.",
-    metaTitle: "WhatsApp for Event & Wedding Guest Management | Samvaadik",
-    metaDescription:
-      "Manage event and wedding guests on WhatsApp: guest lists, ID collection for check-in, airport pickup requests, arrival flight tracking and instant guest updates.",
-    keywords:
-      "WhatsApp for events, wedding guest management WhatsApp, event RSVP WhatsApp, guest communication platform, destination wedding guest management",
-    h1: "WhatsApp Guest Management for Events and Weddings",
-    intro:
-      "Hundreds of guests, travel plans and documents, and one WhatsApp number to keep everyone informed. Samvaadik helps event planners, wedding planners and corporate event teams manage guest lists, collect documents and track arrivals, all through the app guests already use.",
-    highlights: ["Guest lists & RSVPs", "Document collection", "Flight tracking"],
-    featuresTitle: "Tools built for guest-heavy events",
-    features: [
-      {
-        icon: "Users",
-        title: "Guest lists",
-        text: "Import guests from CSV or Google Sheets into an event group and manage them in one dashboard.",
-      },
-      {
-        icon: "FileBadge",
-        title: "Document collection",
-        text: "Send each guest a personal link to upload ID documents for check-in and hotel verification, including family members travelling with them.",
-      },
-      {
-        icon: "Plane",
-        title: "Arrival flight tracking",
-        text: "Track arrival flights for all guests in one view and refresh statuses to plan airport pickups.",
-      },
-      {
-        icon: "Car",
-        title: "Airport pickup requests",
-        text: "Guests tell you whether they need an airport pickup when they submit their details.",
-      },
-      {
-        icon: "Megaphone",
-        title: "Bulk guest updates",
-        text: "Share schedules, venue details and last-minute changes with every guest using approved templates.",
-      },
-      {
-        icon: "Bot",
-        title: "Instant answers to guest questions",
-        text: "Use chatbot flows and an AI agent to answer FAQs about timings, dress code and venues, so your team isn't answering the same question 200 times.",
-      },
-    ],
-    stepsTitle: "Run guest communication on WhatsApp",
-    steps: [
-      { title: "Create the event group", text: "Import your guest list from CSV or Google Sheets." },
-      { title: "Collect details", text: "Send document upload links and capture travel and pickup needs." },
-      { title: "Track arrivals", text: "Monitor flights and coordinate pickups from the dashboard." },
-      { title: "Keep guests informed", text: "Send updates and let automation answer common questions." },
-    ],
-    useCasesTitle: "Who uses it",
-    useCases: [
-      { title: "Wedding planners", text: "Destination and multi-day weddings with large guest lists." },
-      { title: "Corporate event teams", text: "Conferences, offsites and dealer meets with travel logistics." },
-      { title: "Hospitality partners", text: "Hotels and venues coordinating check-ins with planners." },
-    ],
-    faqs: [
-      {
-        q: "Do guests need to install anything?",
-        a: "No. Guests receive messages on WhatsApp and open document upload links in their phone's browser.",
-      },
-      {
-        q: "How are guest documents used?",
-        a: "Documents are collected only for check-in and hotel verification and are visible to the event team in Samvaadik.",
-      },
-      {
-        q: "Can I message all guests at once?",
-        a: "Yes. Send approved WhatsApp templates to the whole guest group, or schedule them for a specific time.",
-      },
-    ],
-    related: [
-      "/google-sheets-whatsapp-integration",
-      "/features/whatsapp-bulk-messaging",
       "/features/whatsapp-chatbot-builder",
+      "/woocommerce-whatsapp-integration",
     ],
   },
 ];

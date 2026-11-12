@@ -22,12 +22,7 @@ const LandingHero = () => {
 
   return (
     <section
-      className="relative min-h-[90vh] py-14 flex items-center justify-center px-4 overflow-hidden"
-      style={{
-        backgroundImage: "url('/background-image.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      className="relative min-h-[90vh] py-14 flex items-center justify-center px-4 overflow-hidden pastel-gradient-bg"
     >
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-white/70 backdrop-blur-sm"></div>
@@ -42,9 +37,9 @@ const LandingHero = () => {
 
         {/* Heading */}
         <h1 className="text-3xl sm:text-4xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
-          Send Unlimited WhatsApp Messages
+          Send Bulk WhatsApp Messages
           <span className=" mt-2 block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Without Fear of Block or Ban
+            The Official, Ban-Safe Way
           </span>
         </h1>
 
@@ -90,9 +85,9 @@ const LandingHero = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
           <div className="bg-white/80 backdrop-blur rounded-2xl p-5 border border-gray-200 shadow-sm">
             <Zap className="w-6 h-6 text-blue-600 mx-auto mb-3" />
-            <p className="font-semibold text-gray-900">Unlimited Messaging</p>
+            <p className="font-semibold text-gray-900">Message at Scale</p>
             <p className="text-sm text-gray-600 mt-1">
-              No daily sending limits
+              No extra limits from Samvaadik
             </p>
           </div>
 
