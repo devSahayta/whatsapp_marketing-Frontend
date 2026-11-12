@@ -1,5 +1,6 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import {
   BrowserRouter as Router,
   Routes,
@@ -60,6 +61,17 @@ import ShopifyPage from "./pages/ShopifyPage";
 import ApiKeysPage from "./pages/ApiKeysPage";
 
 import SamvaadikAssistant from "./components/SamvaadikAssistant";
+import NotFound from "./pages/NotFound";
+import {
+  isPublicPath,
+  isPrerenderVisible,
+  removePrerender,
+  setAuthHint,
+} from "./seo/publicRoutes";
+
+// useLayoutEffect in the browser, useEffect during the build-time pre-render.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 function ScrollToTop() {
   const location = useLocation();
@@ -129,7 +141,8 @@ function WhatsappAccountRoute({ children }) {
   return hasAccount ? children : <Navigate to="/whatsapp-account" replace />;
 }
 
-function AppContent() {
+// Exported for build-time pre-rendering (src/entry-prerender.jsx).
+export function AppContent() {
   const { user, isAuthenticated, isLoading, getToken } = useKindeAuth();
   const location = useLocation();
 
@@ -159,10 +172,33 @@ function AppContent() {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
-  if (isLoading) return <p>Loading authentication...</p>;
+  // Static pre-rendered HTML (see scripts/prerender.mjs) is shown until auth
+  // resolves; captured once so it doesn't change mid-load.
+  const [showingPrerender] = useState(isPrerenderVisible);
+
+  // Remember on this browser whether the user is logged in, so index.html can
+  // hide the pre-rendered marketing page for returning logged-in users.
+  useEffect(() => {
+    if (!isLoading) setAuthHint(isAuthenticated);
+  }, [isLoading, isAuthenticated]);
+
+  // Swap static HTML for the live app in the same frame (before paint).
+  useIsomorphicLayoutEffect(() => {
+    if (!isLoading) removePrerender();
+  }, [isLoading]);
+
+  if (isLoading) {
+    return showingPrerender ? null : <p>Loading authentication...</p>;
+  }
 
   return (
     <div className="app-root root-background ">
+      {/* App screens are private: keep them out of search results. */}
+      {!isPublicPath(location.pathname) && (
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
+      )}
       {/* Navbar: pass toggle and state. NavBar itself decides whether hamburger is shown based on auth */}
       {!hideNavBar && (
         <NavBar
@@ -464,7 +500,7 @@ function AppContent() {
             path="/refund-cancellation-policy"
             element={<RefundCancellationPolicy />}
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
 
         {isAuthenticated && <SamvaadikAssistant userId={user?.id} />}

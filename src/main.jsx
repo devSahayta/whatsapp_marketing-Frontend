@@ -20,6 +20,3 @@ createRoot(document.getElementById('root')).render(
     </HelmetProvider> {/* ← CLOSE WRAPPER */}
   </StrictMode>
 );
-
-// 🔥 Trigger prerender event (for vite-plugin-prerender)
-document.dispatchEvent(new Event('render-event'));

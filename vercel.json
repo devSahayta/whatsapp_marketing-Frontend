@@ -1,5 +1,23 @@
 {
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(groups|createGroup|dashboard|chat|whatsapp-account|integrations|templates|template|campaigns|document-upload|document-viewer|knowledge-bases|flight-status|chatbot|agents|api-keys|expired)(/.*)?",
+      "destination": "/app-shell.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(groups|createGroup|dashboard|chat|whatsapp-account|integrations|templates|template|campaigns|document-upload|document-viewer|knowledge-bases|flight-status|chatbot|agents|api-keys|expired)(/.*)?",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/(app-shell.html|404.html)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
   ]
 }

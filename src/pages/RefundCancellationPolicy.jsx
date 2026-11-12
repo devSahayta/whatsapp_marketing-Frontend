@@ -1,8 +1,15 @@
 import React from "react";
 import Footer from "../components/landing/Footer";
+import SEO from "../components/SEO";
 
 const RefundCancellationPolicy = () => {
   return (
+    <>
+    <SEO
+      title="Refund & Cancellation Policy"
+      description="Samvaadik refund and cancellation policy for subscription plans of our WhatsApp marketing platform."
+      path="/refund-cancellation-policy"
+    />
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
@@ -76,6 +83,7 @@ const RefundCancellationPolicy = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

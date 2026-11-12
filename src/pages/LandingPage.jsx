@@ -112,10 +112,10 @@ const LandingPage = () => {
       <>
         {/* 🔥 ADD SEO FOR PUBLIC PAGE */}
         <SEO
-          title="Home"
+          title="Samvaadik - WhatsApp Business API Marketing & Automation Platform"
           description="Samvaadik - Transform your WhatsApp into a powerful business tool. Send bulk messages, manage campaigns, track analytics, and grow your business with WhatsApp marketing automation."
           keywords="WhatsApp Business, Bulk WhatsApp Messaging, WhatsApp Marketing, Campaign Manager, Business Messaging Tool, WhatsApp Automation, Marketing Automation"
-          url="https://samvaadik.com"
+          path="/"
         />
         <NotLoggedInLandingPage />
       </>
@@ -126,12 +126,7 @@ const LandingPage = () => {
   return (
     <>
       {/* 🔥 ADD SEO FOR LOGGED-IN PAGE */}
-      <SEO
-        title="Dashboard"
-        description="Track your WhatsApp marketing performance with real-time analytics. Monitor message status, campaign performance, and group engagement on your Samvaadik dashboard."
-        keywords="WhatsApp Analytics, Marketing Dashboard, Campaign Analytics, Message Tracking, Business Analytics"
-        url="https://samvaadik.com/dashboard"
-      />
+      <SEO title="Dashboard" noindex />
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-7xl mx-auto space-y-8">

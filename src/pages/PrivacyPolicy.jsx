@@ -1,8 +1,15 @@
 import React from "react";
 import Footer from "../components/landing/Footer";
+import SEO from "../components/SEO";
 
 const PrivacyPolicy = () => {
   return (
+    <>
+    <SEO
+      title="Privacy Policy"
+      description="How Samvaadik collects, uses, and protects your data and your customers' data on our WhatsApp Business platform."
+      path="/privacy-policy"
+    />
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
@@ -279,6 +286,7 @@ const PrivacyPolicy = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 
