@@ -105,8 +105,10 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
         <div className="nav-logo">
           <Link to="/" className="logo-link">
             <img
-              src="/images/logo-samvaadik.png"
+              src="/images/logo-samvaadik.webp"
               alt="Samvaadik Logo"
+              width="332"
+              height="128"
               className="nav-logo-img"
             />
           </Link>

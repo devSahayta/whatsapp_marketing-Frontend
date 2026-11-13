@@ -50,6 +50,27 @@ const getRemainingDays = (value) => {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 };
 
+// Razorpay checkout is loaded only on this page (not site-wide), once.
+let razorpayPromise = null;
+const loadRazorpay = () => {
+  if (window.Razorpay) return Promise.resolve(true);
+  if (!razorpayPromise) {
+    razorpayPromise = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => {
+        razorpayPromise = null; // allow a retry on the next click
+        script.remove();
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  }
+  return razorpayPromise;
+};
+
 const PricingPage = () => {
   const navigate = useNavigate();
   const { login, user } = useKindeAuth();
@@ -83,6 +104,8 @@ const PricingPage = () => {
     };
 
     loadPlans();
+    // Fetch checkout in the background so "Pay" opens instantly.
+    loadRazorpay();
   }, []);
 
   const sortedPlans = useMemo(() => {
@@ -112,7 +135,7 @@ const PricingPage = () => {
       return;
     }
 
-    if (!window.Razorpay) {
+    if (!(await loadRazorpay())) {
       showError(
         "Razorpay checkout is not loaded. Please refresh and try again.",
       );

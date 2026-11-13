@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useLayoutEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   BrowserRouter as Router,
@@ -12,16 +12,35 @@ import {
 import NavBar from "./components/NavBar";
 import Sidebar from "./components/Sidebar"; // sliding drawer
 
-import CreateEvent from "./pages/CreateGroup";
-import Dashboard from "./pages/GroupDashboard";
 import LandingPage from "./pages/LandingPage";
-import EventsPage from "./pages/GroupsPage";
-import ChatPage from "./pages/ChatPage";
-import TemplateList from "./pages/TemplateList";
-import CreateTemplate from "./pages/CreateTemplate";
-import CreateCarouselTemplate from "./pages/CreateCarouselTemplate";
-import SendTemplate from "./pages/SendTemplate";
-import WAccountPage from "./pages/WAccountPage";
+
+// App screens (logged-in only) are code-split: public visitors and Google
+// never download them, which keeps the marketing pages fast.
+const CreateEvent = lazy(() => import("./pages/CreateGroup"));
+const Dashboard = lazy(() => import("./pages/GroupDashboard"));
+const EventsPage = lazy(() => import("./pages/GroupsPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
+const TemplateList = lazy(() => import("./pages/TemplateList"));
+const CreateTemplate = lazy(() => import("./pages/CreateTemplate"));
+const CreateCarouselTemplate = lazy(() => import("./pages/CreateCarouselTemplate"));
+const SendTemplate = lazy(() => import("./pages/SendTemplate"));
+const WAccountPage = lazy(() => import("./pages/WAccountPage"));
+const CreateCampaign = lazy(() => import("./pages/CreateCampaign"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const EditCampaign = lazy(() => import("./pages/EditCampaign"));
+const CampaignDetails = lazy(() => import("./pages/CampaignDetails"));
+const SubscriptionExpired = lazy(() => import("./pages/SubscriptionExpired"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const ChatbotFlows = lazy(() => import("./pages/ChatbotFlows"));
+const ChatbotBuilder = lazy(() => import("./pages/ChatbotBuilder"));
+const AgentsPage = lazy(() => import("./pages/AgentsPage"));
+const CreateAgent = lazy(() => import("./pages/CreateAgent"));
+const TestAgent = lazy(() => import("./pages/TestAgent"));
+const WooCommercePage = lazy(() => import("./pages/WooCommercePage"));
+const WooCommerceTemplateGuide = lazy(() => import("./pages/WooCommerceTemplateGuide"));
+const ShopifyPage = lazy(() => import("./pages/ShopifyPage"));
+const ApiKeysPage = lazy(() => import("./pages/ApiKeysPage"));
+const SamvaadikAssistant = lazy(() => import("./components/SamvaadikAssistant"));
 
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { addUserToBackend } from "./api/userApi";
@@ -30,30 +49,14 @@ import { setAuthToken } from "./api/apiClient";
 import "./styles/global.css";
 import { fetchWhatsappAccount } from "./api/waccount";
 import { Toaster } from "react-hot-toast";
-import CreateCampaign from "./pages/CreateCampaign";
-import Campaigns from "./pages/Campaigns";
-import EditCampaign from "./pages/EditCampaign";
-import CampaignDetails from "./pages/CampaignDetails";
 import ContactUs from "./pages/ContactUs";
 import PricingPage from "./pages/PricingPage";
-import SubscriptionExpired from "./pages/SubscriptionExpired";
 import SubscriptionGuard from "./components/SubscriptionGuard";
 import AboutUs from "./pages/AboutUs";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellationPolicy from "./pages/RefundCancellationPolicy";
-import Integrations from "./pages/Integrations";
-import ChatbotFlows from "./pages/ChatbotFlows";
-import ChatbotBuilder from "./pages/ChatbotBuilder";
-import AgentsPage from "./pages/AgentsPage";
-import CreateAgent from "./pages/CreateAgent";
-import TestAgent from "./pages/TestAgent";
-import WooCommercePage from "./pages/WooCommercePage";
-import WooCommerceTemplateGuide from "./pages/WooCommerceTemplateGuide";
-import ShopifyPage from "./pages/ShopifyPage";
-import ApiKeysPage from "./pages/ApiKeysPage";
 
-import SamvaadikAssistant from "./components/SamvaadikAssistant";
 import NotFound from "./pages/NotFound";
 import MarketingPage from "./pages/MarketingPage";
 import FeaturesHub from "./pages/FeaturesHub";
@@ -68,6 +71,15 @@ import {
 // useLayoutEffect in the browser, useEffect during the build-time pre-render.
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+// Shown for a moment while a code-split app screen downloads.
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-24" role="status" aria-label="Loading">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const location = useLocation();
@@ -217,6 +229,7 @@ export function AppContent() {
         // className={hideNavBar ? "content no-navbar" : "content with-navbar"}
         className={` ${isAuthenticated ? "mt-14" : ""} ${hideNavBar ? "content no-navbar" : "content with-navbar"}`}
       >
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route
             path="/"
@@ -459,8 +472,13 @@ export function AppContent() {
           ))}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
 
-        {isAuthenticated && <SamvaadikAssistant userId={user?.id} />}
+        {isAuthenticated && (
+          <Suspense fallback={null}>
+            <SamvaadikAssistant userId={user?.id} />
+          </Suspense>
+        )}
       </main>
     </div>
   );

@@ -14,8 +14,11 @@ const Footer = () => {
           <div className="col-span-2 md:col-span-3 lg:col-span-2 space-y-3 max-w-80">
             {/* <h3 className="text-2xl font-bold text-gray-900 mb-3">Samvaadik</h3> */}
             <img
-              src="/images/logo-samvaadik.png"
+              src="/images/logo-samvaadik.webp"
               alt="Samvaadik Logo"
+              width="332"
+              height="128"
+              loading="lazy"
               className="h-10 w-auto"
             />
             <p className="text-gray-600 text-sm leading-relaxed">

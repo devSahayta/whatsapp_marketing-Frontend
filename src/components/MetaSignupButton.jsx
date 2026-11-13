@@ -137,7 +137,7 @@ const MetaSignupButton = ({ userId, onSuccess }) => {
       ) : (
         <>
           <img
-            src="/images/meta.png"
+            src="/images/meta.webp"
             alt="Meta"
             style={{ width: 18, height: 18, objectFit: "contain" }}
           />

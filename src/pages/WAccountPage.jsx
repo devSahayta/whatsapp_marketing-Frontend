@@ -197,7 +197,7 @@ const WAccountPage = () => {
     <div className="waccount-page">
       <div className="waccount-page__header">
         <img
-          src="/images/meta.png"
+          src="/images/meta.webp"
           alt="Meta"
           className="waccount-page__meta-logo"
         />
