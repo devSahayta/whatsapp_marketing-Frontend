@@ -16,14 +16,11 @@ import CreateEvent from "./pages/CreateGroup";
 import Dashboard from "./pages/GroupDashboard";
 import LandingPage from "./pages/LandingPage";
 import EventsPage from "./pages/GroupsPage";
-import DocumentUpload from "./pages/DocumentUpload";
-import DocumentViewer from "./components/DocumentViewer";
 import ChatPage from "./pages/ChatPage";
 import TemplateList from "./pages/TemplateList";
 import CreateTemplate from "./pages/CreateTemplate";
 import CreateCarouselTemplate from "./pages/CreateCarouselTemplate";
 import SendTemplate from "./pages/SendTemplate";
-// import MediaList from "./pages/MediaList";
 import WAccountPage from "./pages/WAccountPage";
 
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
@@ -32,11 +29,7 @@ import { setAuthToken } from "./api/apiClient";
 
 import "./styles/global.css";
 import { fetchWhatsappAccount } from "./api/waccount";
-import KnowledgeBases from "./pages/KnowledgeBases";
-import CreateKnowledgeBase from "./pages/CreateKnowledgeBase";
-import KnowledgeBaseDetail from "./pages/KnowledgeBaseDetail";
 import { Toaster } from "react-hot-toast";
-import FlightStatus from "./pages/FlightStatus";
 import CreateCampaign from "./pages/CreateCampaign";
 import Campaigns from "./pages/Campaigns";
 import EditCampaign from "./pages/EditCampaign";
@@ -383,54 +376,6 @@ export function AppContent() {
             element={
               <PrivateSubscribedRoute>
                 <CampaignDetails />
-              </PrivateSubscribedRoute>
-            }
-          />
-          {/* <Route
-            path="/templates/media"
-            element={
-              <PrivateRoute>
-                <MediaList />
-              </PrivateRoute>
-            }
-          /> */}
-          <Route
-            path="/document-upload/:participantId"
-            element={<DocumentUpload />}
-          />
-          <Route
-            path="/document-viewer/:participantId"
-            element={<DocumentViewer />}
-          />
-          <Route
-            path="/knowledge-bases"
-            element={
-              <PrivateSubscribedRoute>
-                <KnowledgeBases />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/knowledge-bases/create"
-            element={
-              <PrivateSubscribedRoute>
-                <CreateKnowledgeBase />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/knowledge-bases/:id"
-            element={
-              <PrivateSubscribedRoute>
-                <KnowledgeBaseDetail />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/flight-status/:eventId"
-            element={
-              <PrivateSubscribedRoute>
-                <FlightStatus />
               </PrivateSubscribedRoute>
             }
           />
