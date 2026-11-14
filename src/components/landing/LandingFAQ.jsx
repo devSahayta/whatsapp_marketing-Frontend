@@ -53,6 +53,10 @@ const LandingFAQ = () => (
         Still curious?{" "}
         <Link to="/features" className="text-indigo-600 font-semibold hover:underline">
           Explore all features
+        </Link>
+        ,{" "}
+        <Link to="/blog" className="text-indigo-600 font-semibold hover:underline">
+          read our guides
         </Link>{" "}
         or{" "}
         <Link to="/contact" className="text-indigo-600 font-semibold hover:underline">

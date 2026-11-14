@@ -469,7 +469,7 @@ export const MARKETING_PAGES = [
       {
         icon: "ShoppingCart",
         title: "Abandoned cart recovery",
-        text: "Samvaadik checks for abandoned checkouts every 30 minutes and sends a recovery message after the delay you choose.",
+        text: "Samvaadik checks for abandoned checkouts every 10 minutes and sends a recovery message after the delay you choose.",
       },
       {
         icon: "CalendarClock",
@@ -516,7 +516,7 @@ export const MARKETING_PAGES = [
       },
       {
         q: "How does abandoned cart recovery work?",
-        a: "Samvaadik checks for abandoned checkouts every 30 minutes and sends your recovery template once the delay you set has passed. Every attempt appears in the recovery log.",
+        a: "Samvaadik checks for abandoned checkouts every 10 minutes and sends your recovery template once the delay you set has passed. Every attempt appears in the recovery log.",
       },
       {
         q: "Do you support Shopify?",

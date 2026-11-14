@@ -5,6 +5,7 @@
 // Feature / integration / use-case pages come from src/marketing/marketingPages.js.
 
 import { MARKETING_PAGES, FEATURES_HUB } from "../marketing/marketingPages.js";
+import { BLOG_POSTS, BLOG_INDEX, blogPath } from "../blog/posts.js";
 
 export const PUBLIC_ROUTES = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
@@ -14,6 +15,13 @@ export const PUBLIC_ROUTES = [
     path: p.path,
     changefreq: "monthly",
     priority: "0.8",
+  })),
+  { path: BLOG_INDEX.path, changefreq: "weekly", priority: "0.8" },
+  ...BLOG_POSTS.map((p) => ({
+    path: blogPath(p.slug),
+    changefreq: "monthly",
+    priority: "0.7",
+    lastmod: p.updated || p.date,
   })),
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },

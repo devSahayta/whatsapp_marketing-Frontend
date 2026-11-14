@@ -20,6 +20,9 @@ const SEO = ({
   url,
   noindex = false,
   jsonLd, // optional schema.org object (or array of objects)
+  type = "website", // "article" for blog posts
+  publishedTime, // ISO date, articles only
+  modifiedTime, // ISO date, articles only
 }) => {
   const siteTitle = title.includes("Samvaadik") ? title : `${title} | Samvaadik`;
   const canonical = url || `${SITE_URL}${path && path !== "/" ? path : "/"}`;
@@ -43,7 +46,13 @@ const SEO = ({
       <link rel="canonical" href={canonical} />
 
       {/* Open Graph / Facebook / WhatsApp link previews */}
-      <meta property="og:type" content="website" />
+      <meta property="og:type" content={type} />
+      {publishedTime && (
+        <meta property="article:published_time" content={publishedTime} />
+      )}
+      {modifiedTime && (
+        <meta property="article:modified_time" content={modifiedTime} />
+      )}
       <meta property="og:site_name" content="Samvaadik" />
       <meta property="og:url" content={canonical} />
       <meta property="og:title" content={siteTitle} />

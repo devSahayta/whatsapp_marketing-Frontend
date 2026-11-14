@@ -61,6 +61,9 @@ import NotFound from "./pages/NotFound";
 import MarketingPage from "./pages/MarketingPage";
 import FeaturesHub from "./pages/FeaturesHub";
 import { MARKETING_PAGES } from "./marketing/marketingPages";
+import BlogIndex from "./pages/BlogIndex";
+import BlogPost from "./pages/BlogPost";
+import { BLOG_POSTS, BLOG_INDEX, blogPath } from "./blog/posts";
 import {
   isPublicPath,
   isPrerenderVisible,
@@ -468,6 +471,15 @@ export function AppContent() {
               key={p.path}
               path={p.path}
               element={<MarketingPage path={p.path} />}
+            />
+          ))}
+          {/* Blog (content in src/blog/posts.js) */}
+          <Route path={BLOG_INDEX.path} element={<BlogIndex />} />
+          {BLOG_POSTS.map((p) => (
+            <Route
+              key={p.slug}
+              path={blogPath(p.slug)}
+              element={<BlogPost slug={p.slug} />}
             />
           ))}
           <Route path="*" element={<NotFound />} />

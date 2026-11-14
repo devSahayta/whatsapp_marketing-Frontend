@@ -96,7 +96,7 @@ ${sitemapRoutes
   .map(
     (r) => `  <url>
     <loc>${SITE_URL}${r.path}</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${r.lastmod || today}</lastmod>
     <changefreq>${r.changefreq}</changefreq>
     <priority>${r.priority}</priority>
   </url>`
