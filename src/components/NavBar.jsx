@@ -191,13 +191,6 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
               </Link>
 
               <Link
-                to="/blog"
-                className="hidden md:inline-flex rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white/60 transition-all duration-200"
-              >
-                Blog
-              </Link>
-
-              <Link
                 to="/pricing"
                 className="rounded-full px-3 py-1.5 text-xs sm:px-5 sm:py-2 sm:text-sm font-semibold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-rose-600 transition-all duration-200 hover:-translate-y-0.5"
               >
