@@ -1,7 +1,13 @@
 // Blog article page (/blog/:slug). Content lives in src/blog/posts.js.
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, ChevronRight, Clock, Lightbulb } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronRight,
+  Clock,
+  Lightbulb,
+} from "lucide-react";
 import SEO, { SITE_URL } from "../components/SEO";
 import Footer from "../components/landing/Footer";
 import { FaqList, CtaBand } from "./MarketingPage";
@@ -39,7 +45,10 @@ export const Inline = ({ text }) =>
     }
     if (part.startsWith("`")) {
       return (
-        <code key={i} className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.9em] text-gray-800">
+        <code
+          key={i}
+          className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.9em] text-gray-800"
+        >
           {part.slice(1, -1)}
         </code>
       );
@@ -47,13 +56,20 @@ export const Inline = ({ text }) =>
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       const [, label, href] = link;
-      const cls = "font-medium text-indigo-600 underline decoration-indigo-200 underline-offset-2 hover:decoration-indigo-600";
+      const cls =
+        "font-medium text-indigo-600 underline decoration-indigo-200 underline-offset-2 hover:decoration-indigo-600";
       return href.startsWith("/") ? (
         <Link key={i} to={href} className={cls}>
           {label}
         </Link>
       ) : (
-        <a key={i} href={href} className={cls} target="_blank" rel="noopener noreferrer">
+        <a
+          key={i}
+          href={href}
+          className={cls}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           {label}
         </a>
       );
@@ -64,13 +80,18 @@ export const Inline = ({ text }) =>
 const Block = ({ block }) => {
   if (block.h2) {
     return (
-      <h2 id={slugify(block.h2)} className="scroll-mt-24 mt-12 mb-4 text-2xl sm:text-3xl font-extrabold text-gray-900">
+      <h2
+        id={slugify(block.h2)}
+        className="scroll-mt-24 mt-12 mb-4 text-2xl sm:text-3xl font-extrabold text-gray-900"
+      >
         {block.h2}
       </h2>
     );
   }
   if (block.h3) {
-    return <h3 className="mt-8 mb-2 text-xl font-bold text-gray-900">{block.h3}</h3>;
+    return (
+      <h3 className="mt-8 mb-2 text-xl font-bold text-gray-900">{block.h3}</h3>
+    );
   }
   if (block.p) {
     return (
@@ -83,7 +104,9 @@ const Block = ({ block }) => {
     const items = block.ul || block.ol;
     const Tag = block.ul ? "ul" : "ol";
     return (
-      <Tag className={`my-5 space-y-2 pl-6 text-lg leading-relaxed text-gray-700 ${block.ul ? "list-disc" : "list-decimal"} marker:text-indigo-500`}>
+      <Tag
+        className={`my-5 space-y-2 pl-6 text-lg leading-relaxed text-gray-700 ${block.ul ? "list-disc" : "list-decimal"} marker:text-indigo-500`}
+      >
         {items.map((item, i) => (
           <li key={i} className="pl-1">
             <Inline text={item} />
@@ -123,7 +146,10 @@ const Block = ({ block }) => {
   if (block.note) {
     return (
       <aside className="my-6 flex gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-5 text-gray-800">
-        <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" aria-hidden="true" />
+        <Lightbulb
+          className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600"
+          aria-hidden="true"
+        />
         <div className="space-y-2 leading-relaxed">
           {block.note.split("\n\n").map((para, i) => (
             <p key={i} className="whitespace-pre-line">
@@ -137,7 +163,9 @@ const Block = ({ block }) => {
   if (block.cta) {
     return (
       <aside className="my-10 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-6 sm:p-8 text-white shadow-lg">
-        <p className="text-lg font-semibold leading-relaxed">{block.cta}</p>
+        <p className="text-lg text-white font-semibold leading-relaxed">
+          {block.cta}
+        </p>
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
           <Link
             to="/contact"
@@ -226,11 +254,15 @@ const BlogPost = ({ slug }) => {
             <nav aria-label="Breadcrumb" className="mb-8 text-sm text-gray-500">
               <ol className="flex flex-wrap items-center gap-1">
                 <li>
-                  <Link to="/" className="hover:text-gray-900">Home</Link>
+                  <Link to="/" className="hover:text-gray-900">
+                    Home
+                  </Link>
                 </li>
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 <li>
-                  <Link to={BLOG_INDEX.path} className="hover:text-gray-900">Blog</Link>
+                  <Link to={BLOG_INDEX.path} className="hover:text-gray-900">
+                    Blog
+                  </Link>
                 </li>
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 <li className="font-medium text-gray-900" aria-current="page">
@@ -251,7 +283,9 @@ const BlogPost = ({ slug }) => {
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays className="h-4 w-4" aria-hidden="true" />
                   <time dateTime={post.updated || post.date}>
-                    {post.updated && post.updated !== post.date ? "Updated " : ""}
+                    {post.updated && post.updated !== post.date
+                      ? "Updated "
+                      : ""}
                     {formatDate(post.updated || post.date)}
                   </time>
                 </span>
@@ -263,12 +297,20 @@ const BlogPost = ({ slug }) => {
             </header>
 
             {toc.length > 2 && (
-              <nav aria-label="Contents" className="mt-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">In this guide</p>
+              <nav
+                aria-label="Contents"
+                className="mt-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                  In this guide
+                </p>
                 <ol className="list-decimal space-y-1.5 pl-5 text-gray-700 marker:text-gray-400">
                   {toc.map((h) => (
                     <li key={h}>
-                      <a href={`#${slugify(h)}`} className="hover:text-indigo-600">
+                      <a
+                        href={`#${slugify(h)}`}
+                        className="hover:text-indigo-600"
+                      >
                         {h}
                       </a>
                     </li>
@@ -297,7 +339,9 @@ const BlogPost = ({ slug }) => {
         {related.length > 0 && (
           <section className="px-4 sm:px-6 lg:px-8 py-10">
             <div className="max-w-5xl mx-auto">
-              <h2 className="mb-6 text-2xl font-extrabold text-gray-900">Keep reading</h2>
+              <h2 className="mb-6 text-2xl font-extrabold text-gray-900">
+                Keep reading
+              </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {related.map((r) => (
                   <PostCard key={r.slug} post={r} />
@@ -319,7 +363,9 @@ export const PostCard = ({ post }) => (
     to={blogPath(post.slug)}
     className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md"
   >
-    <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{post.category}</span>
+    <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+      {post.category}
+    </span>
     <h3 className="mt-2 text-lg font-bold leading-snug text-gray-900 group-hover:text-indigo-700">
       {post.title}
     </h3>
