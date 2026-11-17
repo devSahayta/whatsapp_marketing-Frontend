@@ -895,7 +895,7 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
                   >
                     <Send className="h-4 w-4" />
-                    {isCarousel ? "Send via Campaign" : "Send Template"}
+                    Send via Campaign
                   </button>
                 )}
                 <button
@@ -1025,7 +1025,7 @@ function TemplateCard({
             className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
           >
             <Send className="h-4 w-4" />
-            {isCarousel ? "Send via Campaign" : "Send"}
+            Send via Campaign
           </button>
         )}
 
@@ -1325,13 +1325,9 @@ export default function TemplateList() {
                     setSelectedTemplate(template);
                     setOpenMenuId(null);
                   }}
-                  onSend={(tmpl) => {
+                  onSend={() => {
                     setOpenMenuId(null);
-                    if (isCarouselTemplate(tmpl)) {
-                      navigate("/campaigns");
-                    } else {
-                      navigate(`/templates/send/${tmpl.template_id}`);
-                    }
+                    navigate("/campaigns");
                   }}
                   onDelete={handleDelete}
                 />
@@ -1378,11 +1374,7 @@ export default function TemplateList() {
           template={selectedTemplate}
           userId={userId}
           onClose={() => setSelectedTemplate(null)}
-          onSend={(tmpl) =>
-            isCarouselTemplate(tmpl)
-              ? navigate("/campaigns")
-              : navigate(`/templates/send/${tmpl.template_id}`)
-          }
+          onSend={() => navigate("/campaigns")}
           onMediaUpload={loadTemplates}
         />
       )}

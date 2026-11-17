@@ -2,9 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  ChevronDown,
+  Download,
+  FileDown,
   FileText,
   FileSpreadsheet,
   Gauge,
+  Sheet,
   Info,
   Phone,
   Send,
@@ -29,6 +33,10 @@ import {
 import { exportCampaignToGoogleSheet } from "../api/googleSheets";
 import useAuthUser from "../hooks/useAuthUser";
 import { exportCampaignPdf } from "../utils/exportCampaignPdf";
+import {
+  exportCampaignCsv,
+  exportCampaignExcel,
+} from "../utils/exportCampaignData";
 import {
   dismissToast,
   showError,
@@ -111,7 +119,17 @@ const getMessageStatusFilterValue = (status) => {
   return status;
 };
 
-const getSentTimeline = (messages = [], campaign = null) => {
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "read", label: "Read" },
+  { value: "delivered", label: "Delivered" },
+  { value: "failed", label: "Failed" },
+  { value: "undelivered", label: "Undelivered" },
+  { value: "processing", label: "Processing" },
+  { value: "pending", label: "Pending" },
+];
+
+const getSentTimeline =(messages = [], campaign = null) => {
   const startedAt = campaign?.started_at
     ? new Date(campaign.started_at).getTime()
     : null;
@@ -331,12 +349,37 @@ const CampaignDetails = () => {
     }
   };
 
+  const isFiltered = statusFilter !== "all" || search.trim() !== "";
+  const exportSuffix = statusFilter !== "all" ? statusFilter : "";
+
+  const runFileExport = (exporter) => {
+    if (filteredMessages.length === 0) {
+      showError("No messages match the current filters");
+      return;
+    }
+    exporter({
+      campaign,
+      stats,
+      messages: filteredMessages,
+      suffix: exportSuffix,
+    });
+  };
+
   const handleExportToGoogleSheet = async () => {
+    if (filteredMessages.length === 0) {
+      showError("No messages match the current filters");
+      return;
+    }
+
     try {
       setExportingSheet(true);
 
       const response = await exportCampaignToGoogleSheet({
         campaign_id: id,
+        ...(statusFilter !== "all" && {
+          status: getMessageStatusFilterValue(statusFilter),
+        }),
+        ...(search.trim() && { search: search.trim() }),
       });
 
       const spreadsheetUrl = response?.data?.spreadsheetUrl;
@@ -430,28 +473,19 @@ const CampaignDetails = () => {
             </div>
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-              <button
-                onClick={() =>
-                  exportCampaignPdf({
-                    campaign,
-                    stats,
-                    messages: filteredMessages,
-                  })
-                }
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50 sm:w-auto"
-              >
-                <FileText className="w-4 h-4" />
-                Download Report
-              </button>
-
-              <button
-                onClick={handleExportToGoogleSheet}
-                disabled={exportingSheet}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 px-4 py-2 font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                {exportingSheet ? "Exporting..." : "Export to Google Sheets"}
-              </button>
+              <ExportMenu
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                search={search}
+                isFiltered={isFiltered}
+                exportCount={filteredMessages.length}
+                totalCount={messages.length}
+                exportingSheet={exportingSheet}
+                onExportPdf={() => runFileExport(exportCampaignPdf)}
+                onExportExcel={() => runFileExport(exportCampaignExcel)}
+                onExportCsv={() => runFileExport(exportCampaignCsv)}
+                onExportGoogleSheet={handleExportToGoogleSheet}
+              />
 
               {["completed", "failed"].includes(campaign.status) &&
                 (stats?.failed > 0 || stats?.undelivered > 0) && (
@@ -528,13 +562,11 @@ const CampaignDetails = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All statuses</option>
-                <option value="read">Read</option>
-                <option value="delivered">Delivered</option>
-                <option value="failed">Failed</option>
-                <option value="undelivered">Undelivered</option>
-                <option value="processing">Processing</option>
-                <option value="pending">Pending</option>
+                {STATUS_FILTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <input
                 value={search}
@@ -612,6 +644,173 @@ const CampaignDetails = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const ExportMenu = ({
+  statusFilter,
+  onStatusFilterChange,
+  search,
+  isFiltered,
+  exportCount,
+  totalCount,
+  exportingSheet,
+  onExportPdf,
+  onExportExcel,
+  onExportCsv,
+  onExportGoogleSheet,
+}) => {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const runAndClose = (action) => () => {
+    setOpen(false);
+    action();
+  };
+
+  const options = [
+    {
+      key: "pdf",
+      label: "PDF Report",
+      hint: "Summary + message table",
+      icon: FileText,
+      iconClass: "text-red-500 bg-red-50",
+      onClick: runAndClose(onExportPdf),
+    },
+    {
+      key: "excel",
+      label: "Excel (.xlsx)",
+      hint: "Opens in Excel, Numbers",
+      icon: FileSpreadsheet,
+      iconClass: "text-green-700 bg-green-50",
+      onClick: runAndClose(onExportExcel),
+    },
+    {
+      key: "csv",
+      label: "CSV (.csv)",
+      hint: "Plain text, works anywhere",
+      icon: FileDown,
+      iconClass: "text-slate-600 bg-slate-100",
+      onClick: runAndClose(onExportCsv),
+    },
+    {
+      key: "gsheet",
+      label: exportingSheet ? "Exporting..." : "Google Sheets",
+      hint: "Creates a new sheet in your Drive",
+      icon: Sheet,
+      iconClass: "text-emerald-600 bg-emerald-50",
+      onClick: runAndClose(onExportGoogleSheet),
+      disabled: exportingSheet,
+    },
+  ];
+
+  return (
+    <div ref={menuRef} className="relative w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50 sm:w-auto"
+      >
+        <Download className="w-4 h-4" />
+        Export
+        <ChevronDown
+          className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-30 mt-2 w-full min-w-[18rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:w-80"
+        >
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Filter by status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-500">
+              {isFiltered ? (
+                <>
+                  Exporting{" "}
+                  <span className="font-semibold text-gray-800">
+                    {exportCount}
+                  </span>{" "}
+                  of {totalCount} messages
+                  {search.trim() && <> matching &ldquo;{search.trim()}&rdquo;</>}
+                </>
+              ) : (
+                <>
+                  Exporting all{" "}
+                  <span className="font-semibold text-gray-800">
+                    {totalCount}
+                  </span>{" "}
+                  messages
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="py-1">
+            {options.map(
+              ({ key, label, hint, icon: Icon, iconClass, onClick, disabled }) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="menuitem"
+                  onClick={onClick}
+                  disabled={disabled || exportCount === 0}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconClass}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900">
+                      {label}
+                    </span>
+                    <span className="block text-xs text-gray-500">{hint}</span>
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
