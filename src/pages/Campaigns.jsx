@@ -92,9 +92,12 @@ const Campaigns = () => {
     }
   };
 
-  const handleCancel = async (campaignId) => {
-    if (!window.confirm("Are you sure you want to cancel this campaign?"))
-      return;
+  const handleCancel = async (campaignId, isProcessing = false) => {
+    const confirmMessage = isProcessing
+      ? "This campaign is currently sending messages. Cancelling will stop all remaining messages from being sent — messages already sent cannot be recalled. Are you sure?"
+      : "Are you sure you want to cancel this campaign?";
+
+    if (!window.confirm(confirmMessage)) return;
 
     try {
       await cancelCampaign(campaignId, user.id);
@@ -316,6 +319,18 @@ const Campaigns = () => {
                 <Ban className="w-4 h-4" />
               </button>
             </>
+          )}
+
+          {/* A running campaign can also be stopped mid-send — the
+              scheduler now checks for this and halts within one batch. */}
+          {campaign.status === "processing" && (
+            <button
+              onClick={() => handleCancel(campaign.campaign_id, true)}
+              className="px-4 py-2.5 bg-white border border-gray-300 text-orange-700 rounded-lg hover:bg-orange-50 transition-colors"
+              title="Stop campaign"
+            >
+              <Ban className="w-4 h-4" />
+            </button>
           )}
 
           {["completed", "failed", "cancelled"].includes(campaign.status) && (
