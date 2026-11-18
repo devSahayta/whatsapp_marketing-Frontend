@@ -171,6 +171,10 @@ function CarouselCardThumb({
   );
 }
 
+// Fixed phone-screen height. Longer templates scroll inside the phone, and that scroll doesn't spill over to the drawer.
+const PHONE_SCREEN_CLASS =
+  "h-[30rem] space-y-3 overflow-y-auto overscroll-contain bg-cover bg-center p-4";
+
 function TemplatePhonePreview({
   template,
   userId,
@@ -214,7 +218,7 @@ function TemplatePhonePreview({
           </div>
 
           <div
-            className="min-h-[28rem] space-y-3 bg-cover bg-center p-4"
+            className={PHONE_SCREEN_CLASS}
             style={{
               backgroundImage:
                 "linear-gradient(rgba(235,252,240,0.94), rgba(235,252,240,0.94)), url('/wa-bg.png')",
@@ -255,7 +259,7 @@ function TemplatePhonePreview({
         </div>
 
         <div
-          className="min-h-[28rem] space-y-3 bg-cover bg-center p-4"
+          className={PHONE_SCREEN_CLASS}
           style={{
             backgroundImage:
               "linear-gradient(rgba(235,252,240,0.94), rgba(235,252,240,0.94)), url('/wa-bg.png')",
@@ -566,11 +570,11 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
       <aside className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l border-white/20 bg-gradient-to-b from-slate-50 via-white to-slate-100 shadow-2xl">
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
           <div className="flex items-start justify-between gap-4 px-6 py-5">
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">
                 Template Preview
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+              <h2 className="mt-2 break-all text-xl font-semibold leading-snug text-slate-900 sm:text-2xl">
                 {template.name}
               </h2>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -600,7 +604,7 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+              className="shrink-0 rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
               aria-label="Close preview"
             >
               <X className="h-5 w-5" />
@@ -616,15 +620,15 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
             carouselMediaOverrides={localCarouselMedia}
           />
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Template Details
               </h3>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="flex items-center justify-between gap-3">
-                  <span>Name</span>
-                  <span className="font-medium text-slate-900">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="shrink-0">Name</span>
+                  <span className="min-w-0 break-all text-right font-medium text-slate-900">
                     {template.name}
                   </span>
                 </div>
@@ -957,7 +961,10 @@ function TemplateCard({
             </span>
           </div>
 
-          <h3 className="mt-4 truncate text-xl font-semibold text-slate-900">
+          <h3
+            className="mt-4 truncate text-xl font-semibold text-slate-900"
+            title={template.name}
+          >
             {template.name}
           </h3>
           <p className="mt-2 min-h-[3rem] text-sm leading-6 text-slate-600">
