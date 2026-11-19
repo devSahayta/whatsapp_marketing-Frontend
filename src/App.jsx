@@ -44,7 +44,7 @@ const SamvaadikAssistant = lazy(() => import("./components/SamvaadikAssistant"))
 
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { addUserToBackend } from "./api/userApi";
-import { setAuthToken } from "./api/apiClient";
+import { setAuthToken, setAuthTokenGetter } from "./api/apiClient";
 
 import "./styles/global.css";
 import { fetchWhatsappAccount } from "./api/waccount";
@@ -165,7 +165,14 @@ export function AppContent() {
 
   // Sync user on first login and set auth token
   useEffect(() => {
+    if (!isAuthenticated) {
+      setAuthTokenGetter(null);
+      return;
+    }
     if (isAuthenticated && user) {
+      // Fresh token per request (see apiClient.js) — protected routes such as
+      // the AI assistant reject expired tokens.
+      setAuthTokenGetter(getToken);
       addUserToBackend(user);
       getToken()
         .then((token) => {
