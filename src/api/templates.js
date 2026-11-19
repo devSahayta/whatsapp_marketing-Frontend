@@ -41,6 +41,13 @@ export const createTemplate = (payload) =>
 export const sendTemplate = (templateId, data) =>
   api.post(`/api/watemplates/send/${templateId}`, data);
 
+// Send one approved template (normal or carousel) into an existing chat.
+// payload: { chat_id, wt_id, body_variables, header_variable, button_variables }
+export const sendTemplateToChat = (payload, token) =>
+  api.post("/admin/chat/send-template", payload, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
 export const sendTemplateBulk = (templateId, data) =>
   api.post(`/api/watemplates/send-bulk/${templateId}`, data);
 
