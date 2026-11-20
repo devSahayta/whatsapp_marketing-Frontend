@@ -6,12 +6,14 @@ import {
   LogOut,
   ShieldCheck,
   Clock3,
+  Coins,
   Menu as MenuIcon,
 } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import useSubscription from "../hooks/useSubscription";
+import { useUserCredits } from "../hooks/useUserCredits";
 import "../styles/navbar.css";
 import NotificationBell from "./NotificationBell";
 import "../styles/notification.css";
@@ -30,6 +32,24 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
   const { loading, active, plan, expiresAt } = useSubscription(userId, {
     enabled: isAuthenticated,
   });
+
+  const { credits } = useUserCredits(userId, isAuthenticated);
+
+  // Briefly pulse the credits badge whenever the balance actually changes
+  // (not on first load) — a quiet visual cue that something just spent or
+  // added credits, without a popup.
+  const [creditsPulsing, setCreditsPulsing] = useState(false);
+  const prevCreditsRef = useRef(null);
+  useEffect(() => {
+    if (typeof credits !== "number") return;
+    if (prevCreditsRef.current !== null && prevCreditsRef.current !== credits) {
+      setCreditsPulsing(true);
+      const timer = setTimeout(() => setCreditsPulsing(false), 650);
+      prevCreditsRef.current = credits;
+      return () => clearTimeout(timer);
+    }
+    prevCreditsRef.current = credits;
+  }, [credits]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -127,6 +147,25 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
           </div>
         )}
 
+        {isAuthenticated && (
+          <Link
+            to="/pricing"
+            className="subscription-inline"
+            title="credits — click to top up"
+          >
+            <Coins size={16} />
+            <span
+              className={`subscription-badge active${
+                creditsPulsing ? " credits-pulse" : ""
+              }`}
+            >
+              {typeof credits === "number"
+                ? `${credits.toLocaleString("en-IN")} credits`
+                : "Credits"}
+            </span>
+          </Link>
+        )}
+
         {/* ── Add this block ── */}
         {isAuthenticated && <NotificationBell userId={userId} />}
 
@@ -162,6 +201,20 @@ const NavBar = ({ onToggleSidebar, isSidebarOpen }) => {
                       className={`subscription-mini ${active ? "active" : "inactive"}`}
                     >
                       {active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="dropdown-item">
+                  <div className="left">
+                    <Coins size={16} className="plan-icon-active" />
+                    <Link to="/pricing">Credits</Link>
+                  </div>
+                  <div className="right">
+                    <span className="subscription-mini active">
+                      {typeof credits === "number"
+                        ? credits.toLocaleString("en-IN")
+                        : "..."}
                     </span>
                   </div>
                 </div>

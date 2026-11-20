@@ -9,6 +9,7 @@ import {
   PlugZap,
   Bot,
   Key,
+  Receipt,
 } from "lucide-react";
 import "../styles/sidebar.css";
 
@@ -77,6 +78,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/api-keys",
       icon: <Key size={18} />,
     },
+    // {
+    //   name: "Payment Logs",
+    //   path: "/payment-logs",
+    //   icon: <Receipt size={18} />,
+    // },
 
     // {
     //   name: "Knowledge Base",

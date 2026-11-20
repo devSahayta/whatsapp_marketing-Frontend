@@ -13,6 +13,8 @@ import {
   deleteMedia,
 } from "../api/media";
 import { pickGoogleSheet } from "../utils/googlePicker";
+import { CREDITS_CHANGED_EVENT } from "../hooks/useUserCredits";
+import { showCreditUsage } from "../utils/toast";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -155,12 +157,14 @@ function FormattedMessage({
   onNavigateToFlows,
   onNavigateToIntegrations,
   onPickGoogleSheet,
+  onNavigateToPricing,
 }) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
   const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
   const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
   const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
   const hasPickSheet = content.includes("GOOGLE_PICK_SHEET:");
+  const hasPricingRedirect = content.includes("REDIRECT_TO_PRICING:");
 
   // Extract flow_id from REDIRECT_TO_BUILDER:<uuid>
   const builderFlowId = (() => {
@@ -176,6 +180,7 @@ function FormattedMessage({
     .replace(/^GOOGLE_NOT_CONNECTED:\s*/m, "")
     .replace(/GOOGLE_NOT_CONNECTED:\s*/g, "")
     .replace(/GOOGLE_PICK_SHEET:\s*/g, "")
+    .replace(/REDIRECT_TO_PRICING:\s*/g, "")
     .trim();
 
   const hasSummary = cleanContent.includes("───────");
@@ -260,6 +265,29 @@ function FormattedMessage({
     </div>
   );
 
+  // Out-of-credits is a blocker, not a neutral "next step" — gets its own
+  // amber-tinted card so it reads differently from the other redirect cards.
+  const renderWithPricingRedirect = (body) => (
+    <div className="sai-credits-card">
+      <div className="sai-credits-card-icon">
+        <IconCredits size={16} />
+      </div>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}
+      >
+        {body}
+        <button
+          className="sai-redirect-btn sai-redirect-btn--credits"
+          onClick={() => onNavigateToPricing && onNavigateToPricing()}
+        >
+          <IconCredits size={14} />
+          <span>Top Up Credits</span>
+          <IconArrow size={13} />
+        </button>
+      </div>
+    </div>
+  );
+
   if (!hasSummary) {
     const body = <InlineText text={cleanContent} />;
     if (hasRedirect) return renderWithRedirect(body);
@@ -267,6 +295,7 @@ function FormattedMessage({
     if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
     if (hasGoogleRedirect) return renderWithGoogleRedirect(body);
     if (hasPickSheet) return renderWithPickSheet(body);
+    if (hasPricingRedirect) return renderWithPricingRedirect(body);
     return body;
   }
 
@@ -382,6 +411,7 @@ function FormattedMessage({
   if (hasFlowsRedirect) return renderWithFlowsRedirect(rendered);
   if (hasGoogleRedirect) return renderWithGoogleRedirect(rendered);
   if (hasPickSheet) return renderWithPickSheet(rendered);
+  if (hasPricingRedirect) return renderWithPricingRedirect(rendered);
   return rendered;
 }
 
@@ -466,6 +496,11 @@ export default function SamvaadikAssistant({ userId }) {
   const handleNavigateToTemplates = useCallback(() => {
     closePanel();
     setTimeout(() => navigate("/templates"), 300);
+  }, [navigate]);
+
+  const handleNavigateToPricing = useCallback(() => {
+    closePanel();
+    setTimeout(() => navigate("/pricing"), 300);
   }, [navigate]);
 
   // Navigate to the chatbot builder for a specific flow
@@ -925,6 +960,14 @@ export default function SamvaadikAssistant({ userId }) {
           ...prev,
           { id: nextId(), role: "assistant", content: data.content },
         ]);
+        // This turn spent credits server-side — let the navbar and any other
+        // mounted balance display refetch instead of showing a stale number,
+        // and give the user a quick, low-key nudge about what it cost.
+        window.dispatchEvent(new Event(CREDITS_CHANGED_EVENT));
+        // Out-of-credits turns charge nothing new (credits_charged is 0), so
+        // this toast naturally stays quiet for them — the REDIRECT_TO_PRICING
+        // card in the message itself is the one thing the user needs to see.
+        showCreditUsage(data.credits_charged, data.credits_remaining);
       } catch (err) {
         setError(
           err?.response?.data?.error ||
@@ -957,7 +1000,9 @@ export default function SamvaadikAssistant({ userId }) {
     try {
       const sheet = await pickGoogleSheet();
       if (!sheet) return;
-      sendMessage(`I selected the Google Sheet "${sheet.name}" from Google Drive.`);
+      sendMessage(
+        `I selected the Google Sheet "${sheet.name}" from Google Drive.`,
+      );
     } catch (err) {
       setError(
         err?.response?.data?.error ||
@@ -1112,6 +1157,7 @@ export default function SamvaadikAssistant({ userId }) {
                   onNavigateToFlows={handleNavigateToFlows}
                   onNavigateToIntegrations={handleNavigateToIntegrations}
                   onPickGoogleSheet={handlePickGoogleSheet}
+                  onNavigateToPricing={handleNavigateToPricing}
                 />
               ))
             )}
@@ -1395,6 +1441,7 @@ function MessageBubble({
   onNavigateToFlows,
   onNavigateToIntegrations,
   onPickGoogleSheet,
+  onNavigateToPricing,
 }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
@@ -1404,7 +1451,8 @@ function MessageBubble({
       message.content.includes("REDIRECT_TO_BUILDER") ||
       message.content.includes("REDIRECT_TO_FLOWS") ||
       message.content.includes("GOOGLE_NOT_CONNECTED") ||
-      message.content.includes("GOOGLE_PICK_SHEET"));
+      message.content.includes("GOOGLE_PICK_SHEET") ||
+      message.content.includes("REDIRECT_TO_PRICING"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -1454,6 +1502,7 @@ function MessageBubble({
             onNavigateToFlows={onNavigateToFlows}
             onNavigateToIntegrations={onNavigateToIntegrations}
             onPickGoogleSheet={onPickGoogleSheet}
+            onNavigateToPricing={onNavigateToPricing}
           />
         )}
       </div>
@@ -1826,6 +1875,26 @@ function IconClock({ size = 15 }) {
     >
       <circle cx="12" cy="12" r="10" />
       <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
+function IconCredits({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="8" r="6" />
+      <path d="M18.09 10.37A6 6 0 1 1 10.34 18.59" />
+      <path d="M7 6h1v4" />
+      <path d="m16.71 13.88.7.71-2.82 2.82" />
     </svg>
   );
 }

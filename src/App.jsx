@@ -22,7 +22,9 @@ const EventsPage = lazy(() => import("./pages/GroupsPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 const TemplateList = lazy(() => import("./pages/TemplateList"));
 const CreateTemplate = lazy(() => import("./pages/CreateTemplate"));
-const CreateCarouselTemplate = lazy(() => import("./pages/CreateCarouselTemplate"));
+const CreateCarouselTemplate = lazy(
+  () => import("./pages/CreateCarouselTemplate"),
+);
 const SendTemplate = lazy(() => import("./pages/SendTemplate"));
 const WAccountPage = lazy(() => import("./pages/WAccountPage"));
 const CreateCampaign = lazy(() => import("./pages/CreateCampaign"));
@@ -37,10 +39,15 @@ const AgentsPage = lazy(() => import("./pages/AgentsPage"));
 const CreateAgent = lazy(() => import("./pages/CreateAgent"));
 const TestAgent = lazy(() => import("./pages/TestAgent"));
 const WooCommercePage = lazy(() => import("./pages/WooCommercePage"));
-const WooCommerceTemplateGuide = lazy(() => import("./pages/WooCommerceTemplateGuide"));
+const WooCommerceTemplateGuide = lazy(
+  () => import("./pages/WooCommerceTemplateGuide"),
+);
 const ShopifyPage = lazy(() => import("./pages/ShopifyPage"));
 const ApiKeysPage = lazy(() => import("./pages/ApiKeysPage"));
-const SamvaadikAssistant = lazy(() => import("./components/SamvaadikAssistant"));
+const PaymentLogsPage = lazy(() => import("./pages/PaymentLogsPage"));
+const SamvaadikAssistant = lazy(
+  () => import("./components/SamvaadikAssistant"),
+);
 
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { addUserToBackend } from "./api/userApi";
@@ -78,7 +85,11 @@ const useIsomorphicLayoutEffect =
 // Shown for a moment while a code-split app screen downloads.
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center py-24" role="status" aria-label="Loading">
+    <div
+      className="flex items-center justify-center py-24"
+      role="status"
+      aria-label="Loading"
+    >
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
     </div>
   );
@@ -233,40 +244,40 @@ export function AppContent() {
         className={` ${isAuthenticated ? "mt-14" : ""} ${hideNavBar ? "content no-navbar" : "content with-navbar"}`}
       >
         <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <PrivateSubscribedRoute>
-                <LandingPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/groups"
-            element={
-              <PrivateSubscribedRoute>
-                <EventsPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/createGroup"
-            element={
-              <PrivateSubscribedRoute>
-                <CreateEvent />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/:eventId"
-            element={
-              <PrivateSubscribedRoute>
-                <Dashboard />
-              </PrivateSubscribedRoute>
-            }
-          />
-          {/* <Route
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <PrivateSubscribedRoute>
+                  <LandingPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/groups"
+              element={
+                <PrivateSubscribedRoute>
+                  <EventsPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/createGroup"
+              element={
+                <PrivateSubscribedRoute>
+                  <CreateEvent />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/:eventId"
+              element={
+                <PrivateSubscribedRoute>
+                  <Dashboard />
+                </PrivateSubscribedRoute>
+              }
+            />
+            {/* <Route
             path="/call-batch/:eventId"
             element={
               <PrivateRoute>
@@ -274,216 +285,224 @@ export function AppContent() {
               </PrivateRoute>
             }
           /> */}
-          <Route
-            path="/chat"
-            element={
-              <PrivateSubscribedRoute>
-                <ChatPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/whatsapp-account"
-            element={
-              <PrivateSubscribedRoute>
-                <WAccountPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/integrations"
-            element={
-              <PrivateSubscribedRoute>
-                <Integrations />
-              </PrivateSubscribedRoute>
-            }
-          />
-          // Inside your routes:
-          <Route
-            path="/integrations/woocommerce"
-            element={
-              <PrivateSubscribedRoute>
-                <WooCommercePage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/integrations/woocommerce/templates"
-            element={
-              <PrivateSubscribedRoute>
-                <WooCommerceTemplateGuide />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/integrations/shopify"
-            element={
-              <PrivateSubscribedRoute>
-                <ShopifyPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/templates"
-            element={
-              <PrivateSubscribedRoute>
-                <WhatsappAccountRoute>
-                  <TemplateList />
-                </WhatsappAccountRoute>
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/template/create"
-            element={
-              <PrivateSubscribedRoute>
-                <WhatsappAccountRoute>
-                  <CreateTemplate />
-                </WhatsappAccountRoute>
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/template/create-carousel"
-            element={
-              <PrivateSubscribedRoute>
-                <WhatsappAccountRoute>
-                  <CreateCarouselTemplate />
-                </WhatsappAccountRoute>
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/templates/send/:templateId"
-            element={
-              <PrivateSubscribedRoute>
-                <WhatsappAccountRoute>
-                  <SendTemplate />
-                </WhatsappAccountRoute>
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/campaigns/create"
-            element={
-              <PrivateSubscribedRoute>
-                <CreateCampaign />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/campaigns"
-            element={
-              <PrivateSubscribedRoute>
-                <Campaigns />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/campaigns/edit/:campaignId"
-            element={
-              <PrivateSubscribedRoute>
-                <EditCampaign />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/campaigns/:id"
-            element={
-              <PrivateSubscribedRoute>
-                <CampaignDetails />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/chatbot"
-            element={
-              <PrivateSubscribedRoute>
-                <ChatbotFlows />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/chatbot/builder/:flowId"
-            element={
-              <PrivateSubscribedRoute>
-                <ChatbotBuilder />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/agents"
-            element={
-              <PrivateSubscribedRoute>
-                <AgentsPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/agents/create"
-            element={
-              <PrivateSubscribedRoute>
-                <CreateAgent />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/agents/:agent_id/edit"
-            element={
-              <PrivateSubscribedRoute>
-                <CreateAgent />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/agents/:agent_id/test"
-            element={
-              <PrivateSubscribedRoute>
-                <TestAgent />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route
-            path="/api-keys"
-            element={
-              <PrivateSubscribedRoute>
-                <ApiKeysPage />
-              </PrivateSubscribedRoute>
-            }
-          />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/expired" element={<SubscriptionExpired />} />
-          <Route path="/contact" element={<ContactUs />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route
-            path="/terms-and-conditions"
-            element={<TermsAndConditions />}
-          />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route
-            path="/refund-cancellation-policy"
-            element={<RefundCancellationPolicy />}
-          />
-          {/* Public SEO pages: features, integrations, use cases */}
-          <Route path="/features" element={<FeaturesHub />} />
-          {MARKETING_PAGES.map((p) => (
             <Route
-              key={p.path}
-              path={p.path}
-              element={<MarketingPage path={p.path} />}
+              path="/chat"
+              element={
+                <PrivateSubscribedRoute>
+                  <ChatPage />
+                </PrivateSubscribedRoute>
+              }
             />
-          ))}
-          {/* Blog (content in src/blog/posts.js) */}
-          <Route path={BLOG_INDEX.path} element={<BlogIndex />} />
-          {BLOG_POSTS.map((p) => (
             <Route
-              key={p.slug}
-              path={blogPath(p.slug)}
-              element={<BlogPost slug={p.slug} />}
+              path="/whatsapp-account"
+              element={
+                <PrivateSubscribedRoute>
+                  <WAccountPage />
+                </PrivateSubscribedRoute>
+              }
             />
-          ))}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route
+              path="/integrations"
+              element={
+                <PrivateSubscribedRoute>
+                  <Integrations />
+                </PrivateSubscribedRoute>
+              }
+            />
+            // Inside your routes:
+            <Route
+              path="/integrations/woocommerce"
+              element={
+                <PrivateSubscribedRoute>
+                  <WooCommercePage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/integrations/woocommerce/templates"
+              element={
+                <PrivateSubscribedRoute>
+                  <WooCommerceTemplateGuide />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/integrations/shopify"
+              element={
+                <PrivateSubscribedRoute>
+                  <ShopifyPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/templates"
+              element={
+                <PrivateSubscribedRoute>
+                  <WhatsappAccountRoute>
+                    <TemplateList />
+                  </WhatsappAccountRoute>
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/template/create"
+              element={
+                <PrivateSubscribedRoute>
+                  <WhatsappAccountRoute>
+                    <CreateTemplate />
+                  </WhatsappAccountRoute>
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/template/create-carousel"
+              element={
+                <PrivateSubscribedRoute>
+                  <WhatsappAccountRoute>
+                    <CreateCarouselTemplate />
+                  </WhatsappAccountRoute>
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/templates/send/:templateId"
+              element={
+                <PrivateSubscribedRoute>
+                  <WhatsappAccountRoute>
+                    <SendTemplate />
+                  </WhatsappAccountRoute>
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/campaigns/create"
+              element={
+                <PrivateSubscribedRoute>
+                  <CreateCampaign />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/campaigns"
+              element={
+                <PrivateSubscribedRoute>
+                  <Campaigns />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/campaigns/edit/:campaignId"
+              element={
+                <PrivateSubscribedRoute>
+                  <EditCampaign />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/campaigns/:id"
+              element={
+                <PrivateSubscribedRoute>
+                  <CampaignDetails />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/chatbot"
+              element={
+                <PrivateSubscribedRoute>
+                  <ChatbotFlows />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/chatbot/builder/:flowId"
+              element={
+                <PrivateSubscribedRoute>
+                  <ChatbotBuilder />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <PrivateSubscribedRoute>
+                  <AgentsPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/agents/create"
+              element={
+                <PrivateSubscribedRoute>
+                  <CreateAgent />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/agents/:agent_id/edit"
+              element={
+                <PrivateSubscribedRoute>
+                  <CreateAgent />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/agents/:agent_id/test"
+              element={
+                <PrivateSubscribedRoute>
+                  <TestAgent />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/api-keys"
+              element={
+                <PrivateSubscribedRoute>
+                  <ApiKeysPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route
+              path="/payment-logs"
+              element={
+                <PrivateSubscribedRoute>
+                  <PaymentLogsPage />
+                </PrivateSubscribedRoute>
+              }
+            />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/expired" element={<SubscriptionExpired />} />
+            <Route path="/contact" element={<ContactUs />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route
+              path="/terms-and-conditions"
+              element={<TermsAndConditions />}
+            />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route
+              path="/refund-cancellation-policy"
+              element={<RefundCancellationPolicy />}
+            />
+            {/* Public SEO pages: features, integrations, use cases */}
+            <Route path="/features" element={<FeaturesHub />} />
+            {MARKETING_PAGES.map((p) => (
+              <Route
+                key={p.path}
+                path={p.path}
+                element={<MarketingPage path={p.path} />}
+              />
+            ))}
+            {/* Blog (content in src/blog/posts.js) */}
+            <Route path={BLOG_INDEX.path} element={<BlogIndex />} />
+            {BLOG_POSTS.map((p) => (
+              <Route
+                key={p.slug}
+                path={blogPath(p.slug)}
+                element={<BlogPost slug={p.slug} />}
+              />
+            ))}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </Suspense>
 
         {isAuthenticated && (

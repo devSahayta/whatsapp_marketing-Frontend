@@ -23,6 +23,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getCampaigns, deleteCampaign, cancelCampaign } from "../api/campaigns";
+import CampaignCancelModal from "../components/CampaignCancelModal";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
 const Campaigns = () => {
   const navigate = useNavigate();
@@ -34,6 +36,14 @@ const Campaigns = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
+
+  // Cancel-campaign modal state
+  const [cancelTarget, setCancelTarget] = useState(null); // { campaign_id, campaign_name, isProcessing }
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Delete-campaign modal state
+  const [deleteTarget, setDeleteTarget] = useState(null); // { campaign_id, campaign_name }
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load campaigns
   useEffect(() => {
@@ -79,32 +89,64 @@ const Campaigns = () => {
     setFilteredCampaigns(filtered);
   };
 
-  const handleDelete = async (campaignId) => {
-    if (!window.confirm("Are you sure you want to delete this campaign?"))
-      return;
+  // Opens the modal instead of a browser confirm() — actual delete happens
+  // in confirmDelete once the user confirms inside it.
+  const handleDelete = (campaign) => {
+    setDeleteTarget({
+      campaign_id: campaign.campaign_id,
+      campaign_name: campaign.campaign_name,
+    });
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
-      await deleteCampaign(campaignId, user.id);
+      setIsDeleting(true);
+      await deleteCampaign(deleteTarget.campaign_id, user.id);
+      setDeleteTarget(null);
       loadCampaigns();
     } catch (err) {
       alert("Failed to delete campaign");
       console.error("Delete error:", err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const handleCancel = async (campaignId, isProcessing = false) => {
-    const confirmMessage = isProcessing
-      ? "This campaign is currently sending messages. Cancelling will stop all remaining messages from being sent — messages already sent cannot be recalled. Are you sure?"
-      : "Are you sure you want to cancel this campaign?";
+  // Opens the modal instead of a browser confirm() — actual cancel happens
+  // in confirmCancel once the user confirms inside it.
+  const handleCancel = (campaign, isProcessing = false) => {
+    setCancelTarget({
+      campaign_id: campaign.campaign_id,
+      campaign_name: campaign.campaign_name,
+      isProcessing,
+    });
+  };
 
-    if (!window.confirm(confirmMessage)) return;
+  const closeCancelModal = () => {
+    if (isCancelling) return; // don't let the backdrop/X close it mid-request
+    setCancelTarget(null);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
 
     try {
-      await cancelCampaign(campaignId, user.id);
+      setIsCancelling(true);
+      await cancelCampaign(cancelTarget.campaign_id, user.id);
+      setCancelTarget(null);
       loadCampaigns();
     } catch (err) {
       alert("Failed to cancel campaign");
       console.error("Cancel error:", err);
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -312,7 +354,7 @@ const Campaigns = () => {
                 <Edit className="w-4 h-4" />
               </button>
               <button
-                onClick={() => handleCancel(campaign.campaign_id)}
+                onClick={() => handleCancel(campaign)}
                 className="px-4 py-2.5 bg-white border border-gray-300 text-orange-700 rounded-lg hover:bg-orange-50 transition-colors"
                 title="Cancel"
               >
@@ -325,7 +367,7 @@ const Campaigns = () => {
               scheduler now checks for this and halts within one batch. */}
           {campaign.status === "processing" && (
             <button
-              onClick={() => handleCancel(campaign.campaign_id, true)}
+              onClick={() => handleCancel(campaign, true)}
               className="px-4 py-2.5 bg-white border border-gray-300 text-orange-700 rounded-lg hover:bg-orange-50 transition-colors"
               title="Stop campaign"
             >
@@ -335,7 +377,7 @@ const Campaigns = () => {
 
           {["completed", "failed", "cancelled"].includes(campaign.status) && (
             <button
-              onClick={() => handleDelete(campaign.campaign_id)}
+              onClick={() => handleDelete(campaign)}
               className="px-4 py-2.5 bg-white border border-gray-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
               title="Delete"
             >
@@ -541,6 +583,28 @@ const Campaigns = () => {
           </div>
         )}
       </div>
+
+      <CampaignCancelModal
+        isOpen={!!cancelTarget}
+        onClose={closeCancelModal}
+        onConfirm={confirmCancel}
+        campaignName={cancelTarget?.campaign_name}
+        isProcessing={!!cancelTarget?.isProcessing}
+        isCancelling={isCancelling}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        title="Delete Campaign"
+        itemName={deleteTarget?.campaign_name}
+        warningMessage="Are you sure you want to delete this campaign? Its message records and delivery history will be permanently removed."
+        confirmText="Yes, Delete Campaign"
+        cancelText="Cancel"
+        isDeleting={isDeleting}
+        infoItems={[]}
+      />
     </div>
   );
 };

@@ -136,6 +136,29 @@
   color: #991b1b;
 }
 
+/* Brief pulse when the credit balance changes (e.g. the AI Assistant just
+   spent some) — draws the eye to the number without a full confirmation
+   dialog. Toggled on/off via the .credits-pulse class. */
+.subscription-badge.credits-pulse {
+  animation: creditsPulse 650ms ease-out;
+}
+
+@keyframes creditsPulse {
+  0% {
+    transform: scale(1);
+    background: #fde68a;
+    color: #92400e;
+  }
+  40% {
+    transform: scale(1.12);
+    background: #fde68a;
+    color: #92400e;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Profile */
 .profile-wrapper {
   position: relative;

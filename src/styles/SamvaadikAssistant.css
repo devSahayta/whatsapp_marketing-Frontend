@@ -1028,3 +1028,45 @@
 .sai-redirect-btn svg:last-child {
   color: #86efac;
 }
+
+/* ── Out-of-credits card ─────────────────────────────────────── */
+/* A blocker, not a neutral next step — amber instead of the green used by
+   the other redirect cards above, with a solid CTA button so it reads as
+   the one thing to do before anything else continues. */
+
+.sai-credits-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 12px;
+}
+
+.sai-credits-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sai-redirect-btn--credits {
+  background: #d97706;
+  border: 1.5px solid #d97706;
+  color: #ffffff;
+}
+
+.sai-redirect-btn--credits:hover {
+  background: #b45309;
+  border-color: #b45309;
+}
+
+.sai-redirect-btn--credits svg:last-child {
+  color: #fde68a;
+}
