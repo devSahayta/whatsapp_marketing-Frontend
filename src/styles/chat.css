@@ -994,6 +994,50 @@
   color: var(--t-muted);
 }
 
+/* Template button (left of the input) */
+.wa-template-btn {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--r999);
+  border: 1.5px solid var(--border);
+  background: var(--bg-white);
+  color: var(--t-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: var(--ease);
+}
+.wa-template-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* When text is blocked, the template button is the main action */
+.wa-template-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.32);
+}
+.wa-template-btn.primary:hover {
+  background: var(--accent-mid);
+  color: #fff;
+}
+@media (max-width: 480px) {
+  .wa-template-btn .wa-template-btn-label {
+    display: none;
+  }
+  .wa-template-btn {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
 .wa-input-blocked {
   flex: 1;
   padding: 10px 18px;

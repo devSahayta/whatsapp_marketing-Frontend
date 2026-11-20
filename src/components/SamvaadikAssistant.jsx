@@ -15,6 +15,7 @@ import {
 import { pickGoogleSheet } from "../utils/googlePicker";
 import { CREDITS_CHANGED_EVENT } from "../hooks/useUserCredits";
 import { showCreditUsage } from "../utils/toast";
+import SendTemplateModal from "./SendTemplateModal";
 import "../styles/SamvaadikAssistant.css";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -49,6 +50,16 @@ const SUGGESTIONS = [
     label: "Create a chatbot flow",
     prompt: "I want to create a new chatbot flow",
     icon: <IconFlow />,
+  },
+  {
+    label: "Send a message to a contact",
+    prompt: "I want to send a message to a contact",
+    icon: <IconSend size={15} />,
+  },
+  {
+    label: "Send a template to a contact",
+    prompt: "I want to send a template to a contact",
+    icon: <IconTemplate />,
   },
   {
     label: "Schedule a campaign for later",
@@ -88,6 +99,8 @@ function detectLoadingSteps(userMessage, lastAssistantMessage = "") {
         { id: "camp1", label: "Creating campaign" },
         { id: "camp2", label: "Queuing messages" },
       ];
+    if (prev.includes("message preview"))
+      return [{ id: "msg1", label: "Sending message" }];
     if (
       prev.includes("template preview") ||
       prev.includes("ready to submit this template")
@@ -102,6 +115,14 @@ function detectLoadingSteps(userMessage, lastAssistantMessage = "") {
   // accidentally match "create" → campaign
   if (m.includes("flow") || m.includes("chatbot"))
     return [{ id: "flow", label: "Managing chatbot flows" }];
+
+  // One-to-one message / template — check before campaign ("send" matches both)
+  if (
+    !m.includes("campaign") &&
+    !m.includes("group") &&
+    /\b(message|text|msg|template)\b.*\bto\b|\bsend\b.*\bto\b\s+\S/.test(m)
+  )
+    return [{ id: "contact", label: "Finding contact" }];
 
   // Agent — check before campaign so "create an agent" doesn't trigger campaign
   if (m.includes("agent"))
@@ -158,8 +179,27 @@ function FormattedMessage({
   onNavigateToIntegrations,
   onPickGoogleSheet,
   onNavigateToPricing,
+  onOpenTemplatePicker,
 }) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
+  // OPEN_TEMPLATE_PICKER:<chat_id|new>|<phone>|<url-encoded name>
+  const pickerTarget = (() => {
+    const match = content.match(
+      /OPEN_TEMPLATE_PICKER:([A-Za-z0-9-]+)\|(\d+)\|(\S*)/,
+    );
+    if (!match) return null;
+    let name = "";
+    try {
+      name = decodeURIComponent(match[3] || "");
+    } catch {
+      name = "";
+    }
+    return {
+      chatId: match[1] === "new" ? null : match[1],
+      phone: match[2],
+      name,
+    };
+  })();
   const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
   const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
   const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
@@ -181,6 +221,7 @@ function FormattedMessage({
     .replace(/GOOGLE_NOT_CONNECTED:\s*/g, "")
     .replace(/GOOGLE_PICK_SHEET:\s*/g, "")
     .replace(/REDIRECT_TO_PRICING:\s*/g, "")
+    .replace(/`?OPEN_TEMPLATE_PICKER:\S*\n?/g, "")
     .trim();
 
   const hasSummary = cleanContent.includes("───────");
@@ -288,8 +329,31 @@ function FormattedMessage({
     </div>
   );
 
+  const renderWithTemplatePicker = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <button
+        className="sai-redirect-btn"
+        onClick={() =>
+          onOpenTemplatePicker && onOpenTemplatePicker(pickerTarget)
+        }
+      >
+        <IconTemplate size={14} />
+        <span>
+          Choose template for {pickerTarget?.name || `+${pickerTarget?.phone}`}
+        </span>
+        <IconArrow size={13} />
+      </button>
+      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+        Pick an approved template, fill in its values and send. Templates can be
+        sent even outside the 24-hour window.
+      </p>
+    </div>
+  );
+
   if (!hasSummary) {
     const body = <InlineText text={cleanContent} />;
+    if (pickerTarget) return renderWithTemplatePicker(body);
     if (hasRedirect) return renderWithRedirect(body);
     if (hasBuilderRedirect) return renderWithBuilderRedirect(body);
     if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
@@ -325,6 +389,7 @@ function FormattedMessage({
                   line.trim() === "Campaign Summary" ||
                   line.trim() === "Group Summary" ||
                   line.trim() === "Template Preview" ||
+                  line.trim() === "Message Preview" ||
                   line.trim() === "Agent Preview"
                 ) {
                   return (
@@ -406,6 +471,7 @@ function FormattedMessage({
     </div>
   );
 
+  if (pickerTarget) return renderWithTemplatePicker(rendered);
   if (hasRedirect) return renderWithRedirect(rendered);
   if (hasBuilderRedirect) return renderWithBuilderRedirect(rendered);
   if (hasFlowsRedirect) return renderWithFlowsRedirect(rendered);
@@ -457,6 +523,9 @@ export default function SamvaadikAssistant({ userId }) {
   const [attachedFile, setAttachedFile] = useState(null);
   const [pendingGroupName, setPendingGroupName] = useState("");
   const [pendingGroup, setPendingGroup] = useState(null);
+
+  // One-to-one template send: { chatId|null, phone, name } opens SendTemplateModal
+  const [templateTarget, setTemplateTarget] = useState(null);
 
   // Draggable FAB state — clamp saved position to current viewport on load
   const [fabPos, setFabPos] = useState(() => {
@@ -1038,9 +1107,23 @@ export default function SamvaadikAssistant({ userId }) {
     setPendingGroup(null);
     setPendingGroupName("");
     setPendingAttachment(null);
+    setTemplateTarget(null);
   };
 
   const togglePlus = () => setPlusOpen((o) => !o);
+
+  // After the picker sends, note it in the conversation so the AI knows too
+  const handleTemplateSent = (_savedMessage, meta) => {
+    const who = templateTarget?.name || `+${templateTarget?.phone}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextId(),
+        role: "assistant",
+        content: `Template "${meta?.templateName || ""}" sent to ${who}. You can follow the conversation on the Chats page.`,
+      },
+    ]);
+  };
 
   useEffect(() => {
     if (!plusOpen) return;
@@ -1158,6 +1241,7 @@ export default function SamvaadikAssistant({ userId }) {
                   onNavigateToIntegrations={handleNavigateToIntegrations}
                   onPickGoogleSheet={handlePickGoogleSheet}
                   onNavigateToPricing={handleNavigateToPricing}
+                  onOpenTemplatePicker={setTemplateTarget}
                 />
               ))
             )}
@@ -1398,6 +1482,18 @@ export default function SamvaadikAssistant({ userId }) {
           </div>
         </div>
       )}
+      {/* Template picker for one-to-one sends (same modal as the chat page).
+          z-index sits above the assistant panel (9992) and FAB (9995). */}
+      <SendTemplateModal
+        open={!!templateTarget}
+        onClose={() => setTemplateTarget(null)}
+        chatId={templateTarget?.chatId || null}
+        userId={userId}
+        contactName={templateTarget?.name || ""}
+        phoneNumber={templateTarget?.phone || ""}
+        onSent={handleTemplateSent}
+        zIndexClass="z-[10000]"
+      />
     </>
   );
 }
@@ -1442,6 +1538,7 @@ function MessageBubble({
   onNavigateToIntegrations,
   onPickGoogleSheet,
   onNavigateToPricing,
+  onOpenTemplatePicker,
 }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
@@ -1452,7 +1549,8 @@ function MessageBubble({
       message.content.includes("REDIRECT_TO_FLOWS") ||
       message.content.includes("GOOGLE_NOT_CONNECTED") ||
       message.content.includes("GOOGLE_PICK_SHEET") ||
-      message.content.includes("REDIRECT_TO_PRICING"));
+      message.content.includes("REDIRECT_TO_PRICING") ||
+      message.content.includes("OPEN_TEMPLATE_PICKER"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
@@ -1503,6 +1601,7 @@ function MessageBubble({
             onNavigateToIntegrations={onNavigateToIntegrations}
             onPickGoogleSheet={onPickGoogleSheet}
             onNavigateToPricing={onNavigateToPricing}
+            onOpenTemplatePicker={onOpenTemplatePicker}
           />
         )}
       </div>

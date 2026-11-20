@@ -4,6 +4,8 @@ import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import useAuthUser from "../hooks/useAuthUser";
 import { showError } from "../utils/toast";
 import ReactMarkdown from "react-markdown";
+import { LayoutTemplate } from "lucide-react";
+import SendTemplateModal from "./SendTemplateModal";
 
 export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
   const { userId } = useAuthUser();
@@ -18,6 +20,23 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
   const [isSending, setIsSending] = useState(false);
   const [windowBlocked, setWindowBlocked] = useState(false);
   const [windowReason, setWindowReason] = useState(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  // Close the template picker when switching to another chat
+  useEffect(() => {
+    setShowTemplateModal(false);
+  }, [chatId]);
+
+  const handleTemplateSent = (savedMessage) => {
+    if (savedMessage?.message_id) {
+      setMessages((prev) =>
+        prev.some((m) => m.message_id === savedMessage.message_id)
+          ? prev
+          : [...prev, savedMessage],
+      );
+    }
+    scrollBottom();
+  };
 
   /* ─── helpers ────────────────────────────────────────── */
   const isNearBottom = () => {
@@ -124,6 +143,16 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
     setWindowReason(reason);
   }, [messages]);
 
+  // A block returned by the server is cleared when the chat changes or the
+  // user sends a new message (which reopens the 24-hour window).
+  const lastUserTs = [...messages]
+    .reverse()
+    .find((m) => (m.sender_type || "").toLowerCase() === "user")?.created_at;
+  useEffect(() => {
+    setSendBlocked(false);
+    setBlockReason(null);
+  }, [chatId, lastUserTs]);
+
   useEffect(() => {
     const recheck = () => {
       const { blocked, reason } = computeWindowStatus(messagesRef.current);
@@ -162,10 +191,14 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
       );
       const data = await res.json();
       if (!res.ok) {
-        setSendBlocked(true);
-        setBlockReason(data.code);
+        // Only a 403 means the 24-hour window is closed. Other errors
+        // (network, Meta failure) keep the typed text so the admin can retry.
+        if (res.status === 403) {
+          setSendBlocked(true);
+          setBlockReason(data.code);
+          setInputText("");
+        }
         showError(data.error || "Cannot send");
-        setInputText("");
         return;
       }
       setSendBlocked(false);
@@ -197,15 +230,24 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
 
   // 24-hour session window: admin can only free-text reply within 24h of the
   // user's last inbound message (Meta's customer service window rule).
+  // Templates sent by the admin do NOT close an open window.
+  // Mirrors canAdminSendText in the backend adminChatController.js.
+  const MESSAGE_PAGE_SIZE = 50; // backend /api/chats/:id/messages default limit
   const computeWindowStatus = (msgs) => {
+    const list = msgs || [];
     let lastUserMsg = null;
-    for (let i = (msgs || []).length - 1; i >= 0; i--) {
-      if (st(msgs[i].sender_type) === "user") {
-        lastUserMsg = msgs[i];
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (st(list[i].sender_type) === "user") {
+        lastUserMsg = list[i];
         break;
       }
     }
-    if (!lastUserMsg) return { blocked: true, reason: "NO_USER_REPLY" };
+    if (!lastUserMsg) {
+      // Only the latest page is loaded: the user's last reply may be older
+      // than that page, so let the backend decide instead of blocking.
+      if (list.length >= MESSAGE_PAGE_SIZE) return { blocked: false, reason: null };
+      return { blocked: true, reason: "NO_USER_REPLY" };
+    }
     const hoursSince =
       (Date.now() - pts(lastUserMsg.created_at).getTime()) / 3600000;
     if (hoursSince >= 24) return { blocked: true, reason: "WINDOW_EXPIRED" };
@@ -580,9 +622,7 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
       ? "User hasn't replied — send a template first"
       : effectiveReason === "WINDOW_EXPIRED"
         ? "24-hour window expired — send a template"
-        : effectiveReason === "TEMPLATE_ONLY_WAITING_FOR_USER"
-          ? "Waiting for user reply…"
-          : "Type a message…";
+        : "Type a message…";
 
   const mode = modeInfo();
 
@@ -679,6 +719,17 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
 
       {/* ── Input ─────────────────────────────────────── */}
       <div className="wa-input-area">
+        <button
+          type="button"
+          className={`wa-template-btn ${effectiveBlocked ? "primary" : ""}`}
+          onClick={() => setShowTemplateModal(true)}
+          title="Send a WhatsApp template"
+          aria-label="Send template"
+        >
+          <LayoutTemplate size={16} />
+          <span className="wa-template-btn-label">Template</span>
+        </button>
+
         {effectiveBlocked ? (
           <div className="wa-input-blocked">🔒 {placeholder}</div>
         ) : (
@@ -726,6 +777,22 @@ export default function ChatWindow({ chatId, userInfo, chatMode, onBack }) {
           )}
         </button>
       </div>
+
+      <SendTemplateModal
+        open={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        chatId={chatId}
+        userId={userId}
+        contactName={
+          userInfo?.person_name &&
+          !/^unknown$/i.test(userInfo.person_name.trim()) &&
+          userInfo.person_name !== userInfo.phone_number
+            ? userInfo.person_name.trim()
+            : ""
+        }
+        phoneNumber={userInfo?.phone_number}
+        onSent={handleTemplateSent}
+      />
     </div>
   );
 }

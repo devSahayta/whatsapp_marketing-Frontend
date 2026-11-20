@@ -122,6 +122,30 @@ const COMP_STYLES = {
   },
 };
 
+// WhatsApp rejects template bodies over 1024 characters.
+const BODY_MAX_LENGTH = 1024;
+
+function BodyCharCount({ length }) {
+  const isOver = length > BODY_MAX_LENGTH;
+  const isNear = !isOver && length >= BODY_MAX_LENGTH * 0.9;
+  const color = isOver
+    ? "text-red-600 font-semibold"
+    : isNear
+      ? "text-amber-600 font-medium"
+      : "text-gray-400";
+
+  return (
+    <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+      <span className={isOver ? "text-red-600" : "invisible"}>
+        {length - BODY_MAX_LENGTH} characters over the limit
+      </span>
+      <span className={`tabular-nums ${color}`} aria-live="polite">
+        {length} / {BODY_MAX_LENGTH}
+      </span>
+    </div>
+  );
+}
+
 // ---------- Main Component ----------
 export default function CreateTemplate() {
   const navigate = useNavigate();
@@ -556,6 +580,10 @@ export default function CreateTemplate() {
       errors.body = "Body component is required";
     } else {
       const vars = detectVariables(body.text);
+
+      if ((body.text || "").length > BODY_MAX_LENGTH) {
+        errors.body = `Body text cannot exceed ${BODY_MAX_LENGTH} characters (currently ${body.text.length}).`;
+      }
 
       // ---- VARIABLE RULES ----
       // 1. Must be numeric only
@@ -1206,6 +1234,7 @@ export default function CreateTemplate() {
                                   "Hi {{1}}, your order #{{2}} is confirmed and will arrive by {{3}}."
                                 }
                               />
+                              <BodyCharCount length={(comp.text || "").length} />
                             </div>
 
                             {/* Detected variables */}
@@ -1700,7 +1729,7 @@ export default function CreateTemplate() {
 
                         {/* Chat area */}
                         <div
-                          className="p-2.5 min-h-[300px]"
+                          className="h-[360px] overflow-y-auto overscroll-contain p-2.5"
                           style={{ backgroundColor: "#ECE5DD" }}
                         >
                           {/* Message bubble */}
