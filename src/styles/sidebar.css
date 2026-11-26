@@ -1,32 +1,29 @@
 /* ================================
-   SIDEBAR OVERLAY (Background Dim)
+   SIDEBAR
+   Mobile / tablet (< 1024px): off-canvas overlay drawer, toggled by the
+   navbar hamburger — same behaviour as before.
+   Desktop (>= 1024px): a persistent column docked to the left. App.jsx
+   gives the main content a matching left margin at that breakpoint.
 ================================ */
 
-/* .sidebar-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  z-index: 50;
+:root {
+  /* --sidebar-width already declared in global.css */
+  --sidebar-accent: #4f4f93; /* indigo from the Samvaadik wordmark */
+  --sidebar-accent-soft: #eeeefa;
+  --sidebar-pink: #c4456b; /* rose from the Samvaadik "S" */
+  --sidebar-pink-soft: #fdecf2;
 }
-
-.sidebar-overlay.open {
-  opacity: 1;
-  pointer-events: auto;
-} */
 
 .sidebar-overlay {
   position: fixed;
-  top: var(--navbar-height); /* don't cover the navbar */
+  top: var(--navbar-height);
   left: 0;
   right: 0;
   bottom: 0;
 
-  background: rgba(0, 0, 0, 0.25); /* lighter black */
-  backdrop-filter: blur(9px) saturate(120%);
-  -webkit-backdrop-filter: blur(9px) saturate(120%);
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
 
   opacity: 0;
   pointer-events: none;
@@ -38,31 +35,31 @@
   opacity: 1;
   pointer-events: auto;
 }
-
-/* ================================
-   SIDEBAR DRAWER
-================================ */
 
 .sidebar-drawer {
   position: fixed;
   top: var(--navbar-height);
   left: 0;
-  width: 260px;
+  width: var(--sidebar-width);
   height: calc(100vh - var(--navbar-height));
-  /* background: #ffffff; */
-  border-right: 1px solid #e5e7eb;
+
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   transform: translateX(-100%);
   transition: transform 0.28s ease;
   z-index: 70;
   display: flex;
   flex-direction: column;
+  /* The sidebar scrolls as a single unit if its content ever runs taller
+     than the viewport (a very long nav list on a short window) — there is
+     deliberately no separate scroll region inside it, so there's never a
+     second scrollbar floating in the middle of the column. */
+  overflow-y: auto;
 
   background: linear-gradient(
-    to right,
-    rgba(255, 240, 250, 0.75),
-    rgba(245, 240, 255, 0.55)
+    180deg,
+    rgba(255, 240, 250, 0.9),
+    rgba(245, 240, 255, 0.85)
   );
-
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
@@ -71,87 +68,360 @@
   transform: translateX(0);
 }
 
-/* ================================
-   HEADER
-================================ */
+/* Thin, quiet scrollbar for the rare case the sidebar does need to scroll —
+   no default grey browser scrollbar sitting on top of the design. */
+.sidebar-drawer {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+}
 
-.sidebar-header {
-  padding: 16px 18px;
-  font-weight: 700;
-  font-size: 17px;
-  border-bottom: 1px solid #e5e7eb;
+.sidebar-drawer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-drawer::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+}
+
+/* ---- Brand row ---- */
+
+.sidebar-brand {
+  min-height: var(--navbar-height);
+  padding: 0 22px;
+  margin-bottom: 10px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-link {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-brand-img {
+  height: 46px;
+  width: auto;
+  object-fit: contain;
 }
 
 .sidebar-close {
   border: none;
   background: none;
-  font-size: 20px;
   cursor: pointer;
-  color: #444;
-  padding: 4px;
+  color: #475569;
+  padding: 6px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
 }
 
 .sidebar-close:hover {
-  color: #000;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
 }
 
-/* ================================
-   NAV LINKS
-================================ */
+/* ---- Nav links ---- */
 
 .sidebar-links {
-  padding: 12px 0;
-  flex-grow: 1;
+  padding: 4px 14px 10px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 20px;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 11px;
   text-decoration: none;
-  color: #374151;
-  font-size: 15px;
+  color: #53607a;
+  font-size: 14.5px;
+  font-weight: 500;
   transition:
-    background 0.25s,
-    color 0.25s;
-  border-left: 3px solid transparent;
+    background 0.18s,
+    color 0.18s;
 }
 
 .sidebar-link:hover {
-  background: #f5f6f7;
-  color: #111827;
+  background: rgba(255, 255, 255, 0.55);
+  color: #0f172a;
 }
 
 .sidebar-link.active {
-  background: #eef2ff;
-  color: #4338ca;
-  border-left-color: #4338ca;
+  background: var(--sidebar-accent);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 6px 16px -6px rgba(79, 79, 147, 0.5);
 }
 
 .sidebar-link .icon {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.sidebar-link.active .icon {
+  opacity: 1;
+}
+
+/* ---- Footer: one profile row; click it for plan, credits, account ----
+   Pinned to the bottom via margin-top:auto when there's spare room, and
+   just flows after the links on a short window (whole sidebar scrolls). */
+
+.sidebar-footer {
+  position: relative;
+  margin: auto 12px 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-profile {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.3);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.sidebar-profile:hover,
+.sidebar-profile.is-open {
+  background: #ffffff;
+}
+
+.sidebar-profile:focus-visible {
+  outline: 2px solid #a5a5dc;
+  outline-offset: 2px;
+}
+
+.sidebar-profile.pulse {
+  animation: sidebarStatPulse 650ms ease-out;
+}
+
+@keyframes sidebarStatPulse {
+  0% {
+    background: #fde68a;
+  }
+  100% {
+    background: rgba(255, 255, 255, 0.62);
+  }
+}
+
+.sidebar-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--sidebar-accent);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-profile-email {
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-profile-caret {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+/* Popup that opens above the profile row */
+.sidebar-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  padding: 6px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.28);
+  animation: sidebarMenuIn 140ms ease-out;
+  z-index: 5;
+}
+
+@keyframes sidebarMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-menu-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidebar-menu-row:hover {
+  background: #f1f5f9;
+}
+
+.sidebar-menu-row.danger:hover {
+  background: #fee2e2;
+}
+
+.sidebar-menu-row.pulse {
+  animation: sidebarMenuPulse 650ms ease-out;
+}
+
+@keyframes sidebarMenuPulse {
+  0% {
+    background: #fde68a;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.sidebar-menu-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.sidebar-menu-value {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-menu-row.danger .sidebar-menu-label {
+  color: #b91c1c;
+}
+
+.sidebar-menu-divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: rgba(15, 23, 42, 0.07);
+}
+
+.sidebar-stat-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-stat-icon.is-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sidebar-stat-icon.is-inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sidebar-stat-icon.is-credits {
+  background: transparent;
+  color: #0f766e;
+}
+
+.sidebar-stat-icon.is-neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.sidebar-stat-icon.is-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sidebar-stat-chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
 }
 
 /* ================================
-   RESPONSIVE (Desktop Hidden)
+   DESKTOP: persistent sidebar
 ================================ */
 
-/* Desktop & Tablet should behave like mobile – sidebar hidden by default */
 @media (min-width: 1024px) {
-  .sidebar-drawer {
-    transform: translateX(-100%); /* KEEP CLOSED */
-  }
-
-  .sidebar-drawer.open {
-    transform: translateX(0); /* Open when active */
-  }
-
   .sidebar-overlay {
-    display: block; /* Overlay should show on desktop/tablet too */
+    display: none;
+  }
+
+  /* Full-height column; the navbar starts to its right (see navbar.css),
+     so the logo and the page title share one row. */
+  .sidebar-drawer {
+    top: 0;
+    height: 100vh;
+    transform: translateX(0);
+    border-right-color: rgba(15, 23, 42, 0.06);
+  }
+
+  .sidebar-brand {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .sidebar-close {
+    display: none;
   }
 }

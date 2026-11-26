@@ -21,9 +21,7 @@ const LandingHero = () => {
   }, [isDemoOpen]);
 
   return (
-    <section
-      className="relative min-h-[90vh] py-14 flex items-center justify-center px-4 overflow-hidden pastel-gradient-bg"
-    >
+    <section className="relative min-h-[90vh] py-14 flex items-center justify-center px-4 overflow-hidden pastel-gradient-bg">
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-white/70 backdrop-blur-sm"></div>
 
@@ -38,7 +36,7 @@ const LandingHero = () => {
         {/* Heading */}
         <h1 className="text-3xl sm:text-4xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
           Send Bulk WhatsApp Messages
-          <span className=" mt-2 block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <span className=" mt-2 block bg-[linear-gradient(120deg,#c4456b_0%,#8a4a9a_55%,#4f4f93_100%)] bg-clip-text text-transparent">
             The Official, Ban-Safe Way
           </span>
         </h1>
@@ -61,7 +59,7 @@ const LandingHero = () => {
 
           <button
             onClick={() => setIsDemoOpen(true)}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+            className="px-8 py-4 bg-[linear-gradient(120deg,#c4456b_0%,#8a4a9a_55%,#4f4f93_100%)] text-white font-semibold rounded-xl shadow-[0_10px_24px_-10px_rgba(196,69,107,0.8)] hover:shadow-[0_14px_28px_-10px_rgba(196,69,107,0.85)] hover:scale-105 transition-all duration-200"
           >
             Demo
           </button>

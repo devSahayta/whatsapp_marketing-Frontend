@@ -1,10 +1,14 @@
+//src/components/credits/AddCreditSection.jsx
+
 import { useEffect, useState } from "react";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import {
   createCreditOrder,
   getCreditPricing,
+  purchaseWithSavedMethod,
   verifyCreditPurchase,
 } from "../../api/credits";
+import { listPaymentMethods } from "../../api/payment";
 import { loadRazorpay } from "../../utils/razorpay";
 import {
   dismissToast,
@@ -24,6 +28,10 @@ const ASSISTANT_HIGHLIGHTS = [
 /**
  * Credit balance + a "Buy Credits" button that opens AddCreditModal, which
  * houses the actual package/custom-amount picker and hands off to Razorpay.
+ *
+ * If the user has a default saved card (see PaymentDetailsSection on the
+ * pricing page), the modal also offers a one-click "pay with saved card"
+ * path that skips the Razorpay popup/OTP entirely.
  */
 const AddCreditSection = ({
   userId,
@@ -38,6 +46,7 @@ const AddCreditSection = ({
   const [loadingPricing, setLoadingPricing] = useState(true);
   const [buyingKey, setBuyingKey] = useState(null); // packageId or "custom"
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [savedMethod, setSavedMethod] = useState(null);
 
   useEffect(() => {
     const loadPricing = async () => {
@@ -54,6 +63,35 @@ const AddCreditSection = ({
 
     loadPricing();
   }, []);
+
+  // Look up whether the user has a default saved card, so the modal can
+  // offer one-click purchase. Silently falls back to "no saved card" on
+  // any error — the normal Razorpay checkout always still works.
+  useEffect(() => {
+    if (!userId) {
+      setSavedMethod(null);
+      return;
+    }
+
+    let active = true;
+
+    listPaymentMethods(userId)
+      .then(({ data }) => {
+        if (!active) return;
+        const methods = Array.isArray(data) ? data : data?.methods || [];
+        const defaultMethod = methods.find(
+          (m) => m.is_default && m.status === "active",
+        );
+        setSavedMethod(defaultMethod || null);
+      })
+      .catch(() => {
+        if (active) setSavedMethod(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const runCheckout = async ({ credits: creditsAmount, packageId, key }) => {
     if (!userId) {
@@ -121,10 +159,49 @@ const AddCreditSection = ({
     }
   };
 
+  // One-click path: charges the saved card directly, no Razorpay popup.
+  const runSavedCheckout = async ({
+    credits: creditsAmount,
+    packageId,
+    key,
+  }) => {
+    if (!userId) {
+      showError("Please log in to buy credits.");
+      return;
+    }
+
+    const toastId = showLoading("Charging your saved card...");
+    setBuyingKey(key);
+
+    try {
+      await purchaseWithSavedMethod({
+        userId,
+        credits: creditsAmount,
+        packageId,
+      });
+      showSuccess("Credits added using your saved card!");
+      onPurchased?.();
+    } catch (err) {
+      showError(
+        err?.response?.data?.message ||
+          "Could not charge your saved card. Please try again.",
+      );
+    } finally {
+      dismissToast(toastId);
+      setBuyingKey(null);
+    }
+  };
+
   const handleBuyPackage = (pkg) =>
     runCheckout({ packageId: pkg.id, key: pkg.id });
 
   const handleBuyCustom = (n) => runCheckout({ credits: n, key: "custom" });
+
+  const handleBuySavedPackage = (pkg) =>
+    runSavedCheckout({ packageId: pkg.id, key: pkg.id });
+
+  const handleBuySavedCustom = (n) =>
+    runSavedCheckout({ credits: n, key: "custom" });
 
   const handleAddCreditsClick = () => {
     if (!userId) {
@@ -206,6 +283,9 @@ const AddCreditSection = ({
         buyingKey={buyingKey}
         onBuyPackage={handleBuyPackage}
         onBuyCustom={handleBuyCustom}
+        savedMethod={savedMethod}
+        onBuySavedPackage={handleBuySavedPackage}
+        onBuySavedCustom={handleBuySavedCustom}
       />
     </div>
   );

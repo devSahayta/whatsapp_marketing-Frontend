@@ -245,10 +245,11 @@ export function AppContent() {
       )}
 
       {/* Main content area */}
-      {/* Add conditional margin-top for authenticated users to prevent content from being hidden behind the fixed navbar. Also conditionally apply classes based on whether the navbar is hidden or not. */}
+      {/* Add conditional margin-top for authenticated users to prevent content from being hidden behind the fixed navbar. Also conditionally apply classes based on whether the navbar is hidden or not. The lg:ml-[280px] matches the persistent sidebar's width (--sidebar-width in global.css) once it stops being an off-canvas drawer. */}
       <main
-        // className={hideNavBar ? "content no-navbar" : "content with-navbar"}
-        className={` ${isAuthenticated ? "mt-14" : ""} ${hideNavBar ? "content no-navbar" : "content with-navbar"}`}
+        className={` ${isAuthenticated ? "mt-14" : ""} ${
+          isAuthenticated && !hideNavBar ? "lg:ml-[280px]" : ""
+        } ${hideNavBar ? "content no-navbar" : "content with-navbar"}`}
       >
         <Suspense fallback={<PageLoader />}>
           <Routes>

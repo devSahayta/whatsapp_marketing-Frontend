@@ -1,7 +1,7 @@
 // Pages/CreateCampaign.jsx - UPDATED with MediaGallery
 
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import {
   ArrowLeft,
@@ -48,9 +48,15 @@ function extractVariableNumbers(text) {
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useKindeAuth();
 
   console.log("🌐 Backend URL:", import.meta.env.VITE_BACKEND_URL);
+
+  // Prefill coming from "Send via Campaign" on a template (Basic Details:
+  // campaign name, and Template & Schedule: the template itself).
+  const prefill = location.state?.prefill || null;
+  const prefillAppliedRef = useRef(false);
 
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -81,7 +87,7 @@ const CreateCampaign = () => {
 
   // Form data
   const [formData, setFormData] = useState({
-    campaign_name: "",
+    campaign_name: prefill?.campaignName || "",
     description: "",
     group_id: "",
     wt_id: "",
@@ -468,6 +474,21 @@ const CreateCampaign = () => {
       console.warn("⚠️ No account_id found in template");
     }
   };
+
+  // If we arrived here via "Send via Campaign" on a template, auto-select
+  // that template as soon as the template list has loaded. Only runs once
+  // so it never overrides a template the user picks afterwards.
+  useEffect(() => {
+    if (prefillAppliedRef.current) return;
+    if (!prefill?.wtId) return;
+    if (loadingTemplates || templates.length === 0) return;
+
+    const match = templates.find((t) => t.wt_id === prefill.wtId);
+    if (match) {
+      handleTemplateSelect(match.wt_id);
+    }
+    prefillAppliedRef.current = true;
+  }, [prefill, templates, loadingTemplates]);
 
   // Load existing media from database
   const loadExistingMedia = async (accountId) => {

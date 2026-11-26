@@ -12,11 +12,12 @@ export const fetchTemplatesComplete = (userId) =>
 
 export const fetchTemplatesPaginated = (
   userId,
-  { page = 1, limit = 10, search = "", status = "ALL" } = {},
+  { page = 1, limit = 10, search = "", status = "ALL", type = "ALL" } = {},
 ) => {
   const params = new URLSearchParams({ user_id: userId, page, limit });
   if (search) params.set("search", search);
   if (status && status !== "ALL") params.set("status", status);
+  if (type && type !== "ALL") params.set("type", type);
   return api.get(`/api/watemplates/list?${params.toString()}`);
 };
 

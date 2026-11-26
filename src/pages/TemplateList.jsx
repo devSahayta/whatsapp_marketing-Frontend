@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Eye,
   FileText,
   Image as ImageIcon,
@@ -104,7 +105,12 @@ function CarouselCardThumb({
   const header = getCardComponent(card, "HEADER");
   const buttons = getCardButtons(card);
   const mediaType = header?.format?.toLowerCase();
-  const mediaUrl = getCardMediaUrl(template, cardIndex, userId, overrideMediaId);
+  const mediaUrl = getCardMediaUrl(
+    template,
+    cardIndex,
+    userId,
+    overrideMediaId,
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -791,8 +797,7 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                   {(carousel?.cards || []).map((card, index) => {
                     const cardHeaderFormat =
                       getCardComponent(card, "HEADER")?.format || "IMAGE";
-                    const effectiveCardMediaId =
-                      getEffectiveCardMediaId(index);
+                    const effectiveCardMediaId = getEffectiveCardMediaId(index);
                     const pending = cardUploads[index];
 
                     return (
@@ -839,13 +844,20 @@ function PreviewDrawer({ template, userId, onClose, onSend, onMediaUpload }) {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleCardMediaUpload(index, cardHeaderFormat)
+                                    handleCardMediaUpload(
+                                      index,
+                                      cardHeaderFormat,
+                                    )
                                   }
-                                  disabled={pending.uploading || !!pending.error}
+                                  disabled={
+                                    pending.uploading || !!pending.error
+                                  }
                                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   <Upload className="h-4 w-4" />
-                                  {pending.uploading ? "Uploading..." : "Upload"}
+                                  {pending.uploading
+                                    ? "Uploading..."
+                                    : "Upload"}
                                 </button>
                                 <button
                                   type="button"
@@ -937,6 +949,42 @@ function TemplateCard({
   const previewText =
     bodyText.length > 120 ? `${bodyText.slice(0, 120)}...` : bodyText;
 
+  // Media-expiry badge — only for a non-carousel media header, and only once
+  // the backend has told us the real upload state (template.media_status).
+  const isMediaHeader =
+    !isCarousel && ["IMAGE", "VIDEO", "DOCUMENT"].includes(header?.format);
+  const mediaStatus = template.media_status;
+  const mediaBadge = (() => {
+    if (!isMediaHeader || !mediaStatus) return null;
+    if (mediaStatus.state === "valid") {
+      const soon = mediaStatus.days_remaining <= 5;
+      return {
+        icon: Clock,
+        boxClass: soon ? "bg-amber-50" : "bg-slate-50",
+        textClass: soon ? "text-amber-700" : "text-slate-900",
+        label: "Media",
+        value: `${mediaStatus.days_remaining} day${mediaStatus.days_remaining === 1 ? "" : "s"} left`,
+      };
+    }
+    if (mediaStatus.state === "expired") {
+      return {
+        icon: AlertTriangle,
+        boxClass: "bg-rose-50",
+        textClass: "text-rose-700",
+        label: "Media",
+        value: "Expired — upload it",
+      };
+    }
+    // "missing" — no media ever uploaded for this template
+    return {
+      icon: AlertTriangle,
+      boxClass: "bg-amber-50",
+      textClass: "text-amber-700",
+      label: "Media",
+      value: "Not uploaded",
+    };
+  })();
+
   return (
     <article className="group rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
       <div className="flex items-start justify-between gap-4">
@@ -973,7 +1021,9 @@ function TemplateCard({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div
+        className={`mt-5 grid gap-3 sm:grid-cols-2 ${mediaBadge ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+      >
         <div className="rounded-2xl bg-slate-50 px-4 py-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             <Languages className="h-4 w-4" />
@@ -1013,6 +1063,20 @@ function TemplateCard({
             {buttons.length > 0 ? `${buttons.length} attached` : "No buttons"}
           </p>
         </div>
+
+        {mediaBadge && (
+          <div className={`rounded-2xl px-4 py-3 ${mediaBadge.boxClass}`}>
+            <div
+              className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${mediaBadge.textClass}`}
+            >
+              <mediaBadge.icon className="h-4 w-4" />
+              {mediaBadge.label}
+            </div>
+            <p className={`mt-2 text-sm font-medium ${mediaBadge.textClass}`}>
+              {mediaBadge.value}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
@@ -1058,6 +1122,7 @@ export default function TemplateList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -1074,10 +1139,10 @@ export default function TemplateList() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // any time the search term or status filter changes, go back to page 1
+  // any time the search term, status filter, or type filter changes, go back to page 1
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, typeFilter]);
 
   const loadTemplates = async () => {
     try {
@@ -1090,6 +1155,7 @@ export default function TemplateList() {
         limit: LIMIT,
         search: debouncedSearch,
         status: statusFilter,
+        type: typeFilter,
       });
       const body = res?.data || {};
       setTemplates(body.data || []);
@@ -1107,7 +1173,7 @@ export default function TemplateList() {
     if (userId) {
       loadTemplates();
     }
-  }, [userId, page, debouncedSearch, statusFilter]);
+  }, [userId, page, debouncedSearch, statusFilter, typeFilter]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1291,6 +1357,17 @@ export default function TemplateList() {
                   <option value="REJECTED">Rejected</option>
                   <option value="PAUSED">Paused</option>
                 </select>
+
+                <select
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value)}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="ALL">All types</option>
+                  <option value="TEXT">Text</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="CAROUSEL">Carousel</option>
+                </select>
               </div>
             </div>
           </section>
@@ -1332,9 +1409,16 @@ export default function TemplateList() {
                     setSelectedTemplate(template);
                     setOpenMenuId(null);
                   }}
-                  onSend={() => {
+                  onSend={(sentTemplate) => {
                     setOpenMenuId(null);
-                    navigate("/campaigns");
+                    navigate("/campaigns/create", {
+                      state: {
+                        prefill: {
+                          campaignName: sentTemplate?.name || "",
+                          wtId: sentTemplate?.wt_id || "",
+                        },
+                      },
+                    });
                   }}
                   onDelete={handleDelete}
                 />
@@ -1381,7 +1465,16 @@ export default function TemplateList() {
           template={selectedTemplate}
           userId={userId}
           onClose={() => setSelectedTemplate(null)}
-          onSend={() => navigate("/campaigns")}
+          onSend={() =>
+            navigate("/campaigns/create", {
+              state: {
+                prefill: {
+                  campaignName: selectedTemplate?.name || "",
+                  wtId: selectedTemplate?.wt_id || "",
+                },
+              },
+            })
+          }
           onMediaUpload={loadTemplates}
         />
       )}

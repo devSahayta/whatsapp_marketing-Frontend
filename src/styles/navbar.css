@@ -99,189 +99,135 @@
   color: #3b82f6;
 }
 
+/* Current-page title block (desktop, signed in) */
+.nav-page {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nav-page-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sidebar-accent-soft, #eeeefa);
+  color: var(--sidebar-accent, #4f4f93);
+  border: 1px solid rgba(79, 79, 147, 0.16);
+}
+
+.nav-page-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.nav-page-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.nav-page-sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bell matches the 36px chip and credits pill */
+.navbar .nb-bell {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+/* Assistant credits pill */
+.nav-credits {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.nav-credits:hover {
+  background: #d1fae5;
+  transform: translateY(-1px);
+}
+
+.nav-credits:focus-visible {
+  outline: 2px solid #a5a5dc;
+  outline-offset: 2px;
+}
+
+.nav-credits-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-credits-label {
+  font-weight: 500;
+  color: #475569;
+}
+
+.nav-credits.is-empty {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.25);
+  color: #b91c1c;
+}
+
+.nav-credits.pulse {
+  animation: nav-credits-pulse 0.65s ease;
+}
+
+@keyframes nav-credits-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(15, 118, 110, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-credits.pulse {
+    animation: none;
+  }
+}
+
 /* Right side (profile/auth) */
 .nav-right {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-/* Subscription inline (visible in navbar) */
-.subscription-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: #f3f4f6;
-  color: #374151;
-  font-size: 14px;
-}
-
-.subscription-badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.subscription-badge.active {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.subscription-badge.inactive {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-/* Brief pulse when the credit balance changes (e.g. the AI Assistant just
-   spent some) — draws the eye to the number without a full confirmation
-   dialog. Toggled on/off via the .credits-pulse class. */
-.subscription-badge.credits-pulse {
-  animation: creditsPulse 650ms ease-out;
-}
-
-@keyframes creditsPulse {
-  0% {
-    transform: scale(1);
-    background: #fde68a;
-    color: #92400e;
-  }
-  40% {
-    transform: scale(1.12);
-    background: #fde68a;
-    color: #92400e;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* Profile */
-.profile-wrapper {
-  position: relative;
-}
-
-.nav-username {
-  background: none;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: background-color 0.2s;
-  font-size: 14px;
-  color: #374151;
-}
-
-.nav-username:hover {
-  background: #f3f4f6;
-}
-
-.user-icon {
-  color: #6b7280;
-}
-
-/* Dropdown */
-.dropdown-menu {
-  position: absolute;
-  background: white;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 240px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  z-index: 80;
-}
-
-.dropdown-header {
-  padding: 14px;
-  background: #fafafa;
-  border-bottom: 1px solid #efefef;
-}
-
-.dropdown-header .name {
-  font-weight: 700;
-  color: #111827;
-  font-size: 14px;
-}
-
-.dropdown-header .email {
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-.dropdown-item {
-  padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #efefef;
-}
-
-.dropdown-item .left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.dropdown-item .plan-icon-active {
-  color: #059669;
-}
-
-.dropdown-item .plan-icon-inactive {
-  color: #f43f5e;
-}
-
-.dropdown-item .right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.subscription-mini {
-  padding: 4px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.subscription-mini.active {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.subscription-mini.inactive {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.dropdown-logout {
-  padding: 12px 14px;
-  background: white;
-  border: none;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.dropdown-logout:hover {
-  background: #f9fafb;
 }
 
 /* Auth buttons */
@@ -384,26 +330,6 @@
     font-size: 16px;
   }
 
-  .nav-logo-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* Hide subscription inline on small screens */
-  .subscription-inline {
-    display: none;
-  }
-
-  .nav-username {
-    padding: 6px 8px;
-    font-size: 13px;
-    gap: 6px;
-  }
-
-  .dropdown-menu {
-    width: 220px;
-  }
-
   .auth-button {
     padding: 7px 12px;
     font-size: 13px;
@@ -429,34 +355,8 @@
     gap: 6px;
   }
 
-  .nav-logo span {
-    display: inline; /* Keep logo text visible */
-  }
-
   .nav-right {
     gap: 8px;
-  }
-
-  /* Show only icon for username on very small screens */
-  .nav-username span {
-    display: none;
-  }
-
-  .nav-username {
-    padding: 6px;
-  }
-
-  .dropdown-menu {
-    width: 200px;
-    right: -10px; /* Align better on small screens */
-  }
-
-  .dropdown-header {
-    padding: 12px;
-  }
-
-  .dropdown-item {
-    padding: 10px 12px;
   }
 
   .auth-actions {
@@ -471,49 +371,1041 @@
 
 /* Extra small screens (360px and below) */
 @media (max-width: 360px) {
-  .nav-logo span {
-    display: none; /* Hide logo text on very small screens */
-  }
-
-  .dropdown-menu {
-    width: 180px;
-  }
-
   .auth-button:last-child {
     margin-right: 0;
   }
 }
 
-/* Handle dropdown overflow on small screens */
-@media (max-width: 480px) {
-  .dropdown-menu {
-    position: fixed;
-    top: var(--navbar-height);
-    right: 10px;
-    max-width: calc(100vw - 20px);
+/* ============================================
+   DESKTOP (>= 1024px), authenticated app only
+   The sidebar is a full-height column at this width and carries the logo
+   at its top, so the navbar starts to its right (no duplicate logo, and no
+   hamburger — the sidebar can't be hidden). In their place the bar shows
+   where you are, plus the primary action.
+   ============================================ */
+@media (min-width: 1024px) {
+  .navbar--fixed {
+    left: var(--sidebar-width);
+    padding: 0 32px;
+    background: rgba(255, 255, 255, 0.55);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .navbar--fixed::after {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: none;
+  }
+
+  .nav-logo--app {
+    display: none;
+  }
+
+  .nav-page {
+    display: flex;
   }
 }
 
-/* WhatsApp Account Link */
-.dropdown-link {
+/* Below desktop the page title would crowd the logo + bell. */
+@media (max-width: 1023px) {
+  .nav-credits-label {
+    display: none;
+  }
+
+  .nav-credits {
+    padding: 0 11px;
+  }
+}
+
+/* ================================
+   Logged-out (public) navbar: standard full-width sticky bar
+   (logo + links on the left, Log in / Sign up on the right).
+   Colors lifted from the Samvaadik logo.
+   rose #c4456b · indigo #4f4f93
+================================ */
+.navbar--public {
+  position: sticky;
+  top: 0;
+  height: 68px;
+  padding: 0 32px;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  z-index: 50;
+}
+
+.navbar--public::after {
+  display: none;
+}
+
+.nav-shell {
   width: 100%;
-  padding: 12px 14px;
-  background: white;
-  border: none;
-  border-bottom: 1px solid #efefef;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
+  max-width: 1240px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-logo-img--public {
+  height: 46px;
+}
+
+.nav-public-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 0 28px;
+}
+
+.nav-public-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14.5px;
   font-weight: 500;
-  transition: background-color 0.2s;
+  color: #475569;
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
-.dropdown-link:hover {
-  background: #f9fafb;
+.nav-public-link:hover {
+  color: #0f172a;
+  background: rgba(79, 79, 147, 0.08);
 }
 
-/* Remove default margin from auth button */
-.auth-button {
-  margin-right: 0;
+/* Open / current item: solid indigo pill (the "black pill" idea, in brand color) */
+.nav-public-link.is-active {
+  color: #ffffff;
+  background: #4f4f93;
+  font-weight: 600;
+}
+
+.nav-public-link.is-active:hover {
+  color: #ffffff;
+  background: #43437f;
+}
+
+.nav-public-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.nav-btn-ghost,
+.nav-btn-primary {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.nav-btn-ghost {
+  background: transparent;
+  border: none;
+  color: #334155;
+}
+
+.nav-btn-ghost:hover {
+  background: rgba(79, 79, 147, 0.08);
+  color: #4f4f93;
+}
+
+.nav-btn-primary {
+  border: none;
+  color: #ffffff;
+  background: linear-gradient(120deg, #c4456b 0%, #8a4a9a 55%, #4f4f93 100%);
+  box-shadow: 0 6px 16px -8px rgba(196, 69, 107, 0.8);
+}
+
+.nav-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px -8px rgba(196, 69, 107, 0.85);
+}
+
+.nav-btn-ghost:focus-visible,
+.nav-btn-primary:focus-visible,
+.nav-public-link:focus-visible {
+  outline: 2px solid #4f4f93;
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .navbar--public {
+    height: 60px;
+    padding: 0 14px;
+  }
+
+  .nav-logo-img--public {
+    height: 38px;
+  }
+
+  .nav-public-links {
+    margin-left: 8px;
+  }
+
+  .nav-public-link {
+    padding: 8px 9px;
+    font-size: 13.5px;
+  }
+
+  .nav-btn-ghost {
+    display: none;
+  }
+
+  .nav-btn-primary {
+    height: 36px;
+    padding: 0 13px;
+    font-size: 13.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-public-links {
+    display: none;
+  }
+}
+
+/* ---- Public bar polish: brand strip, scroll shadow, mega menu ---- */
+.navbar--public::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #c4456b 0%, #8a4a9a 50%, #4f4f93 100%);
+}
+
+.navbar--public {
+  transition:
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.navbar--public.is-scrolled {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.35);
+}
+
+.nav-public-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nav-menu-wrap {
+  position: relative;
+}
+
+.nav-menu-chevron {
+  transition: transform 0.2s ease;
+}
+
+.nav-menu-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.nav-mega {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: -14px;
+  width: 640px;
+  padding: 10px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 30px 60px -20px rgba(79, 79, 147, 0.35),
+    0 8px 20px -10px rgba(15, 23, 42, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0.18s;
+}
+
+/* invisible bridge so the menu doesn't close while the pointer crosses the gap */
+.nav-mega::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+}
+
+.nav-mega.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-mega-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.nav-mega-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.nav-mega-item:hover {
+  background: #f5f5fc;
+}
+
+.nav-mega-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eeeefa;
+  color: #4f4f93;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.nav-mega-item:hover .nav-mega-icon {
+  background: linear-gradient(135deg, #c4456b, #4f4f93);
+  color: #ffffff;
+}
+
+.nav-mega-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-mega-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.nav-mega-tag {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fdecf2;
+  color: #c4456b;
+}
+
+.nav-mega-sub {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.nav-mega-foot {
+  margin-top: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #fdecf2 0%, #eeeefa 100%);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4f4f93;
+  text-decoration: none;
+}
+
+.nav-mega-foot svg {
+  transition: transform 0.15s ease;
+}
+
+.nav-mega-foot:hover svg {
+  transform: translateX(3px);
+}
+
+.nav-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-btn-primary svg {
+  transition: transform 0.15s ease;
+}
+
+.nav-btn-primary:hover svg {
+  transform: translateX(3px);
+}
+
+@media (max-width: 720px) {
+  .nav-mega {
+    display: none;
+  }
+
+  .nav-menu-chevron {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-mega,
+  .nav-menu-chevron,
+  .nav-btn-primary svg {
+    transition: none;
+  }
+}
+
+/* global.css sets `nav.navbar { z-index: 10 }`, which beats the plain class
+   selector and let the landing hero (z-10, later in the DOM) paint over the
+   Features menu. Match its specificity and sit above page content. */
+nav.navbar.navbar--public {
+  z-index: 60;
+}
+
+/* ---- Announcement strip ---- */
+.nav-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 44px;
+  background: linear-gradient(95deg, #c4456b 0%, #9b4a8f 50%, #4f4f93 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  z-index: 61;
+}
+
+.nav-banner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.nav-banner-link strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.nav-banner-link:hover strong svg {
+  transform: translateX(3px);
+}
+
+.nav-banner-link strong svg {
+  transition: transform 0.15s ease;
+}
+
+.nav-banner-close {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.nav-banner-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ---- Wide mega menu, small dropdown, Contact button ---- */
+.nav-mega--wide {
+  width: 780px;
+}
+
+.nav-mega--small {
+  width: 320px;
+}
+
+.nav-mega-cols {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 8px;
+}
+
+.nav-mega-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-mega-heading {
+  padding: 6px 12px 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.nav-mega-promo {
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #c4456b 0%, #8a4a9a 55%, #4f4f93 100%);
+}
+
+.nav-mega-promo-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.nav-mega-promo-sub {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.nav-mega-promo-btn {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4f4f93;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.nav-mega-promo-btn:hover {
+  transform: translateY(-1px);
+}
+
+.nav-btn-contact {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(79, 79, 147, 0.35);
+  color: #4f4f93;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.nav-btn-contact:hover {
+  background: #eeeefa;
+  border-color: #4f4f93;
+}
+
+@media (max-width: 900px) {
+  .nav-btn-contact {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .nav-banner {
+    padding: 8px 38px 8px 14px;
+    font-size: 12.5px;
+    justify-content: flex-start;
+  }
+
+  .nav-banner-link span {
+    display: none;
+  }
+
+  .nav-banner-link::before {
+    content: "Meet Samvaadik AI";
+    font-weight: 600;
+  }
+}
+
+.nav-mega {
+  max-width: calc(100vw - 24px);
+}
+
+/* ---- Smoothness pass for the dropdowns ----
+   The blur behind the bar was re-sampled on every frame over the animated
+   landing background, which is what made the menus stutter. A near-solid
+   white bar looks the same and costs nothing. Menus now animate only
+   opacity + transform on their own GPU layer. */
+nav.navbar.navbar--public,
+nav.navbar.navbar--public.is-scrolled {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.nav-mega {
+  /* cheaper than the stacked 30px-blur shadow it replaces */
+  box-shadow:
+    0 18px 40px -16px rgba(79, 79, 147, 0.32),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  will-change: opacity, transform;
+  transform: translate3d(0, -6px, 0);
+  pointer-events: none;
+  transition:
+    opacity 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 0.16s;
+}
+
+.nav-mega.is-open {
+  transform: translate3d(0, 0, 0);
+  pointer-events: auto;
+  transition:
+    opacity 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 0s;
+}
+
+/* gradient hover on the icon tiles by fading an overlay (gradients can't
+   transition, so the old swap snapped) */
+.nav-mega-icon {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: none;
+}
+
+.nav-mega-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, #c4456b, #4f4f93);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.nav-mega-item:hover .nav-mega-icon {
+  background: #eeeefa;
+  color: #ffffff;
+}
+
+.nav-mega-item:hover .nav-mega-icon::before {
+  opacity: 1;
+}
+
+.nav-mega-item {
+  transition: background-color 0.12s ease;
+}
+
+.nav-public-link {
+  transition:
+    color 0.12s ease,
+    background-color 0.12s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-mega,
+  .nav-mega.is-open,
+  .nav-mega-icon::before {
+    transition: none;
+  }
+}
+
+/* ================================
+   Responsive: logged-out bar
+   >= 1024px  full desktop bar with dropdowns
+   <  1024px  burger + full-screen-width menu (Log in, Sign up, every link)
+================================ */
+.nav-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid rgba(79, 79, 147, 0.25);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4f4f93;
+  cursor: pointer;
+}
+
+.nav-burger:hover {
+  background: #eeeefa;
+}
+
+.nav-mobile {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .nav-public-links,
+  .nav-btn-contact,
+  .nav-public-actions .nav-btn-ghost {
+    display: none;
+  }
+
+  .nav-burger {
+    display: inline-flex;
+  }
+
+  .nav-public-actions {
+    gap: 8px;
+  }
+
+  .nav-mobile {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 68px);
+    overflow-y: auto;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 24px 40px -20px rgba(15, 23, 42, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(0, -8px, 0);
+    pointer-events: none;
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+
+  .nav-mobile.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      visibility 0s linear 0s;
+  }
+
+  .nav-mobile-inner {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 8px 16px 20px;
+  }
+
+  .nav-mobile-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 8px;
+    border: none;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    background: none;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .nav-mobile-sub {
+    padding: 6px 0 10px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .nav-mobile-sub .nav-mega-foot {
+    margin: 8px 4px 0;
+  }
+
+  .nav-mobile-cta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 18px;
+  }
+
+  .nav-mobile-login,
+  .nav-mobile-signup {
+    height: 46px;
+    justify-content: center;
+    font-size: 15px;
+  }
+
+  .nav-mobile-login {
+    border: 1.5px solid rgba(79, 79, 147, 0.35);
+    border-radius: 8px;
+    background: #ffffff;
+    color: #4f4f93;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 720px) {
+  .nav-mobile {
+    max-height: calc(100vh - 60px);
+  }
+}
+
+/* very narrow phones: keep Sign up compact so logo + Sign up + burger fit */
+@media (max-width: 400px) {
+  .navbar--public {
+    padding: 0 10px;
+  }
+
+  .nav-public-actions .nav-btn-primary {
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  .nav-public-actions .nav-btn-primary svg {
+    display: none;
+  }
+
+  .nav-logo-img--public {
+    height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-mobile,
+  .nav-mobile.is-open {
+    transition: none;
+  }
+}
+
+/* ================================
+   Mobile menu v2: rows with icons, animated accordions, backdrop
+================================ */
+.nav-mobile-backdrop {
+  display: none;
+}
+
+.nav-acc {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.nav-acc.is-open {
+  grid-template-rows: 1fr;
+}
+
+.nav-acc-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (max-width: 1023px) {
+  /* the bar's own Sign up is redundant once the menu (which has one) is open */
+  .navbar--public.is-menu-open .nav-public-actions .nav-btn-primary {
+    display: none;
+  }
+
+  .nav-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    z-index: 59;
+    animation: navBackdropIn 0.2s ease;
+  }
+
+  @keyframes navBackdropIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .nav-mobile {
+    margin: 0 10px;
+    left: 0;
+    right: 0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    top: calc(100% + 6px);
+    max-height: calc(100vh - 100px);
+    box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.4);
+  }
+
+  .nav-mobile-inner {
+    padding: 10px 12px 14px;
+  }
+
+  /* top-level rows */
+  .nav-mrow {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+    margin-bottom: 2px;
+    border: none;
+    border-radius: 14px;
+    background: none;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .nav-mrow:hover,
+  .nav-mrow:active {
+    background: #f5f5fc;
+  }
+
+  .nav-mrow.is-open {
+    background: #eeeefa;
+    color: #4f4f93;
+  }
+
+  .nav-mrow-icon {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eeeefa;
+    color: #4f4f93;
+  }
+
+  .nav-mrow.is-open .nav-mrow-icon {
+    background: #4f4f93;
+    color: #ffffff;
+  }
+
+  .nav-mrow-label {
+    flex: 1;
+  }
+
+  .nav-mrow-chev {
+    color: #94a3b8;
+    transition: transform 0.25s ease;
+  }
+
+  .nav-mrow.is-open .nav-mrow-chev {
+    transform: rotate(180deg);
+    color: #4f4f93;
+  }
+
+  .nav-mrow-arrow {
+    color: #cbd5e1;
+  }
+
+  /* expanded content */
+  .nav-acc-inner {
+    padding: 0 2px;
+  }
+
+  .nav-acc.is-open .nav-acc-inner {
+    padding: 4px 2px 10px;
+  }
+
+  .nav-mobile-group {
+    padding: 10px 12px 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #94a3b8;
+  }
+
+  .nav-acc .nav-mega-item {
+    padding: 10px 10px;
+  }
+
+  .nav-acc .nav-mega-foot {
+    margin: 8px 4px 0;
+  }
+
+  .nav-mobile-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 4px 0;
+    margin-top: 8px;
+    border-top: 1px solid rgba(15, 23, 42, 0.07);
+  }
+
+  .nav-mobile-signup {
+    width: 100%;
+    height: 48px;
+    justify-content: center;
+    font-size: 15.5px;
+    border-radius: 12px;
+  }
+
+  .nav-mobile-login {
+    height: 44px;
+    border: none;
+    background: none;
+    color: #4f4f93;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 12px;
+  }
+
+  .nav-mobile-login:hover {
+    background: #eeeefa;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-acc,
+  .nav-mrow-chev,
+  .nav-mobile-backdrop {
+    transition: none;
+    animation: none;
+  }
 }

@@ -12,11 +12,13 @@ import {
   prepareMediaHeader,
   deleteMedia,
 } from "../api/media";
+import { uploadTemplateMedia } from "../api/templates";
 import { pickGoogleSheet } from "../utils/googlePicker";
 import { CREDITS_CHANGED_EVENT } from "../hooks/useUserCredits";
 import { showCreditUsage } from "../utils/toast";
 import SendTemplateModal from "./SendTemplateModal";
 import "../styles/SamvaadikAssistant.css";
+import SamvaadikAIMark from "./SamvaadikAIMark";
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
 
@@ -169,10 +171,47 @@ function isConfirmation(text) {
   );
 }
 
+// Defensive cleanup for one line of a LIST_GROUPS_BEGIN/LIST_TEMPLATES_BEGIN
+// block: strips a leading "1.", "1)", "-" or "*" in case the model numbers
+// or bullets the lines itself despite being told the app does that.
+function stripLineNumbering(line) {
+  return line.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, "");
+}
+
+// Decodes a name field from one of those lines, falling back to the raw
+// value if it isn't actually URL-encoded.
+function decodeOptionName(rawName) {
+  const raw = (rawName || "").trim();
+  if (!raw) return "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+// Parses a `<beginToken>\n...lines...\nLIST_x_END` block out of a message and
+// maps each non-empty line through `mapLine`. Returns null when the block
+// isn't present, or an array (possibly empty) when it is.
+function parseOptionListBlock(content, beginToken, endToken, mapLine) {
+  const startIdx = content.indexOf(beginToken);
+  if (startIdx === -1) return null;
+  const endIdx = content.indexOf(endToken, startIdx);
+  if (endIdx === -1) return null;
+  const body = content.slice(startIdx + beginToken.length, endIdx);
+  return body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(mapLine)
+    .filter(Boolean);
+}
+
 // ── Message content renderer ──────────────────────────────────────────────────
 
 function FormattedMessage({
   content,
+  userId,
   onNavigateToTemplates,
   onNavigateToBuilder,
   onNavigateToFlows,
@@ -180,6 +219,7 @@ function FormattedMessage({
   onPickGoogleSheet,
   onNavigateToPricing,
   onOpenTemplatePicker,
+  onMediaUploaded,
 }) {
   const hasRedirect = content.includes("REDIRECT_TO_TEMPLATES:");
   // OPEN_TEMPLATE_PICKER:<chat_id|new>|<phone>|<url-encoded name>
@@ -200,6 +240,55 @@ function FormattedMessage({
       name,
     };
   })();
+  // UPLOAD_MEDIA_FOR_TEMPLATE:<wt_id>|<IMAGE|VIDEO|DOCUMENT>|<url-encoded name>
+  // Lets the user attach fresh media for a template right here in the chat,
+  // instead of being sent to the Templates page.
+  const mediaUploadTarget = (() => {
+    const match = content.match(
+      /UPLOAD_MEDIA_FOR_TEMPLATE:([A-Za-z0-9-]+)\|(IMAGE|VIDEO|DOCUMENT)\|(\S*)/,
+    );
+    if (!match) return null;
+    let name = "";
+    try {
+      name = decodeURIComponent(match[3] || "");
+    } catch {
+      name = "";
+    }
+    return {
+      wtId: match[1],
+      headerFormat: match[2],
+      name,
+    };
+  })();
+  // LIST_GROUPS_BEGIN / LIST_TEMPLATES_BEGIN blocks — rendered as a simple
+  // aligned list instead of a plain bulleted paragraph. See parseOptionListBlock.
+  const groupListOptions = parseOptionListBlock(
+    content,
+    "LIST_GROUPS_BEGIN",
+    "LIST_GROUPS_END",
+    (line) => {
+      const [rawName, count] = stripLineNumbering(line).split("|");
+      const name = decodeOptionName(rawName);
+      return name ? { name, count: (count || "").trim() } : null;
+    },
+  );
+  const templateListOptions = parseOptionListBlock(
+    content,
+    "LIST_TEMPLATES_BEGIN",
+    "LIST_TEMPLATES_END",
+    (line) => {
+      const [rawName, headerFormat, status] =
+        stripLineNumbering(line).split("|");
+      const name = decodeOptionName(rawName);
+      return name
+        ? {
+            name,
+            headerFormat: (headerFormat || "TEXT").trim(),
+            status: (status || "").trim(),
+          }
+        : null;
+    },
+  );
   const hasBuilderRedirect = /REDIRECT_TO_BUILDER:[a-f0-9-]+/i.test(content);
   const hasFlowsRedirect = content.includes("REDIRECT_TO_FLOWS:");
   const hasGoogleRedirect = content.includes("GOOGLE_NOT_CONNECTED:");
@@ -222,6 +311,9 @@ function FormattedMessage({
     .replace(/GOOGLE_PICK_SHEET:\s*/g, "")
     .replace(/REDIRECT_TO_PRICING:\s*/g, "")
     .replace(/`?OPEN_TEMPLATE_PICKER:\S*\n?/g, "")
+    .replace(/`?UPLOAD_MEDIA_FOR_TEMPLATE:\S*\n?/g, "")
+    .replace(/`?LIST_GROUPS_BEGIN[\s\S]*?LIST_GROUPS_END`?\n?/g, "")
+    .replace(/`?LIST_TEMPLATES_BEGIN[\s\S]*?LIST_TEMPLATES_END`?\n?/g, "")
     .trim();
 
   const hasSummary = cleanContent.includes("───────");
@@ -311,7 +403,7 @@ function FormattedMessage({
   const renderWithPricingRedirect = (body) => (
     <div className="sai-credits-card">
       <div className="sai-credits-card-icon">
-        <IconCredits size={16} />
+        <SamvaadikAIMark size={22} />
       </div>
       <div
         style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}
@@ -351,9 +443,35 @@ function FormattedMessage({
     </div>
   );
 
+  const renderWithMediaUpload = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      <MediaUploadCard
+        target={mediaUploadTarget}
+        userId={userId}
+        onUploaded={onMediaUploaded}
+      />
+    </div>
+  );
+
+  const renderWithOptionList = (body) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {body}
+      {groupListOptions && groupListOptions.length > 0 && (
+        <OptionCardGrid type="group" options={groupListOptions} />
+      )}
+      {templateListOptions && templateListOptions.length > 0 && (
+        <OptionCardGrid type="template" options={templateListOptions} />
+      )}
+    </div>
+  );
+
   if (!hasSummary) {
     const body = <InlineText text={cleanContent} />;
     if (pickerTarget) return renderWithTemplatePicker(body);
+    if (mediaUploadTarget) return renderWithMediaUpload(body);
+    if (groupListOptions || templateListOptions)
+      return renderWithOptionList(body);
     if (hasRedirect) return renderWithRedirect(body);
     if (hasBuilderRedirect) return renderWithBuilderRedirect(body);
     if (hasFlowsRedirect) return renderWithFlowsRedirect(body);
@@ -535,8 +653,8 @@ export default function SamvaadikAssistant({ userId }) {
       const pos = JSON.parse(saved);
       if (pos.x === null) return { x: null, y: null };
       // Clamp to current viewport so desktop positions don't go off-screen on mobile
-      const fabW = 160; // conservative estimate of FAB width
-      const fabH = 44;
+      const fabW = 56; // FAB width (round icon button)
+      const fabH = 56;
       const clampedX = Math.max(
         8,
         Math.min(window.innerWidth - fabW - 8, pos.x),
@@ -629,8 +747,8 @@ export default function SamvaadikAssistant({ userId }) {
 
       // Clamp within viewport with 8px padding on all sides
       const fabEl = fabRef.current;
-      const fabW = fabEl ? fabEl.offsetWidth : 160;
-      const fabH = fabEl ? fabEl.offsetHeight : 44;
+      const fabW = fabEl ? fabEl.offsetWidth : 56;
+      const fabH = fabEl ? fabEl.offsetHeight : 56;
       const clampedX = Math.max(
         8,
         Math.min(window.innerWidth - fabW - 8, newX),
@@ -649,8 +767,8 @@ export default function SamvaadikAssistant({ userId }) {
       setFabPos((pos) => {
         if (pos.x === null) return pos;
         const fabEl = fabRef.current;
-        const fabW = fabEl ? fabEl.offsetWidth : 160;
-        const fabH = fabEl ? fabEl.offsetHeight : 44;
+        const fabW = fabEl ? fabEl.offsetWidth : 56;
+        const fabH = fabEl ? fabEl.offsetHeight : 56;
         const safeX = Math.max(
           8,
           Math.min(window.innerWidth - fabW - 8, pos.x),
@@ -708,8 +826,8 @@ export default function SamvaadikAssistant({ userId }) {
     const handleResize = () => {
       setFabPos((pos) => {
         if (pos.x === null) return pos;
-        const fabW = fabRef.current?.offsetWidth || 160;
-        const fabH = fabRef.current?.offsetHeight || 44;
+        const fabW = fabRef.current?.offsetWidth || 56;
+        const fabH = fabRef.current?.offsetHeight || 56;
         const clampedX = Math.max(
           8,
           Math.min(window.innerWidth - fabW - 8, pos.x),
@@ -1062,6 +1180,20 @@ export default function SamvaadikAssistant({ userId }) {
     ],
   );
 
+  // Called by MediaUploadCard once it has persisted a fresh media_id onto a
+  // template. Feeds that fact back into the conversation as a normal chat
+  // turn so the model re-checks the template and picks up right where it
+  // left off (see "AFTER MEDIA UPLOAD - RESUMING" in the system prompt) —
+  // no need for the user to type anything themselves.
+  const handleTemplateMediaUploaded = useCallback(
+    (templateName, mediaId) => {
+      sendMessage(
+        `I've uploaded new media for the "${templateName}" template (media_id: ${mediaId}). Please continue.`,
+      );
+    },
+    [sendMessage],
+  );
+
   // Picking a sheet grants Samvaadik access to it; the agent then sees it
   // in list_google_sheets.
   const handlePickGoogleSheet = useCallback(async () => {
@@ -1157,8 +1289,8 @@ export default function SamvaadikAssistant({ userId }) {
         onMouseDown={handleFabPointerDown}
         onTouchStart={handleFabPointerDown}
         onClick={handleFabClick}
-        aria-label="Open Samvaadik AI Assistant"
-        title={isOpen ? "Close AI Assistant" : "Samvaadik AI Assistant"}
+        aria-label={isOpen ? "Close Samvaadik AI" : "Ask Samvaadik AI"}
+        data-tip={isOpen ? "Close" : "Ask Samvaadik AI"}
         style={
           fabPos.x !== null
             ? {
@@ -1171,12 +1303,13 @@ export default function SamvaadikAssistant({ userId }) {
             : undefined
         }
       >
-        <span className={`sai-fab-icon ${isOpen ? "sai-fab-icon--open" : ""}`}>
-          {isOpen ? <IconClose size={14} /> : <IconAI size={16} />}
-        </span>
-        <span className="sai-fab-label">
-          {isOpen ? "Close" : "AI Assistant"}
-        </span>
+        {isOpen ? (
+          <span className="sai-fab-close">
+            <IconClose size={18} />
+          </span>
+        ) : (
+          <SamvaadikAIMark size={56} className="sai-fab-mark" />
+        )}
       </button>
 
       {/* Backdrop */}
@@ -1196,7 +1329,7 @@ export default function SamvaadikAssistant({ userId }) {
           <div className="sai-header">
             <div className="sai-header-left">
               <div className="sai-header-avatar">
-                <IconAI size={16} />
+                <SamvaadikAIMark size={36} />
               </div>
               <div>
                 <div className="sai-header-title">Samvaadik AI</div>
@@ -1235,6 +1368,7 @@ export default function SamvaadikAssistant({ userId }) {
                 <MessageBubble
                   key={msg.id}
                   message={msg}
+                  userId={userId}
                   onNavigateToTemplates={handleNavigateToTemplates}
                   onNavigateToBuilder={handleNavigateToBuilder}
                   onNavigateToFlows={handleNavigateToFlows}
@@ -1242,6 +1376,7 @@ export default function SamvaadikAssistant({ userId }) {
                   onPickGoogleSheet={handlePickGoogleSheet}
                   onNavigateToPricing={handleNavigateToPricing}
                   onOpenTemplatePicker={setTemplateTarget}
+                  onMediaUploaded={handleTemplateMediaUploaded}
                 />
               ))
             )}
@@ -1249,7 +1384,7 @@ export default function SamvaadikAssistant({ userId }) {
             {loading && currentStep && (
               <div className="sai-msg">
                 <div className="sai-msg-avatar sai-msg-avatar--pulse">
-                  <IconAI size={12} />
+                  <SamvaadikAIMark size={26} />
                 </div>
                 <div className="sai-loading-card">
                   <div className="sai-loading-row">
@@ -1504,7 +1639,7 @@ function EmptyState({ onSuggest }) {
   return (
     <div className="sai-empty">
       <div className="sai-empty-icon">
-        <IconAI size={22} />
+        <SamvaadikAIMark size={56} />
       </div>
       <h3 className="sai-empty-title">How can I help?</h3>
       <p className="sai-empty-sub">
@@ -1530,8 +1665,253 @@ function EmptyState({ onSuggest }) {
   );
 }
 
+// ── Inline media upload card ─────────────────────────────────────────────────
+// Shown when a template's header media is missing or has expired. Lets the
+// user attach a fresh file right here in the chat (same 2-step signed-upload
+// flow used for the general media attachment), then persists it to that
+// template and resumes the conversation automatically — no trip to the
+// Templates page required.
+
+const MEDIA_UPLOAD_LIMITS = {
+  IMAGE: {
+    accept: "image/jpeg,image/png,image/webp",
+    maxMB: 5,
+    hint: "JPG, PNG or WEBP · max 5 MB",
+  },
+  VIDEO: {
+    accept: "video/mp4,video/3gpp,video/quicktime",
+    maxMB: 16,
+    hint: "MP4, 3GP or MOV · max 16 MB",
+  },
+  DOCUMENT: {
+    accept: "application/pdf",
+    maxMB: 100,
+    hint: "PDF · max 100 MB",
+  },
+};
+
+function MediaUploadCard({ target, userId, onUploaded }) {
+  const [file, setFile] = useState(null);
+  const [fileError, setFileError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
+
+  if (!target?.wtId) return null;
+
+  const limits =
+    MEDIA_UPLOAD_LIMITS[target.headerFormat] || MEDIA_UPLOAD_LIMITS.IMAGE;
+  const FormatIcon =
+    target.headerFormat === "VIDEO"
+      ? IconVideo
+      : target.headerFormat === "DOCUMENT"
+        ? IconDoc
+        : IconImage;
+
+  const handleFile = (f) => {
+    if (!f) return;
+    setError(null);
+    const sizeMB = f.size / (1024 * 1024);
+    setFile(f);
+    setFileError(
+      sizeMB > limits.maxMB
+        ? `File too large. Max allowed size is ${limits.maxMB} MB.`
+        : null,
+    );
+  };
+
+  const handleUpload = async () => {
+    if (!file || fileError || !userId) return;
+    setUploading(true);
+    setError(null);
+    try {
+      // Step 1: signed Supabase upload URL
+      const { data: urlData } = await getSupabaseUploadUrl({
+        user_id: userId,
+        file_name: file.name,
+        file_type: file.type,
+      });
+
+      // Step 2: PUT straight to storage
+      const putResp = await fetch(urlData.signed_url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putResp.ok) {
+        throw new Error("Upload to storage failed: " + putResp.statusText);
+      }
+
+      // Step 3: backend downloads from storage, uploads to Meta, returns media_id
+      const { data: headerData } = await prepareMediaHeader({
+        user_id: userId,
+        storage_path: urlData.storage_path,
+        file_name: file.name,
+        file_type: file.type,
+      });
+      const mediaId = headerData.media_id;
+      if (!mediaId) throw new Error("No media ID returned.");
+
+      // Step 4: attach the fresh media_id to this exact template
+      await uploadTemplateMedia(target.wtId, {
+        user_id: userId,
+        media_id: mediaId,
+      });
+
+      setDone(true);
+      onUploaded && onUploaded(target.name || "this template", mediaId);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to upload media. Please try again.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="sai-media-upload-card sai-media-upload-card--done">
+        <FormatIcon size={14} />
+        <span>
+          Media uploaded for "{target.name || "the template"}" — continuing...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sai-media-upload-card">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={limits.accept}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          handleFile(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
+      />
+
+      {file ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="sai-media-upload-filename">{file.name}</span>
+          {fileError && (
+            <div className="sai-media-upload-error">
+              <IconError size={12} />
+              <span>{fileError}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="sai-redirect-btn"
+              onClick={handleUpload}
+              disabled={uploading || !!fileError}
+            >
+              <FormatIcon size={14} />
+              <span>{uploading ? "Uploading..." : "Upload"}</span>
+            </button>
+            <button
+              type="button"
+              className="sai-redirect-btn sai-redirect-btn--secondary"
+              onClick={() => {
+                setFile(null);
+                setFileError(null);
+              }}
+              disabled={uploading}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="sai-redirect-btn"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <FormatIcon size={14} />
+          <span>Upload Media</span>
+        </button>
+      )}
+
+      <p className="sai-media-upload-hint">{limits.hint}</p>
+
+      {error && (
+        <div className="sai-media-upload-error">
+          <IconError size={12} />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Option list (groups / templates listing) ─────────────────────────────────
+// Renders a LIST_GROUPS_BEGIN / LIST_TEMPLATES_BEGIN block as a simple,
+// neatly aligned numbered list — plain rows, not buttons, just for readability.
+// Selection still happens by the user typing the name back.
+
+function OptionCardGrid({ type, options }) {
+  if (!options || options.length === 0) return null;
+
+  return (
+    <div className="sai-option-list">
+      {options.map((opt, i) => {
+        const statusClass =
+          type === "template"
+            ? opt.status === "APPROVED"
+              ? "sai-option-row__status-dot--approved"
+              : opt.status === "PENDING"
+                ? "sai-option-row__status-dot--pending"
+                : "sai-option-row__status-dot--other"
+            : null;
+
+        return (
+          // Deliberately <div>s, not <span>s: a global rule
+          // (".sai-bubble span { display:block; width:100% }") outranks
+          // this component's own classes by specificity and would blow the
+          // flex row apart into stacked full-width blocks if we used spans.
+          <div className="sai-option-row" key={`${type}-${opt.name}-${i}`}>
+            <div className="sai-option-row__num">{i + 1}.</div>
+            <div className="sai-option-row__name">{opt.name}</div>
+            <div className="sai-option-row__meta">
+              {type === "group" ? (
+                <div>
+                  {opt.count || 0} contact{opt.count === "1" ? "" : "s"}
+                </div>
+              ) : (
+                <>
+                  <div>{opt.headerFormat || "TEXT"}</div>
+                  {opt.status && (
+                    <div className="sai-option-row__status">
+                      <div
+                        className={`sai-option-row__status-dot ${statusClass}`}
+                      />
+                      {opt.status === "APPROVED"
+                        ? "Approved"
+                        : opt.status === "PENDING"
+                          ? "Pending"
+                          : opt.status}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function MessageBubble({
   message,
+  userId,
   onNavigateToTemplates,
   onNavigateToBuilder,
   onNavigateToFlows,
@@ -1539,6 +1919,7 @@ function MessageBubble({
   onPickGoogleSheet,
   onNavigateToPricing,
   onOpenTemplatePicker,
+  onMediaUploaded,
 }) {
   const isUser = message.role === "user";
   const hasSummary = !isUser && message.content.includes("───────");
@@ -1550,12 +1931,15 @@ function MessageBubble({
       message.content.includes("GOOGLE_NOT_CONNECTED") ||
       message.content.includes("GOOGLE_PICK_SHEET") ||
       message.content.includes("REDIRECT_TO_PRICING") ||
-      message.content.includes("OPEN_TEMPLATE_PICKER"));
+      message.content.includes("OPEN_TEMPLATE_PICKER") ||
+      message.content.includes("UPLOAD_MEDIA_FOR_TEMPLATE") ||
+      message.content.includes("LIST_GROUPS_BEGIN") ||
+      message.content.includes("LIST_TEMPLATES_BEGIN"));
   return (
     <div className={`sai-msg ${isUser ? "sai-msg--user" : ""}`}>
       {!isUser && (
         <div className="sai-msg-avatar">
-          <IconAI size={12} />
+          <SamvaadikAIMark size={26} />
         </div>
       )}
       <div
@@ -1595,6 +1979,7 @@ function MessageBubble({
         ) : (
           <FormattedMessage
             content={message.content}
+            userId={userId}
             onNavigateToTemplates={onNavigateToTemplates}
             onNavigateToBuilder={onNavigateToBuilder}
             onNavigateToFlows={onNavigateToFlows}
@@ -1602,6 +1987,7 @@ function MessageBubble({
             onPickGoogleSheet={onPickGoogleSheet}
             onNavigateToPricing={onNavigateToPricing}
             onOpenTemplatePicker={onOpenTemplatePicker}
+            onMediaUploaded={onMediaUploaded}
           />
         )}
       </div>

@@ -12,29 +12,80 @@
   z-index: 9995;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 18px 0 14px;
-  height: 44px;
-  background: #0a6b5c;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  background: transparent;
   color: #fff;
   border: none;
-  border-radius: 999px;
+  border-radius: 50%;
   cursor: pointer;
-  font-family: "DM Sans", sans-serif;
-  font-size: 13.5px;
-  font-weight: 600;
   box-shadow:
-    0 4px 16px rgba(10, 107, 92, 0.35),
+    0 6px 18px rgba(15, 118, 110, 0.38),
     0 1px 4px rgba(0, 0, 0, 0.15);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
-    background 0.18s,
     opacity 0.2s ease;
-  letter-spacing: -0.01em;
   user-select: none;
   touch-action: none;
   will-change: transform;
+}
+
+.sai-fab-mark {
+  display: block;
+  border-radius: 50%;
+}
+
+.sai-fab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+}
+
+/* Hover label */
+@media (max-width: 767px) {
+  .sai-fab::after {
+    display: none;
+  }
+}
+
+.sai-fab::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+  background: #0f2e2a;
+  color: #fff;
+  font-family: "DM Sans", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.sai-fab:hover:not(.sai-fab--dragging)::after,
+.sai-fab:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.sai-fab:focus-visible {
+  outline: 3px solid #6ee7b7;
+  outline-offset: 3px;
 }
 
 /* Dragging */
@@ -42,40 +93,20 @@
   cursor: grabbing !important;
   transform: scale(1.06);
   box-shadow:
-    0 10px 32px rgba(10, 107, 92, 0.45),
+    0 12px 30px rgba(15, 118, 110, 0.45),
     0 2px 8px rgba(0, 0, 0, 0.2);
   transition: none;
 }
 
 .sai-fab:hover:not(.sai-fab--dragging) {
-  background: #085f50;
   transform: translateY(-2px);
   box-shadow:
-    0 8px 24px rgba(10, 107, 92, 0.42),
+    0 10px 26px rgba(15, 118, 110, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .sai-fab:active:not(.sai-fab--dragging) {
-  transform: scale(0.97);
-}
-
-.sai-fab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  transition: transform 0.25s ease;
-}
-
-.sai-fab-icon--open {
-  transform: rotate(90deg);
-}
-
-.sai-fab-label {
-  letter-spacing: -0.01em;
-  white-space: nowrap;
+  transform: scale(0.96);
 }
 
 /* ── Mobile FAB behaviour ─────────────────────────────────────── */
@@ -84,10 +115,8 @@
     /* Slightly smaller on mobile, same pill shape */
     bottom: 20px;
     right: 16px;
-    height: 42px;
-    padding: 0 16px 0 12px;
-    font-size: 13px;
-    gap: 6px;
+    width: 52px;
+    height: 52px;
     /* Keep touch-action: none so drag works on mobile too */
     touch-action: none;
   }
@@ -188,8 +217,8 @@
 .sai-header-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: #0a6b5c;
+  border-radius: 50%;
+  background: transparent;
   color: #fff;
   display: flex;
   align-items: center;
@@ -305,8 +334,8 @@
 .sai-msg-avatar {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  background: #0a6b5c;
+  border-radius: 50%;
+  background: transparent;
   color: #fff;
   display: flex;
   align-items: center;
@@ -528,11 +557,11 @@
 }
 
 .sai-empty-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
   color: #0a6b5c;
   display: flex;
   align-items: center;
@@ -1069,4 +1098,146 @@
 
 .sai-redirect-btn--credits svg:last-child {
   color: #fde68a;
+}
+
+/* ── Inline media upload card (assistant chat) ──────────────────── */
+/* Lets the user attach a fresh image/video/document for a template
+   directly in the chat, instead of being redirected to the Templates page. */
+
+.sai-media-upload-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.sai-media-upload-card--done {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1.5px solid #16a34a;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sai-media-upload-filename {
+  font-size: 12px;
+  color: #374151;
+  word-break: break-all;
+}
+
+.sai-media-upload-hint {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.sai-media-upload-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #be123c;
+}
+
+.sai-redirect-btn--secondary {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+}
+
+.sai-redirect-btn--secondary:hover {
+  background: #f1f5f9;
+}
+
+.sai-redirect-btn:disabled,
+.sai-redirect-btn--secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Option list (groups / templates listing) ───────────────────── */
+/* Renders LIST_GROUPS_BEGIN/LIST_TEMPLATES_BEGIN blocks as a simple,
+   neatly aligned numbered list — plain rows, no buttons/cards. */
+
+.sai-option-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.sai-option-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sai-option-row:last-child {
+  border-bottom: none;
+}
+
+.sai-option-row__num {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: right;
+}
+
+.sai-option-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sai-option-row__meta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sai-option-row__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sai-option-row__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sai-option-row__status-dot--approved {
+  background: #16a34a;
+}
+
+.sai-option-row__status-dot--pending {
+  background: #d97706;
+}
+
+.sai-option-row__status-dot--other {
+  background: #94a3b8;
 }

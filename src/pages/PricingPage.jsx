@@ -8,14 +8,24 @@ import {
 } from "lucide-react";
 import { useKindeAuth } from "@kinde-oss/kinde-auth-react";
 import { useNavigate } from "react-router-dom";
-import { createOrder, getPlans, verifyPayment } from "../api/payment";
+import {
+  createOrder,
+  getPlans,
+  verifyPayment,
+  listPaymentMethods,
+  subscribeWithSavedMethod,
+} from "../api/payment";
 import useAuthUser from "../hooks/useAuthUser";
 import useSubscription from "../hooks/useSubscription";
 import { useUserCredits } from "../hooks/useUserCredits";
 import AddCreditSection from "../components/credits/AddCreditSection";
 import CustomPricingModal from "../components/pricing/CustomPricingModal";
+import BillingHistorySection from "../components/billing/BillingHistorySection";
+import PaymentDetailsSection from "../components/billing/PaymentDetailsSection";
+import AutoReloadSection from "../components/billing/AutoReloadSection";
 import SEO from "../components/SEO";
 import { loadRazorpay } from "../utils/razorpay";
+import { withGst } from "../utils/gst";
 import {
   dismissToast,
   showError,
@@ -107,6 +117,8 @@ const PricingPage = () => {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [payingPlanId, setPayingPlanId] = useState(null);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [savedMethod, setSavedMethod] = useState(null);
+  const [subscribingWithSaved, setSubscribingWithSaved] = useState(null); // plan_id or null
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -126,6 +138,34 @@ const PricingPage = () => {
     // Fetch checkout in the background so "Pay" opens instantly.
     loadRazorpay();
   }, []);
+
+  // Look up whether the user has a default saved card, so plan cards can
+  // offer a one-click "pay with saved card" option instead of only the
+  // Razorpay popup.
+  useEffect(() => {
+    if (!userId) {
+      setSavedMethod(null);
+      return undefined;
+    }
+
+    let active = true;
+
+    listPaymentMethods(userId)
+      .then(({ data }) => {
+        if (!active) return;
+        const methods = Array.isArray(data) ? data : data?.methods || [];
+        setSavedMethod(
+          methods.find((m) => m.is_default && m.status === "active") || null,
+        );
+      })
+      .catch(() => {
+        if (active) setSavedMethod(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const sortedPlans = useMemo(() => {
     const normalizedPlans = plans
@@ -202,6 +242,34 @@ const PricingPage = () => {
     } finally {
       dismissToast(toastId);
       setPayingPlanId(null);
+    }
+  };
+
+  // One-click: charges the saved card directly, no Razorpay popup. Works
+  // even for a brand-new subscriber (no subscription row yet) or someone
+  // resubscribing after a lapse.
+  const handlePaySaved = async (plan) => {
+    if (!userId) {
+      login();
+      return;
+    }
+
+    const toastId = showLoading("Charging your saved card...");
+    setSubscribingWithSaved(plan.plan_id);
+
+    try {
+      await subscribeWithSavedMethod(userId, plan.plan_id);
+      await refresh();
+      await refetchCredits();
+      showSuccess("Subscribed using your saved card!");
+    } catch (err) {
+      showError(
+        err?.response?.data?.message ||
+          "Could not charge your saved card. Please try again.",
+      );
+    } finally {
+      dismissToast(toastId);
+      setSubscribingWithSaved(null);
     }
   };
 
@@ -344,7 +412,10 @@ const PricingPage = () => {
                       </p>
 
                       <p className="mb-1 text-4xl font-extrabold text-gray-900">
-                        {formatRupees(plan.price)}
+                        {formatRupees(withGst(plan.price))}
+                      </p>
+                      <p className="mb-1 text-xs text-gray-400">
+                        {formatRupees(plan.price)} + 18% GST
                       </p>
                       <p className="mb-6 text-sm text-gray-500">
                         per {plan.durationMonths} month
@@ -371,24 +442,47 @@ const PricingPage = () => {
                         ))}
                       </ul>
 
-                      <button
-                        type="button"
-                        disabled={active || payingPlanId === plan.plan_id}
-                        onClick={() => handlePayment(plan)}
-                        className={`mt-auto w-full rounded-xl px-5 py-3 font-semibold text-sm transition-all ${
-                          active
-                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                            : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-200 hover:scale-[1.01]"
-                        }`}
-                      >
-                        {active
-                          ? isCurrentPlan
-                            ? "Active Subscription"
-                            : "Subscription Already Active"
-                          : payingPlanId === plan.plan_id
-                            ? "Processing..."
-                            : "Subscribe Now"}
-                      </button>
+                      {!active && savedMethod ? (
+                        <div className="mt-auto space-y-2">
+                          <button
+                            type="button"
+                            disabled={subscribingWithSaved === plan.plan_id}
+                            onClick={() => handlePaySaved(plan)}
+                            className="w-full rounded-xl px-5 py-3 font-semibold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-lg hover:shadow-emerald-200 hover:scale-[1.01] disabled:opacity-50 transition-all"
+                          >
+                            {subscribingWithSaved === plan.plan_id
+                              ? "Processing..."
+                              : `Pay with saved ${savedMethod.card_network || "card"} ending ${savedMethod.card_last4 || "••••"}`}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={payingPlanId === plan.plan_id}
+                            onClick={() => handlePayment(plan)}
+                            className="w-full rounded-xl px-5 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors"
+                          >
+                            Pay with a different card instead
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={active || payingPlanId === plan.plan_id}
+                          onClick={() => handlePayment(plan)}
+                          className={`mt-auto w-full rounded-xl px-5 py-3 font-semibold text-sm transition-all ${
+                            active
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-200 hover:scale-[1.01]"
+                          }`}
+                        >
+                          {active
+                            ? isCurrentPlan
+                              ? "Active Subscription"
+                              : "Subscription Already Active"
+                            : payingPlanId === plan.plan_id
+                              ? "Processing..."
+                              : "Subscribe Now"}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -461,6 +555,24 @@ const PricingPage = () => {
                 userEmail={user?.email}
                 userName={username}
               />
+            </>
+          )}
+
+          {userId && (
+            <>
+              <div className="mt-10">
+                <AutoReloadSection userId={userId} />
+              </div>
+              <div className="mt-10">
+                <PaymentDetailsSection
+                  userId={userId}
+                  userName={username}
+                  userEmail={user?.email}
+                />
+              </div>
+              <div className="mt-10">
+                <BillingHistorySection userId={userId} />
+              </div>
             </>
           )}
         </div>
