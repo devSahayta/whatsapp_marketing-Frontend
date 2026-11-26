@@ -53,3 +53,15 @@ export const samvaadikChat = (userId, messages, mediaAttachment = null) =>
     messages,
     ...(mediaAttachment && { media_attachment: mediaAttachment }),
   });
+
+// ── Samvaadik AI Assistant — use it from your own WhatsApp number ──────────
+// user_id is taken server-side from the authenticated Kinde token, same as
+// every other Kinde-authed call through apiClient — never sent explicitly.
+export const startWaAssistantLink = () =>
+  apiClient.post("api/agents/samvaadik/wa/link/start");
+
+export const listWaAssistantLinks = () =>
+  apiClient.get("api/agents/samvaadik/wa/links");
+
+export const unlinkWaAssistantLink = (linkId) =>
+  apiClient.post(`api/agents/samvaadik/wa/links/${linkId}/unlink`);

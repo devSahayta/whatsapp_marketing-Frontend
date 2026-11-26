@@ -12,6 +12,7 @@ import {
 import { connectGoogle, disconnectGoogle } from "../api/googleSheets";
 import { fetchIntegrationStatus } from "../api/integrations";
 import { showError, showSuccess } from "../utils/toast";
+import ConnectWhatsappAssistant from "../components/ConnectWhatsappAssistant";
 
 const formatDateTime = (value) => {
   if (!value) return "Not available";
@@ -405,6 +406,9 @@ const Integrations = () => {
             }
           />
         </section>
+
+        {/* Renders nothing unless the WhatsApp Assistant is configured */}
+        <ConnectWhatsappAssistant />
       </div>
     </div>
   );
