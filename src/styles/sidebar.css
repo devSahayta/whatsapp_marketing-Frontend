@@ -41,7 +41,12 @@
   top: var(--navbar-height);
   left: 0;
   width: var(--sidebar-width);
-  height: calc(100vh - var(--navbar-height));
+  /* top + bottom (not 100vh): on phones 100vh is taller than the visible
+     screen (browser toolbars), which pushed the profile / Log out row
+     off-screen with no way to scroll to it. Anchoring to the bottom edge
+     always matches what is actually visible. */
+  bottom: 0;
+  height: auto;
 
   border-right: 1px solid rgba(15, 23, 42, 0.08);
   transform: translateX(-100%);
@@ -49,11 +54,11 @@
   z-index: 70;
   display: flex;
   flex-direction: column;
-  /* The sidebar scrolls as a single unit if its content ever runs taller
-     than the viewport (a very long nav list on a short window) — there is
-     deliberately no separate scroll region inside it, so there's never a
-     second scrollbar floating in the middle of the column. */
-  overflow-y: auto;
+  /* The drawer itself never scrolls: the nav list scrolls inside it
+     (.sidebar-links) while the brand row and the profile / Log out row stay
+     pinned, so they are always reachable on any phone or window height. */
+  overflow: hidden;
+  overscroll-behavior: contain;
 
   background: linear-gradient(
     180deg,
@@ -70,16 +75,16 @@
 
 /* Thin, quiet scrollbar for the rare case the sidebar does need to scroll —
    no default grey browser scrollbar sitting on top of the design. */
-.sidebar-drawer {
+.sidebar-links {
   scrollbar-width: thin;
   scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
 }
 
-.sidebar-drawer::-webkit-scrollbar {
+.sidebar-links::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar-drawer::-webkit-scrollbar-thumb {
+.sidebar-links::-webkit-scrollbar-thumb {
   background: rgba(15, 23, 42, 0.18);
   border-radius: 999px;
 }
@@ -87,6 +92,7 @@
 /* ---- Brand row ---- */
 
 .sidebar-brand {
+  flex-shrink: 0;
   min-height: var(--navbar-height);
   padding: 0 22px;
   margin-bottom: 10px;
@@ -129,7 +135,14 @@
 
 .sidebar-links {
   padding: 4px 14px 10px;
-  flex-shrink: 0;
+  /* Takes the space between the brand row and the footer and scrolls on
+     its own when the list is taller than that space. min-height:0 is what
+     lets a flex child shrink and scroll instead of overflowing. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -179,7 +192,7 @@
 
 .sidebar-footer {
   position: relative;
-  margin: auto 12px 14px;
+  margin: 8px 12px calc(14px + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
 }
 
@@ -412,7 +425,8 @@
      so the logo and the page title share one row. */
   .sidebar-drawer {
     top: 0;
-    height: 100vh;
+    bottom: 0;
+    height: auto;
     transform: translateX(0);
     border-right-color: rgba(15, 23, 42, 0.06);
   }

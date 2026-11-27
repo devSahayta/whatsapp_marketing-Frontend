@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
 
     <!-- Logged in on this browser before? Hide the pre-rendered marketing
          page so returning users see the normal loading state (see
@@ -10,79 +13,111 @@
     <script>
       try {
         var q = location.search;
-        var isLoginCallback = q.indexOf("code=") > -1 && q.indexOf("state=") > -1;
-        if (isLoginCallback || localStorage.getItem("samvaadik_auth_hint") === "1") {
+        var isLoginCallback =
+          q.indexOf("code=") > -1 && q.indexOf("state=") > -1;
+        if (
+          isLoginCallback ||
+          localStorage.getItem("samvaadik_auth_hint") === "1"
+        ) {
           document.documentElement.setAttribute("data-auth-hint", "");
         }
       } catch (e) {}
     </script>
     <style>
-      html[data-auth-hint] #prerender { display: none; }
+      html[data-auth-hint] #prerender {
+        display: none;
+      }
     </style>
 
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RGWNYRPMD"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-0RGWNYRPMD"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
 
-  gtag('config', 'G-0RGWNYRPMD');
-</script>
+      gtag("config", "G-0RGWNYRPMD");
+    </script>
 
-  <!-- Favicon -->
-<link rel="icon" type="image/png" href="/images/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
-<link rel="shortcut icon" href="/images/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
-<link rel="manifest" href="/images/site.webmanifest" />
-<meta name="theme-color" content="#ffffff" />
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/favicon-96x96.png"
+      sizes="96x96"
+    />
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+    <link rel="shortcut icon" href="/images/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/images/apple-touch-icon.png"
+    />
+    <link rel="manifest" href="/images/site.webmanifest" />
+    <meta name="theme-color" content="#ffffff" />
 
     <!-- Default head tags for app screens. On public pages, scripts/prerender.mjs
          replaces everything between the markers with that page's own title,
          description, canonical and Open Graph tags. Keep the markers. -->
     <!--seo:start-->
     <title>Samvaadik - WhatsApp Business Marketing Solution</title>
-    <meta name="description" content="Transform your WhatsApp into a powerful business tool. Send bulk messages, manage campaigns, track analytics, and grow your business with Samvaadik's WhatsApp marketing automation." />
+    <meta
+      name="description"
+      content="Transform your WhatsApp into a powerful business tool. Send bulk messages, manage campaigns, track analytics, and grow your business with Samvaadik's WhatsApp marketing automation."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Samvaadik" />
-    <meta property="og:title" content="Samvaadik - WhatsApp Business Marketing Solution" />
-    <meta property="og:description" content="Transform your WhatsApp into a powerful business tool. Send bulk messages, manage campaigns, track analytics, and grow your business." />
-    <meta property="og:image" content="https://samvaadik.com/images/og-image.jpg" />
+    <meta
+      property="og:title"
+      content="Samvaadik - WhatsApp Business Marketing Solution"
+    />
+    <meta
+      property="og:description"
+      content="Transform your WhatsApp into a powerful business tool. Send bulk messages, manage campaigns, track analytics, and grow your business."
+    />
+    <meta
+      property="og:image"
+      content="https://samvaadik.com/images/og-image.jpg"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <!--seo:end-->
 
     <!-- Structured data (JSON-LD). Only facts that are visible on the site:
          no ratings/reviews until real ones are published on the page. -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "@id": "https://samvaadik.com/#organization",
-          "name": "Samvaadik",
-          "url": "https://samvaadik.com/",
-          "logo": "https://samvaadik.com/images/web-app-manifest-512x512.png"
-        },
-        {
-          "@type": "WebSite",
-          "@id": "https://samvaadik.com/#website",
-          "name": "Samvaadik",
-          "url": "https://samvaadik.com/",
-          "publisher": { "@id": "https://samvaadik.com/#organization" }
-        },
-        {
-          "@type": "SoftwareApplication",
-          "name": "Samvaadik",
-          "applicationCategory": "BusinessApplication",
-          "operatingSystem": "Web",
-          "url": "https://samvaadik.com/",
-          "description": "WhatsApp Business API platform for bulk campaigns, scheduled messaging, chatbot flows, AI agents, shared inbox, Shopify and WooCommerce integrations, and analytics.",
-          "publisher": { "@id": "https://samvaadik.com/#organization" }
-        }
-      ]
-    }
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://samvaadik.com/#organization",
+            "name": "Samvaadik",
+            "url": "https://samvaadik.com/",
+            "logo": "https://samvaadik.com/images/web-app-manifest-512x512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://samvaadik.com/#website",
+            "name": "Samvaadik",
+            "url": "https://samvaadik.com/",
+            "publisher": { "@id": "https://samvaadik.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Samvaadik",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "url": "https://samvaadik.com/",
+            "description": "WhatsApp Business API platform for bulk campaigns, scheduled messaging, chatbot flows, AI agents, shared inbox, Shopify and WooCommerce integrations, and analytics.",
+            "publisher": { "@id": "https://samvaadik.com/#organization" }
+          }
+        ]
+      }
     </script>
 
     <!-- Fonts -->
