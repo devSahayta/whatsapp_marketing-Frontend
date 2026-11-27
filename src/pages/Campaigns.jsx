@@ -501,6 +501,28 @@ const Campaigns = () => {
     }
   });
 
+  // The table needs ~860px, so phones always get the card layout (the layout
+  // switch is hidden there too, see campaigns.css).
+  const [isPhone, setIsPhone] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(max-width: 640px)").matches
+      : false,
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const onChange = (e) => setIsPhone(e.matches);
+    setIsPhone(mq.matches);
+    mq.addEventListener
+      ? mq.addEventListener("change", onChange)
+      : mq.addListener(onChange);
+    return () =>
+      mq.removeEventListener
+        ? mq.removeEventListener("change", onChange)
+        : mq.removeListener(onChange);
+  }, []);
+  const activeView = isPhone ? "grid" : view;
+
   const changeView = (v) => {
     setView(v);
     setPage(1);
@@ -514,7 +536,7 @@ const Campaigns = () => {
 
   // table view starts with its own default page size
   useEffect(() => {
-    setPerPage(PER_PAGE_OPTIONS[view][0]);
+    setPerPage(PER_PAGE_OPTIONS[activeView][0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -933,7 +955,7 @@ const Campaigns = () => {
             {filtersActive ? " match your filters" : ""}
           </p>
 
-          {view === "grid" ? (
+          {activeView === "grid" ? (
             <div className="cp-grid">
               {visible.map((c) => (
                 <CampaignCard
@@ -947,13 +969,13 @@ const Campaigns = () => {
             <CampaignTable items={visible} handlers={handlers} />
           )}
 
-          {sorted.length > Math.min(...PER_PAGE_OPTIONS[view]) && (
+          {sorted.length > Math.min(...PER_PAGE_OPTIONS[activeView]) && (
             <Pagination
               page={currentPage}
               totalPages={totalPages}
               total={sorted.length}
               perPage={perPage}
-              perPageOptions={PER_PAGE_OPTIONS[view]}
+              perPageOptions={PER_PAGE_OPTIONS[activeView]}
               onPage={goToPage}
               onPerPage={(n) => {
                 setPerPage(n);
